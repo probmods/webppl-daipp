@@ -6,7 +6,8 @@
       "tests/helpers.wppl"
     ],
     "headers": [
-      "src/daipp.js"
+      "src/daipp.js",
+      "src/json.js"
     ]
   },
   "dependencies": {
