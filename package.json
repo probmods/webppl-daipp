@@ -12,5 +12,16 @@
   },
   "dependencies": {
     "lru-cache": "^4.0.1"
-  }
+  },
+  "description": "",
+  "version": "0.0.1",
+  "scripts": {
+    "test": "tests/run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/probmods/webppl-daipp.git"
+  },
+  "author": "",
+  "homepage": "https://github.com/probmods/webppl-daipp#readme"
 }
