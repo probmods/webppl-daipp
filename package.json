@@ -1,0 +1,15 @@
+{
+  "name": "webppl-daipp",
+  "webppl": {
+    "wppl": [
+      "src/daipp.wppl",
+      "tests/helpers.wppl"
+    ],
+    "headers": [
+      "src/daipp.js"
+    ]
+  },
+  "dependencies": {
+    "lru-cache": "^4.0.1"
+  }
+}
