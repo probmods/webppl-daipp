@@ -1,4 +1,4 @@
-for f in daipp/tests/test*.wppl
+for f in tests/test*.wppl
 do
-    ./webppl $f --require ./daipp
+    webppl $f --require .
 done

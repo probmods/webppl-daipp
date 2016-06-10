@@ -2,7 +2,7 @@
 This is a simple "explaining away" bayes net. It allows us to test whether the context network learns
 to pass along the relevant (summary of) previous choices.
 
-run with: ./webppl examples/simpleqmr.wppl --require ./daipp
+run with: webppl examples/bayesnets/simpleqmr.wppl --require .
 */
 
 var data = [true, true]

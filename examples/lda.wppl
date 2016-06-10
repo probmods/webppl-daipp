@@ -87,7 +87,7 @@ var lda = function(corpus, vocabSize, numTopics, alpha, eta) {
 // Each document is represented by an array of word counts. Therefore
 // doc.length == vocabSize, and sum(doc) = no. of words in doc.
 
-var bars = readJSON('daipp/examples/data/bars2.json');
+var bars = readJSON('examples/data/bars2.json');
 
 var vocabSize = 4; // V
 var numTopics = 4; // K
