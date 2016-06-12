@@ -1,5 +1,5 @@
 var fs = require('fs');
-var Tensor = __Tensor;
+var Tensor = T['__Tensor'];
 
 module.exports = function(env) {
 

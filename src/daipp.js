@@ -8,9 +8,9 @@ var LRU = require('lru-cache');
 // * util
 // * ad
 // * nn
-// * __Tensor
+// * T
 
-var Tensor = __Tensor;
+var Tensor = T['__Tensor'];
 
 module.exports = function(env) {
 
