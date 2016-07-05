@@ -58,7 +58,7 @@ var improveParams = function(params) {
   return Optimize(model, {
     params: params,
     steps: 50,
-    method: {gd: {stepSize: 0.001}},
+    optMethod: {gd: {stepSize: 0.001}},
     estimator: {ELBO: {samples: 100}},
     verbose: false
   });

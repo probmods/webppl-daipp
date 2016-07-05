@@ -149,5 +149,5 @@ var image2att = function(image, z_where) {
 };
 
 Optimize(model, {
-  method: {adam: {stepSize: 1e-4}} // baselines used 1e-3
+  optMethod: {adam: {stepSize: 1e-4}} // baselines used 1e-3
 });

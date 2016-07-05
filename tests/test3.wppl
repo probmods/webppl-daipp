@@ -19,7 +19,7 @@ var model = function() {
 
 
 // VI.
-var params = Optimize(model, {steps: 1000, method: {adagrad: {stepSize: 0.01}}, estimator: {ELBO: {samples: 10}}});
+var params = Optimize(model, {steps: 1000, optMethod: {adagrad: {stepSize: 0.01}}, estimator: {ELBO: {samples: 10}}});
 
 
 var marginal = SampleGuide(model, {samples: 1000, params: params});

@@ -103,7 +103,7 @@ var model = function() {
 
 var params = Optimize(model, {
   steps: 1000,
-  method: {adagrad: {stepSize: 0.1}},
+  optMethod: {adagrad: {stepSize: 0.1}},
   estimator: 'ELBO',
   onFinish: function(data) {
     //writeJSON('', data.history)

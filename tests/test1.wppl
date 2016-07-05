@@ -13,7 +13,7 @@ var model = function() {
 };
 
 // VI.
-var params = Optimize(model, {steps: 1000, method: {gd: {stepSize: 0.01}}, estimator: 'ELBO'});
+var params = Optimize(model, {steps: 1000, optMethod: {gd: {stepSize: 0.01}}, estimator: 'ELBO'});
 
 var marginal = SampleGuide(model, {samples: 1000, params: params});
 

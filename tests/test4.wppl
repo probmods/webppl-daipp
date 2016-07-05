@@ -13,7 +13,7 @@ var model = function() {
 };
 
 var marginal = SMC(model, {particles: 100, rejuvSteps: 10, saveTraces: true, ignoreGuide: true});
-var params = Optimize(model, {steps: 200, method: {adagrad: {stepSize: 0.1}}, estimator: {EUBO: {traces: marginal.traces, miniBatchSize: 10}}});
+var params = Optimize(model, {steps: 200, optMethod: {adagrad: {stepSize: 0.1}}, estimator: {EUBO: {traces: marginal.traces, miniBatchSize: 10}}});
 
 var guideMarginal = SampleGuide(model, {samples: 1000, params: params});
 

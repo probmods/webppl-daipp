@@ -41,7 +41,7 @@ var rundaipp = function() {
     steps: 50000,
     // Which methods other than gd + momentum + clipping make
     // progress?
-    method: {gd: {stepSize: .0001, mu: 0.9}},
+    optMethod: {gd: {stepSize: .0001, mu: 0.9}},
     clip: 50,
     showGradNorm: false,
     estimator: 'ELBO'

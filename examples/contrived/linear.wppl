@@ -39,7 +39,7 @@ var runmcmc = function() {
 var rundaipp = function() {
   var params = Optimize(modelDaipp, {
     steps: 10000,
-    method: {gd: {stepSize: .0001, mu: 0.9}},
+    optMethod: {gd: {stepSize: .0001, mu: 0.9}},
     estimator: 'ELBO'
   });
   return SampleGuide(modelDaipp, {samples: 1000, params: params}).support();

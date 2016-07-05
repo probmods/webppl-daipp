@@ -26,7 +26,7 @@ var model = function() {
   return [m, b, sigma];
 };
 
-var params = Optimize(model, {steps: 1000, method: {adagrad: {stepSize: 0.01}}, estimator: 'ELBO'});
+var params = Optimize(model, {steps: 1000, optMethod: {adagrad: {stepSize: 0.01}}, estimator: 'ELBO'});
 var marginal = SampleGuide(model, {samples: 1000, params: params});
 
 var E_m = expectation(marginal, function(x) { return x[0].data[0]; });
