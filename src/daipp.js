@@ -20,6 +20,21 @@ module.exports = function(env) {
   //this sets the size of the context network throughout daipp
   var latentSize = 10
 
+  // Returns the part of the stack address which has been added since
+  // entering the inner-most mapData. Outside of any mapData the
+  // address relative to the inner-most coroutine is returned.
+
+  // The magic string '$$' comes from the implementation of
+  // `wpplCpsMapWithAddresses`. We need to make this less brittle. One
+  // obvious thing we might do is move this function into webppl so
+  // that we reduce the likelihood that the string is changed in only
+  // one place.
+
+  function getObsFnAddress(s, k, a) {
+    var rel = util.relativizeAddress(env, a);
+    return k(s, rel.slice(rel.indexOf('_', rel.lastIndexOf('$$'))));
+  }
+
   function cumProd(dims) {
     var size = 1;
     var n = dims.length;
@@ -389,7 +404,8 @@ module.exports = function(env) {
       debug: debug,
       makeRU: makeRU,
       makeGRU: makeGRU
-    }
+    },
+    getObsFnAddress: getObsFnAddress
   };
 
 };
