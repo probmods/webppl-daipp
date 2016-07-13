@@ -41,7 +41,7 @@ var model = function(){
   var cStd = 1//sampleDaipp(Gamma({shape: 2, scale: 2}))
 
   //map over observations
-  var latents = mapData(data,function(datum){
+  var latents = mapData({data: data}, function(datum){
     initContext(datum) //make depend on context in global model?
     var a1 = sampleDaipp(Gaussian({mu: 0, sigma: aStd}))
     var a2 = sampleDaipp(Gaussian({mu: 0, sigma: aStd}))

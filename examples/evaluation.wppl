@@ -8,7 +8,7 @@ var model = function() {
 
   var mu = sampleDaipp(Gaussian({mu: 0, sigma: 1 / Math.sqrt(tau)}));
 
-  var d = mapData(data, function(datum) {
+  var d = mapData({data: data}, function(datum) {
 
     factor(Gaussian({mu: mu, sigma: 1 / Math.sqrt(tau)}).score(datum));
 

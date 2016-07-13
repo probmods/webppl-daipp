@@ -61,7 +61,7 @@ var model = function() {
   //   guide: Delta({v: nnparam(xDim, 1)})
   // });
 
-  mapData(images, function(image) {
+  mapData({data: images, batchSize: 100}, function(image) {
 
     var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
       guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
@@ -71,7 +71,7 @@ var model = function() {
 
     factor(MultivariateBernoulli({ps: probs}).score(image));
 
-  }, {batchSize: 100});
+  });
 
   return; // something
 };

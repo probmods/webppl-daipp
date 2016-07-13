@@ -31,7 +31,7 @@ var lda = function(corpus, vocabSize, numTopics, alpha, eta) {
 
   var globalContext = globalStore.context;
 
-  mapData(corpus, function(doc) {
+  mapData({data: corpus}, function(doc) {
 
     globalStore.context = globalContext;
     updateContext(normalize(Vector(doc)));
@@ -45,7 +45,6 @@ var lda = function(corpus, vocabSize, numTopics, alpha, eta) {
     // });
 
 
-    // forEach, since we don't have nested mapData yet.
     forEach(doc, function(count, word) {
 
       if (count > 0) {
