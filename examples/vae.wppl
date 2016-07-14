@@ -1,9 +1,19 @@
+/*
+(local-set-key (kbd "s-r") (lambda () (interactive) (save-buffer) (process-send-string "*shell daipp*" "echo '\n'; webppl examples/vae.wppl --require . --require webppl-fs --require webppl-csv \n")))
+*/
+
 var zDim = 2;
 var hDecodeDim = 500;
 var hEncodeDim = 500;
 var xDim = 784;
+//var fs = webpplFs;
 
-var images = readDataSetJSON('examples/data/mnist_images.json');
+var _images = readDataSetJSON('examples/data/mnist_images.json').slice(0,300);
+var labels = JSON.parse(fs.read('examples/data/mnist_labels.json')).slice(0,300);
+
+
+var images = mapIndexed(function(i, image) { return _.extend(image, {__index__: i}) },
+                        _images);
 
 // Recognition network.
 // Maps from an input image to the parameters of the guide
@@ -25,6 +35,10 @@ var decode = function(z, W, b) {
 var nnparam = function(a, b) {
   return param([a, b], 0, 0.1);
 };
+
+var seed = 0;
+
+util.seedRNG(seed)
 
 var model = function() {
 
@@ -61,23 +75,24 @@ var model = function() {
   //   guide: Delta({v: nnparam(xDim, 1)})
   // });
 
-  mapData(images, function(image) {
+  return mapData(
+    {data: images,
+     batchSize: 100},
+    function(image) {
 
-    var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
-      guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
+      var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
+        guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
+      });
+
+      var probs = decode(z, [W3, W4], [b3, b4]);
+
+      factor(MultivariateBernoulli({ps: probs}).score(image));
+      return {seed: seed, i: image.__index__,z: z}
     });
-
-    var probs = decode(z, [W3, W4], [b3, b4]);
-
-    factor(MultivariateBernoulli({ps: probs}).score(image));
-
-  }, {batchSize: 100});
-
-  return; // something
 };
 
 var params = Optimize(model, {
-  steps: 500,
+  steps: 1,
   estimator: {ELBO: {samples: 1}},
   optMethod: {adam: {stepSize: 0.001}},
   onFinish: function(data) {
@@ -85,4 +100,7 @@ var params = Optimize(model, {
   }
 });
 
-'done';
+
+var latents = sample(SampleGuide(model));
+
+webpplCsv.writeCSV(latents, "latents.csv")
