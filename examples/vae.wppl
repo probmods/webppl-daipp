@@ -88,19 +88,10 @@ var model = function() {
 var seed = 0;
 util.seedRNG(seed);
 
-
 var steps = 500;
-var params = Optimize(model, {
-  steps: 500,
-  estimator: {ELBO: {samples: 1}},
-  optMethod: {adam: {stepSize: 0.001}},
-  onFinish: function(data) {
-    //writeJSON('', data.history);
-  }
-});
-
-var t0 = _.now();
-var latents = sample(SampleGuide(model, {verbose: true}));
-var t1 = _.now();
-
+var marg = Infer({method: 'optimize',
+                  steps: steps,
+                  optMethod: {adam: {stepSize: 0.001}}},
+                 model);
+var latents = marg.support()[0];
 webpplCsv.writeCSV(latents, 'vae' + seed + ',' + steps + '.csv')
