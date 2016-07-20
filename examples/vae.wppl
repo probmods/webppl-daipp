@@ -73,14 +73,17 @@ var model = function() {
 
   mapData({data: images, batchSize: 100}, function(image) {
 
-    var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
-      guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
-    });
+    var zGuideArgs = encode(image, [W0, W1, W2], [b0, b1, b2]);
+    var z = sample(
+      TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), // could we hoist this out of mapData?
+      {guide: DiagCovGaussian(zGuideArgs)});
 
     var probs = decode(z, [W3, W4], [b3, b4]);
 
     factor(MultivariateBernoulli({ps: probs}).score(image));
-    return {i: image.__index__, label: labels[image.__index__], z: z}
+    return {i: image.__index__,
+            label: labels[image.__index__],
+            mu: zGuideArgs.mu.x} // NB: have to do .x part because of a bug
   });
 };
 
@@ -88,10 +91,10 @@ var model = function() {
 var seed = 0;
 util.seedRNG(seed);
 
-var steps = 2000;
+var steps = 500;
 var marg = Infer({method: 'optimize',
                   steps: steps,
                   optMethod: {adam: {stepSize: 0.001}}},
                  model);
 var latents = marg.support()[0];
-webpplCsv.writeCSV(latents, 'vae' + seed + ',' + steps + '.csv')
+webpplCsv.writeCSV(latents, ['vae-means','M' + M,'steps' + steps, 'seed' + seed].join('-') + '.csv')
