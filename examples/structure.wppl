@@ -23,7 +23,7 @@ var model = function() {
   //store the "global context" if we're using it:
   var globalContext = globalStore.context;
 
-  mapData(data, function(datum) {
+  mapData({data: data}, function(datum) {
 
     // This is the 'observation function'
 

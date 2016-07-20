@@ -117,7 +117,7 @@ module.exports = function(env) {
       return k(s);
     },
 
-    mapDataFetch: function(ixprev, data, options, address) {
+    mapDataFetch: function(data, batchSize, address) {
       return this.opts.datumIndices;
     },
 

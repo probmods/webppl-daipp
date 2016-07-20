@@ -56,7 +56,7 @@ var model = function() {
     return T.sigmoid(T.add(T.dot(W1, h), b1));
   };
 
-  mapData(data, function(target) {
+  mapData({data: data, batchSize: 64}, function(target) {
 
     initContext('something');
 
@@ -69,7 +69,7 @@ var model = function() {
 
     factor(DiagCovGaussian({mu: image, sigma: x_sigma}).score(target));
 
-  }, {batchSize: 64});
+  });
 
   return 'something';
 
