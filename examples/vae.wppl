@@ -2,7 +2,7 @@
   (local-set-key (kbd "s-r") (lambda () (interactive) (save-buffer) (process-send-string "*shell daipp*" "echo '\n'; webppl examples/vae.wppl --require . --require webppl-fs --require webppl-csv \n")))
 */
 
-var zDim = 2;
+var zDim = 3;
 var hDecodeDim = 500;
 var hEncodeDim = 500;
 var xDim = 784;
@@ -92,9 +92,23 @@ var seed = 0;
 util.seedRNG(seed);
 
 var steps = 500;
-var marg = Infer({method: 'optimize',
-                  steps: steps,
-                  optMethod: {adam: {stepSize: 0.001}}},
+var marg = Infer({method: 'optimize', steps: steps, optMethod: {adam: {stepSize: 0.001}}},
                  model);
 var latents = marg.support()[0];
-webpplCsv.writeCSV(latents, ['vae-means','M' + M,'steps' + steps, 'seed' + seed].join('-') + '.csv')
+
+// name the output file informatively, with info about all the run parameters
+var runParams = {
+  model: 'vae',
+  query: _.without(_.keys(latents[0]), 'i', 'label'),
+  zDim: zDim,
+  M: M,
+  steps: steps,
+  seed: seed
+}
+
+var outputFileName = map(function(pair) { pair.join('_') },
+                         _.pairs(runParams)).join(',') + '.csv';
+
+webpplCsv.writeCSV(latents, outputFileName);
+
+'Wrote to ' + outputFileName
