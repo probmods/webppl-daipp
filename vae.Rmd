@@ -1,0 +1,140 @@
+
+```{r}
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(directlabels)
+library(FNN) # knn library found by googling
+theme_set(theme_classic(24))
+```
+
+# analyzing zdim = 2
+
+```{r}
+# d.raw = read.csv("vae0,500.csv") %>% transform(label = as.factor(label))
+#d.raw = read.csv("vae0,2000.csv") %>% transform(label = as.factor(label))
+d.raw = read.csv("vae-means-M60000-steps500-seed0.csv") %>% transform(label = as.factor(label)) %>%
+  rename(z = mu)
+```
+
+```{r}
+zsplit = str_split_fixed(d.raw$z, ",", 2)
+
+d = d.raw %>% select(i, label)
+d = cbind(d, z1 = as.numeric(zsplit[,1]), z2 = as.numeric(zsplit[,2]))
+```
+
+compute convex hulls:
+```{r}
+d.hulls = ddply(d, .(label),
+              function(e) {
+                # get indices of points on the hull
+                indices = chull(e$z1, e$z2)
+                e[indices,]
+              })
+```
+
+plot just points:
+
+```{r}
+ggplot(data = d %>% transform(shp = as.numeric(label) <= 4),
+       mapping = aes(x = z1, y = z2, color = label)) +
+  geom_point(size = 1.2, shape = 21, alpha = 0.9)
+```
+
+plot just hulls:
+
+```{r}
+qplot(data = d.hulls,
+      x = z1,
+      y= z2,
+      geom = 'polygon',
+      group = label,
+      color = label,
+      fill = I(NA),
+      size = I(2)
+      )
+```
+
+```{r}
+ggplot(data = d,
+       mapping = aes(x = z1, y = z2, color = label, group = label)) + 
+  geom_point(size = 0.5, alpha = 0.3) +
+  geom_polygon(data = d.hulls,
+               color = "black",
+               mapping = aes(linetype = label),
+               fill = NA)
+```
+
+
+```{r}
+qplot(data = d, facets = ~label, x = z1, y = z2, color = as.factor(label))
+```
+
+
+# analyzing zdim = 3
+
+
+```{r}
+d.raw = read.csv("model_vae,query_mu,zDim_3,M_60000,steps_500,seed_0.csv") %>% transform(label = as.factor(label)) %>%
+  rename(z = mu)
+```
+
+```{r}
+zsplit = str_split_fixed(d.raw$z, ",", 3)
+
+d = d.raw %>% select(i, label)
+d = cbind(d,
+          z1 = as.numeric(zsplit[,1]),
+          z2 = as.numeric(zsplit[,2]),
+          z3 = as.numeric(zsplit[,3])
+          )
+```
+
+```{r}
+MASS::parcoord(d %>% filter(label == 1) %>% select(z1,z2,z3), col = "#377EB811")
+MASS::parcoord(d %>% filter(label == 2) %>% select(z1,z2,z3), col = "#377EB811")
+MASS::parcoord(d %>% filter(label == 3) %>% select(z1,z2,z3), col = "#377EB811")
+MASS::parcoord(d %>% filter(label == 4) %>% select(z1,z2,z3), col = "#377EB811")
+```
+
+
+
+```{r}
+# vectorized
+classify = function(x) {
+  knn.res = get.knnx(data = d[,3:5], query = x, k = 4)
+  all.nn.indices = knn.res$nn.index
+  apply(all.nn.indices,
+        1,
+        function(nn.indices) {
+          # d[nn.indices,'label'] %>% table %>% which.max %>% names %>% as.numeric
+          which.max(table(d[nn.indices,2])) - 1
+        })
+}
+d$label.predicted = classify(d[,3:5]) # takes < 30 seconds
+```
+
+overall performance (60%)
+```{r}
+mean(d$label.predicted == d$label)
+```
+
+plot distribution of predictions for each (true) class:
+```{r}
+d.agg = d %>%
+  group_by(label, label.predicted) %>%
+  summarise(n = n()) %>%
+  group_by(label) %>%
+  transform(prob = n / sum(n))
+```
+
+```{r}
+ggplot(data = d.agg %>% transform(label = paste0("true ", label, "'s"))) + 
+  facet_wrap(~ label, ncol = 5) +
+  geom_bar(mapping = aes(x = as.character(label.predicted),
+                         y = prob),
+           stat = 'identity') + xlab("predicted label")
+```
+
