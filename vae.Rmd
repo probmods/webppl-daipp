@@ -104,21 +104,29 @@ MASS::parcoord(d %>% filter(label == 4) %>% select(z1,z2,z3), col = "#377EB811")
 
 get classification accuracy
 ```{r}
-classify = function(k = 1) {
+knn = function(k.max = 5) {
   dat = d %>% select(starts_with("z"))
-  knn.res = get.knn(data = dat, k = k)
-  all.nn.indices = knn.res$nn.index
+  get.knn(data = dat, k = k.max)
+}
+knn.res = knn(5)
+```
+
+```{r}
+classify = function(k, knn.res) {
+  all.nn.indices = as.matrix(knn.res$nn.index[,1:k])
   apply(all.nn.indices,
         1,
         function(nn.indices) {
           # reference implementation:
           # d[nn.indices,'label'] %>% table %>% which.max %>% names %>% as.numeric
+          
           # optimized:
-          which.max(table(d[nn.indices,2])) - 1
+          which.max(table(d[nn.indices,'label'])) - 1
         })
 }
 
-sapply(1:5, function(k) { round(mean(d$label == classify(k = k)),3) })
+system.time(foo <- classifier.accuracy(1, knn.res))
+sapply(1:1, function(k) { mean(d$label == clasify(k, knn.res)) %>% round(3) })
 ```
 
 plot distribution of predictions for each (true) class:
