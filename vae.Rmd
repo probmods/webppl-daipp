@@ -125,8 +125,7 @@ classify = function(k, knn.res) {
         })
 }
 
-system.time(foo <- classifier.accuracy(1, knn.res))
-sapply(1:1, function(k) { mean(d$label == clasify(k, knn.res)) %>% round(3) })
+sapply(1:10, function(k) { mean(d$label == clasify(k, knn.res)) %>% round(3) })
 ```
 
 plot distribution of predictions for each (true) class:
