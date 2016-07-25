@@ -105,7 +105,8 @@ MASS::parcoord(d %>% filter(label == 4) %>% select(z1,z2,z3), col = "#377EB811")
 get classification accuracy
 ```{r}
 classify = function(k = 1) {
-  knn.res = get.knn(data = d[,3:5], k = k)
+  dat = d %>% select(starts_with("z"))
+  knn.res = get.knn(data = dat, k = k)
   all.nn.indices = knn.res$nn.index
   apply(all.nn.indices,
         1,
