@@ -8,7 +8,7 @@ var hEncodeDim = 500;
 var xDim = 784;
 //var fs = webpplFs;
 
-var M = 60000;
+var M = 100;
 var _images = readDataSetJSON('examples/data/mnist_images.json').slice(0,M);
 var labels = JSON.parse(fs.read('examples/data/mnist_labels.json')).slice(0,M);
 
@@ -91,24 +91,38 @@ var model = function() {
 var seed = process.env.RANDOM_SEED || 20;
 util.seedRNG(seed);
 
-var steps = 1500;
-var marg = Infer({method: 'optimize', steps: steps, optMethod: {adam: {stepSize: 0.001}}},
-                 model);
-var latents = marg.support()[0];
+var steps = 1;
+var inferOpts = {method: 'optimize',
+                 steps: steps,
+                 optMethod: {adam: {stepSize: 0.001}},
+                 verbose: false
+                }
 
-// name the output file informatively, with info about all the run parameters
-var runParams = {
-  model: 'vae',
-  query: _.without(_.keys(latents[0]), 'i', 'label'),
-  zDim: zDim,
-  M: M,
-  steps: steps,
-  seed: seed
-}
+var optimResult = Optimize(model, inferOpts);
 
-var outputFileName = map(function(pair) { pair.join('_') },
-                         _.pairs(runParams)).join(',') + '.csv';
+var encoderParams = _.object(['W0','W1','W2','b0','b1','b2'],
+                             _.first(_.values(optimResult),6));
+console.log(encoderParams);
 
-webpplCsv.writeCSV(latents, outputFileName);
+daipp.msgpackwrite(encoderParams, 'encoder-params.msp');
 
-'Wrote to ' + outputFileName
+
+//var marg = Infer(inferOpts, model);
+// var latents = marg.support()[0];
+
+// // name the output file informatively, with info about all the run parameters
+// var runParams = {
+//   model: 'vae',
+//   query: _.without(_.keys(latents[0]), 'i', 'label'),
+//   zDim: zDim,
+//   M: M,
+//   steps: steps,
+//   seed: seed
+// }
+
+// var outputFileName = map(function(pair) { pair.join('_') },
+//                          _.pairs(runParams)).join(',') + '.csv';
+
+// webpplCsv.writeCSV(latents, outputFileName);
+
+// 'Wrote to ' + outputFileName

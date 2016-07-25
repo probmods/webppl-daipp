@@ -12,6 +12,25 @@ var LRU = require('lru-cache');
 
 var Tensor = T['__Tensor'];
 
+var msgpack = require('msgpack-lite');
+
+var codec = msgpack.createCodec();
+codec.addExtPacker(0x3F, Tensor, packTensor);
+
+function packTensor(t) {
+  var object = _.pick(t, _.keys(t)); // convert tensor to object
+  return msgpack.encode(object);
+}
+
+var msgpackwrite = function(val, fileName) {
+  var fs = require('fs');
+  var writeStream = fs.createWriteStream(fileName);
+  var encodeStream = msgpack.createEncodeStream({codec: codec});
+  encodeStream.pipe(writeStream);
+  encodeStream.write(val);
+  encodeStream.end();
+}
+
 module.exports = function(env) {
 
   // Controls whether adnn debug checks are enabled for nets.
@@ -403,7 +422,8 @@ module.exports = function(env) {
       orderedValues: orderedValues,
       debug: debug,
       makeRU: makeRU,
-      makeGRU: makeGRU
+      makeGRU: makeGRU,
+      msgpackwrite: msgpackwrite
     },
     getObsFnAddress: getObsFnAddress
   };
