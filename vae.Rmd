@@ -77,7 +77,9 @@ qplot(data = d, facets = ~label, x = z1, y = z2, color = as.factor(label))
 
 
 ```{r}
-d.raw = read.csv("model_vae,query_mu,zDim_3,M_60000,steps_500,seed_0.csv") %>% transform(label = as.factor(label)) %>%
+d.raw = #read.csv("model_vae,query_mu,zDim_3,M_60000,steps_1500,seed_0.csv") %>%
+  read.csv("model_vae,query_mu,zDim_3,M_60000,steps_500,seed_20.csv") %>%
+  transform(label = as.factor(label)) %>%
   rename(z = mu)
 ```
 
@@ -92,6 +94,7 @@ d = cbind(d,
           )
 ```
 
+try visualizing means
 ```{r}
 MASS::parcoord(d %>% filter(label == 1) %>% select(z1,z2,z3), col = "#377EB811")
 MASS::parcoord(d %>% filter(label == 2) %>% select(z1,z2,z3), col = "#377EB811")
@@ -100,37 +103,36 @@ MASS::parcoord(d %>% filter(label == 4) %>% select(z1,z2,z3), col = "#377EB811")
 ```
 
 
-
+get classification accuracy
 ```{r}
-# vectorized
-classify = function(x) {
-  knn.res = get.knnx(data = d[,3:5], query = x, k = 4)
+classify = function(k = 1) {
+  knn.res = get.knn(data = d[,3:5], k = k)
   all.nn.indices = knn.res$nn.index
   apply(all.nn.indices,
         1,
         function(nn.indices) {
+          # reference implementation:
           # d[nn.indices,'label'] %>% table %>% which.max %>% names %>% as.numeric
+          # optimized:
           which.max(table(d[nn.indices,2])) - 1
         })
 }
-d$label.predicted = classify(d[,3:5]) # takes < 30 seconds
-```
 
-overall performance (60%)
-```{r}
-mean(d$label.predicted == d$label)
+sapply(21:40, function(k) { mean(d$label == classify(k = k)) })
 ```
 
 plot distribution of predictions for each (true) class:
+```{r}
+d$label.predicted = classify(k = 10)
+```
+
 ```{r}
 d.agg = d %>%
   group_by(label, label.predicted) %>%
   summarise(n = n()) %>%
   group_by(label) %>%
-  transform(prob = n / sum(n))
-```
+  mutate(prob = n / sum(n))
 
-```{r}
 ggplot(data = d.agg %>% transform(label = paste0("true ", label, "'s"))) + 
   facet_wrap(~ label, ncol = 5) +
   geom_bar(mapping = aes(x = as.character(label.predicted),

@@ -21,7 +21,8 @@ var images = mapIndexed(function(i, image) { return _.extend(image, {__index__: 
 var encode = function(x, W, b) {
   var h = T.tanh(T.add(T.dot(W[0], x), b[0]));
   var mu = T.add(T.dot(W[1], h), b[1]);
-  var sigma = T.exp(T.add(T.dot(W[2], h), b[2]));
+  var sigma = T.exp(T.mul(T.add(T.dot(W[2], h), b[2]),
+                          1/2));
   return {mu: mu, sigma: sigma};
 };
 
@@ -87,8 +88,7 @@ var model = function() {
   });
 };
 
-
-var seed = 0;
+var seed = process.env.RANDOM_SEED || 20;
 util.seedRNG(seed);
 
 var steps = 500;
