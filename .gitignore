@@ -1,4 +1,6 @@
 .DS_Store
 node_modules
 npm-debug.log
-
+*.csv
+examples/data/train-images-idx3-ubyte
+examples/data/train-labels-idx1-ubyte
