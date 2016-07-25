@@ -77,21 +77,20 @@ qplot(data = d, facets = ~label, x = z1, y = z2, color = as.factor(label))
 
 
 ```{r}
-d.raw = #read.csv("model_vae,query_mu,zDim_3,M_60000,steps_1500,seed_0.csv") %>%
-  read.csv("model_vae,query_mu,zDim_3,M_60000,steps_500,seed_20.csv") %>%
+d.raw = read.csv("model_vae,query_mu,zDim_10,M_60000,steps_1500,seed_20.csv", stringsAsFactors = FALSE) %>%
   transform(label = as.factor(label)) %>%
   rename(z = mu)
 ```
 
 ```{r}
-zsplit = str_split_fixed(d.raw$z, ",", 3)
+zdim = length(str_split(d.raw[1,]$z,",")[[1]])
+zsplit = str_split_fixed(d.raw$z, ",", zdim) %>%
+  apply(2,as.numeric) %>%
+  as.data.frame
 
-d = d.raw %>% select(i, label)
-d = cbind(d,
-          z1 = as.numeric(zsplit[,1]),
-          z2 = as.numeric(zsplit[,2]),
-          z3 = as.numeric(zsplit[,3])
-          )
+names(zsplit) = str_replace(names(zsplit),"V","z")
+
+d = d.raw %>% select(i, label) %>% cbind(zsplit)
 ```
 
 try visualizing means
@@ -118,7 +117,7 @@ classify = function(k = 1) {
         })
 }
 
-sapply(21:40, function(k) { mean(d$label == classify(k = k)) })
+sapply(1:5, function(k) { round(mean(d$label == classify(k = k)),3) })
 ```
 
 plot distribution of predictions for each (true) class:
