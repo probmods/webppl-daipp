@@ -1,0 +1,34 @@
+// Common stuff goes here so we don't clog up the examples with hard-to-read stuff
+// (and so refactoring is easier if we change stuff later on)
+
+
+// Neural network layers
+
+var linear = function(x, W, b) {
+	return T.add(T.dot(W, x), b);
+};
+
+var softplus = function(x) {
+	return T.log(T.add(T.exp(x), 1));
+};
+
+var sigmoid = function(x) { return T.sigmoid(x); };
+
+
+// Parameters
+
+var paramVector = function(n) {
+	return param([n, 1], 0, 0.1);
+};
+
+var paramMatrix = function(n, m) {
+	return param([n, m], 0, 0.1);
+};
+
+
+// Misc.
+
+// Turn single-element vector into a scalar
+var toscalar = function(vec) {
+	return T.get(vec, 0);
+};

@@ -3,7 +3,8 @@
   "webppl": {
     "wppl": [
       "src/daipp.wppl",
-      "tests/helpers.wppl"
+      "tests/helpers.wppl",
+      "examples/techreport/utils.wppl"
     ],
     "headers": [
       "src/daipp.js",

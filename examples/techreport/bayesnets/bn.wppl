@@ -1,0 +1,102 @@
+// run with: webppl examples/techreport/bayesnets/bn1.wppl --require .
+
+
+// Options
+var nHidden = 3;	// Size of hidden layer for guide recognition net
+var nData = 100;	// Number of data points to draw from true distribution
+
+
+// Different model classes
+var models = {
+
+	// One continuous latent variable feeding into one continuous observed variable.
+	oneLatent: {
+		targetModel: function() {
+			var a = sample(Gaussian({mu: 0, sigma: 1}));
+			var b = sample(Gaussian({mu: a + 2, sigma: 0.5}));
+			return {a: a, b: b};
+		},
+		model: function() {
+			// Guide params
+			var W_encode = paramMatrix(nHidden, 1);
+			var b_encode = paramVector(nHidden);
+			var W_mu = paramMatrix(1, nHidden);
+			var b_mu = paramVector(1);
+			var W_sigma = paramMatrix(1, nHidden);
+			var b_sigma = paramVector(1);
+
+			// Map over data
+			var latents = mapData({data: globalStore.data}, function(datum) {
+				var observed_b = datum.b;
+
+				// Compute guide params as nonlinear function of datum
+				var datumvec = Vector([observed_b]);
+				var enc = sigmoid(linear(datumvec, W_encode, b_encode));
+				var gmu = toscalar(linear(enc, W_mu, b_mu));
+				var gsigma = toscalar(softplus(linear(enc, W_sigma, b_sigma)));
+
+				// Sample with guide
+				var a = sample(Gaussian({mu: 0, sigma: 1}), {
+					guide: Gaussian({mu: gmu, sigma: gsigma})
+				});
+
+				// // Sample with guide
+				// var a = sample(Gaussian({mu: 0, sigma: 1}), {
+				// 	guide: Gaussian({mu: datum.b - 2, sigma: 1})
+				// });
+
+				// Observe datum
+				factor(Gaussian({mu: a + 2, sigma: 0.5}).score(observed_b));
+
+				// Return latents
+				return {a: a};
+			});
+
+			// Return latent variables
+			return latents;
+		}
+	},
+
+};
+
+var whichModel = 'oneLatent';
+var model = models[whichModel];
+
+
+// Generate data from true distribution
+globalStore.data = repeat(100, model.targetModel);
+
+// Optimize parameters
+var params = Optimize(model.model, {
+	steps: 100,
+	optMethod: { adam: { stepSize: 0.1 } },
+	estimator: { ELBO: { samples: 1 } },
+	verbose: true
+});
+
+// Compute expected value of latents for given observations
+var latentExpectations = function(observations) {
+	globalStore.data = [observations];
+	var nsamps = 100;
+	var latentSamps = repeat(nsamps, function() {
+		return sample(SampleGuide(model.model, {params: params}))[0];
+	});
+	var zeros = mapObject(function(latentName, latentVal) { return 0; }, latentSamps[0]);
+	var sums = reduce(function(latentSamp, runningAvg) {
+		return mapObject(function(latentName, latentVal) {
+			return latentVal + runningAvg[latentName];
+		}, latentSamp);
+	}, zeros, latentSamps);
+	return mapObject(function(latentName, latentVal) {
+		return latentVal / nsamps;
+	}, sums);
+}
+
+var testData = repeat(10, model.targetModel);
+map(function(testDatum) {
+	var latEx = latentExpectations(testDatum);
+	display('True datum: ' + JSON.stringify(testDatum) +
+		' | Inferred expectation of latents: ' + JSON.stringify(latEx));
+}, testData);
+undefined;
+
