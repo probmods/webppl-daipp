@@ -4,8 +4,8 @@
 // Options
 var nHidden = 3;					// Size of hidden layer for guide recognition net
 var nTrainData = 100;				// Number of training data points to draw from true distribution
-var doModelLearning = false;		// Should we also try to learn the generative model?
-var modelLearnType = 'ML_reg';			// 'ML' = maximum likelihood, 'ML_reg' = Delta w/ prior, 'FullBayes' = mean field
+var doModelLearning = true;		// Should we also try to learn the generative model?
+var modelLearnType = 'ML';			// 'ML' = maximum likelihood, 'ML_reg' = Delta w/ prior, 'FullBayes' = mean field
 
 
 // Different model classes
@@ -14,14 +14,14 @@ var models = {
 	// One continuous latent variable feeding into one continuous observed variable.
 	oneLatent: {
 		targetModel: function() {
-			var a = sample(Gaussian({mu: 0, sigma: 1}));
+			var a = sample(Gaussian({mu: 5, sigma: 1}));
 			var b = sample(Gaussian({mu: a + 2, sigma: 0.5}));
 			return {a: a, b: b};
 		},
 		model: function() {
 			// Generative model params
 			var mu = !doModelLearning ?
-					0 :
+					5 :
 				modelLearnType === 'ML' ?
 					paramScalar() :
 				modelLearnType === 'ML_reg' ?
@@ -69,7 +69,7 @@ var models = {
 				var gsigma = toscalar(softplus(linear(hidden, W_sigma, b_sigma)));
 
 				// Sample with guide
-				var a = sample(Gaussian({mu: 0, sigma: 1}), {
+				var a = sample(Gaussian({mu: mu, sigma: sigma}), {
 					guide: Gaussian({mu: gmu, sigma: gsigma})
 				});
 
@@ -110,7 +110,7 @@ globalStore.moments = mapObject(function(varname, varval) {
 // Optimize parameters
 var params = Optimize(model.model, {
 	steps: 100,
-	optMethod: { adam: { stepSize: 0.1 } },
+	optMethod: { adam: { stepSize: 1 } },
 	estimator: { ELBO: { samples: 1 } },
 	verbose: true
 });
