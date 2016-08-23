@@ -2,9 +2,9 @@
 
 
 // Options
-var nHidden = 3;	// Size of hidden layer for guide recognition net
-var nData = 100;	// Number of data points to draw from true distribution
-
+var nHidden = 3;					// Size of hidden layer for guide recognition net
+var nData = 100;					// Number of data points to draw from true distribution
+var doModelLearning = false;		// Should we also try to learn the generative model?
 
 // Different model classes
 var models = {
@@ -17,9 +17,21 @@ var models = {
 			return {a: a, b: b};
 		},
 		model: function() {
+			// Generative model params
+			// TODO: Are Deltas fine, or should we do the mean-field-equivalent thing instead?
+			var mu = !doModelLearning ? 0 :
+				sample(Gaussian({mu: 0, sigma: 1}), {
+					guide: Delta({v: paramScalar()})
+				});
+
+			var sigma = !doModelLearning ? 1 :
+				sample(Gamma({shape: 1, scale: 1}), {
+					guide: Delta({v: toscalar(softplus(paramVector(1)))})
+				});
+
 			// Guide params
-			var W_encode = paramMatrix(nHidden, 1);
-			var b_encode = paramVector(nHidden);
+			var W_hidden = paramMatrix(nHidden, 1);
+			var b_hidden = paramVector(nHidden);
 			var W_mu = paramMatrix(1, nHidden);
 			var b_mu = paramVector(1);
 			var W_sigma = paramMatrix(1, nHidden);
@@ -31,31 +43,31 @@ var models = {
 
 				// Compute guide params as nonlinear function of datum
 				var datumvec = Vector([observed_b]);
-				var enc = sigmoid(linear(datumvec, W_encode, b_encode));
-				var gmu = toscalar(linear(enc, W_mu, b_mu));
-				var gsigma = toscalar(softplus(linear(enc, W_sigma, b_sigma)));
+				var hidden = sigmoid(linear(datumvec, W_hidden, b_hidden));
+				var gmu = toscalar(linear(hidden, W_mu, b_mu));
+				var gsigma = toscalar(softplus(linear(hidden, W_sigma, b_sigma)));
 
 				// Sample with guide
 				var a = sample(Gaussian({mu: 0, sigma: 1}), {
 					guide: Gaussian({mu: gmu, sigma: gsigma})
 				});
 
-				// // Sample with guide
-				// var a = sample(Gaussian({mu: 0, sigma: 1}), {
-				// 	guide: Gaussian({mu: datum.b - 2, sigma: 1})
-				// });
-
 				// Observe datum
-				factor(Gaussian({mu: a + 2, sigma: 0.5}).score(observed_b));
+				observe(Gaussian({mu: a + 2, sigma: 0.5}), observed_b);
 
 				// Return latents
 				return {a: a};
 			});
 
-			// Return latent variables
-			return latents;
+			// Return global params + latents
+			return {
+				params: { mu: mu, sigma: sigma },
+				latents: latents
+			};
 		}
 	},
+
+
 
 };
 
@@ -74,24 +86,39 @@ var params = Optimize(model.model, {
 	verbose: true
 });
 
+// Compute expected value of params
+var paramExpectations = function() {
+	globalStore.data = [];
+	var post = SampleGuide(model.model, {params: params, samples: 100});
+	var paramExample = sample(post).params;
+	return mapObject(function(name, val) {
+		return expectation(post, function(ret) {
+			return ret.params[name];
+		});
+	}, paramExample);
+};
+
 // Compute expected value of latents for given observations
 var latentExpectations = function(observations) {
 	globalStore.data = [observations];
-	var nsamps = 100;
-	var latentSamps = repeat(nsamps, function() {
-		return sample(SampleGuide(model.model, {params: params}))[0];
-	});
-	var zeros = mapObject(function(latentName, latentVal) { return 0; }, latentSamps[0]);
-	var sums = reduce(function(latentSamp, runningAvg) {
-		return mapObject(function(latentName, latentVal) {
-			return latentVal + runningAvg[latentName];
-		}, latentSamp);
-	}, zeros, latentSamps);
-	return mapObject(function(latentName, latentVal) {
-		return latentVal / nsamps;
-	}, sums);
-}
+	var post = SampleGuide(model.model, {params: params, samples: 100});
+	var latentExample = sample(post).latents[0];
+	return mapObject(function(name, val) {
+		return expectation(post, function(ret) {
+			return ret.latents[0][name];
+		});
+	}, latentExample)
+};
 
+
+
+// Compare param expectations and latent expectations to true values
+// TODO: Also compare to expectations computed via MCMC?
+display('');
+if (doModelLearning) {
+	var prmEx = paramExpectations();
+	display('Inferred expectation of params: ' + JSON.stringify(prmEx));
+}
 var testData = repeat(10, model.targetModel);
 map(function(testDatum) {
 	var latEx = latentExpectations(testDatum);
