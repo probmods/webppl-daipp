@@ -3,8 +3,10 @@
 
 // Options
 var nHidden = 3;					// Size of hidden layer for guide recognition net
-var nData = 100;					// Number of data points to draw from true distribution
+var nTrainData = 100;				// Number of training data points to draw from true distribution
 var doModelLearning = false;		// Should we also try to learn the generative model?
+var modelLearnType = 'ML_reg';			// 'ML' = maximum likelihood, 'ML_reg' = Delta w/ prior, 'FullBayes' = mean field
+
 
 // Different model classes
 var models = {
@@ -18,16 +20,33 @@ var models = {
 		},
 		model: function() {
 			// Generative model params
-			// TODO: Are Deltas fine, or should we do the mean-field-equivalent thing instead?
-			var mu = !doModelLearning ? 0 :
-				sample(Gaussian({mu: 0, sigma: 1}), {
-					guide: Delta({v: paramScalar()})
-				});
+			var mu = !doModelLearning ?
+					0 :
+				modelLearnType === 'ML' ?
+					paramScalar() :
+				modelLearnType === 'ML_reg' ?
+					sample(Gaussian({mu: 0, sigma: 1}), {
+						guide: Delta({v: paramScalar()})
+					}) :
+				modelLearnType === 'FullBayes' ?
+					sample(Gaussian({mu: 0, sigma: 1}), {
+						guide: Gaussian({mu: paramScalar(), sigma: softplus(paramScalar())})
+					}) :
+				util.fatal('Unrecognized modelLearnType');
 
-			var sigma = !doModelLearning ? 1 :
-				sample(Gamma({shape: 1, scale: 1}), {
-					guide: Delta({v: toscalar(softplus(paramVector(1)))})
-				});
+			var sigma = !doModelLearning ?
+					1 :
+				modelLearnType === 'ML' ?
+					softplus(paramScalar()) :
+				modelLearnType === 'ML_reg' ?
+					sample(Gamma({shape: 1, scale: 1}), {
+						guide: Delta({v: softplus(paramScalar())})
+					}) :
+				modelLearnType === 'FullBayes' ?
+					sample(Gamma({shape: 1, scale: 1}), {
+						guide: Gamma({shape: softplus(paramScalar()), scale: softplus(paramScalar())})
+					}) :
+				util.fatal('Unrecognized modelLearnType');
 
 			// Guide params
 			var W_hidden = paramMatrix(nHidden, 1);
@@ -42,7 +61,9 @@ var models = {
 				var observed_b = datum.b;
 
 				// Compute guide params as nonlinear function of datum
-				var datumvec = Vector([observed_b]);
+				var b_moments = globalStore.moments.b;
+				var b_stand = standardize(observed_b, b_moments.mu, b_moments.sigma);
+				var datumvec = Vector([b_stand]);
 				var hidden = sigmoid(linear(datumvec, W_hidden, b_hidden));
 				var gmu = toscalar(linear(hidden, W_mu, b_mu));
 				var gsigma = toscalar(softplus(linear(hidden, W_sigma, b_sigma)));
@@ -71,12 +92,20 @@ var models = {
 
 };
 
+// Select which model to run
 var whichModel = 'oneLatent';
 var model = models[whichModel];
 
 
 // Generate data from true distribution
-globalStore.data = repeat(100, model.targetModel);
+globalStore.data = repeat(nTrainData, model.targetModel);
+// Compute moments for standardization
+globalStore.moments = mapObject(function(varname, varval) {
+	var vals = map(function(x) { return x[varname]; }, globalStore.data);
+	var mu = mean(vals);
+	var sigma = stddev(vals, mu);
+	return {mu: mu, sigma: sigma};
+}, globalStore.data[0]);
 
 // Optimize parameters
 var params = Optimize(model.model, {
@@ -93,7 +122,7 @@ var paramExpectations = function() {
 	var paramExample = sample(post).params;
 	return mapObject(function(name, val) {
 		return expectation(post, function(ret) {
-			return ret.params[name];
+			return ad.value(ret.params[name]);
 		});
 	}, paramExample);
 };
