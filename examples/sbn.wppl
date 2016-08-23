@@ -1,0 +1,97 @@
+// This is an attempt to implement the sigmoid belief net described
+// in:
+
+// Neural Variational Inference and Learning in Belief Networks
+// http://arxiv.org/abs/1402.0030
+
+// Possible differences between this and the model/inference algorithm
+// in the paper.
+
+// 1. Variance normalization. Do the fancy optimization methods (e.g.
+// adam) give us this (or something similar) anyway?
+
+// 2. Data dependent baselines.
+
+// 3. Average baselines shared across random choices in mapData?
+
+// 4. Regularization for everything? Not mentioned, but I wouldn't be
+// surprised if this was done.
+
+// This code gets to about -130 (elbo per datum on the training set)
+// after 10K steps, probably fewer. This may be close to the result
+// reported in the paper for the version without variance
+// normalization and data-dependant baselines?
+
+// Usage:
+
+// webppl --require webppl-fs sbn.wppl
+
+// Requires the version of webppl in the "new-vi-estimator" branch:
+// https://github.com/probmods/webppl/tree/new-vi-estimator
+
+var numhid = 200;
+var numviz = 784;
+var priorProbs = T.div(ones([numhid, 1]), 2); // [.5, .5, ...]
+
+var loadData = function() {
+  console.time('load data');
+  var data = map(Vector, JSON.parse(fs.read('data/mnist_images.json')));
+  console.timeEnd('load data');
+  return data;
+};
+
+var dataMean = function(data) {
+  var dim = data[0].dims[0];
+  var init = zeros([dim, 1]);
+  var sum = reduce(function(x, acc) { return T.add(x, acc); }, init, data);
+  return T.div(sum, data.length);
+};
+
+var sbn = function(data, processDatum) {
+
+  var We = param([numhid, numviz], 0, 0.001);
+  var be = param([numhid, 1]);
+
+  var Wd = param([numviz, numhid], 0, 0.001);
+  var bd = param([numviz, 1]);
+
+  // var Wd = sample(TensorGaussian({mu: 0, sigma: 1, dims: [numviz, numhid]}), {
+  //   guide: Delta({v: param([numviz, numhid], 0, 0.001)})
+  // });
+  // var bd = sample(TensorGaussian({mu: 0, sigma: 1, dims: [numviz, 1]}), {
+  //   guide: Delta({v: param([numviz, 1], 0, 0.001)})
+  // });
+
+  var encode = function(datum) {
+    return T.sigmoid(T.add(T.dot(We, processDatum(datum)), be));
+  };
+
+  var decode = function(h) {
+    return T.sigmoid(T.add(T.dot(Wd, h), bd));
+  };
+
+  mapData({data: data, batchSize: 100}, function(datum) {
+
+    var h = sample(MultivariateBernoulli({ps: priorProbs}), {
+      guide: MultivariateBernoulli({ps: encode(datum)})
+    });
+
+    var ps = decode(h);
+    observe(MultivariateBernoulli({ps: ps}), datum);
+
+  });
+
+  return {We: We, Wd: Wd};
+
+};
+
+var images = loadData();
+var meanImage = dataMean(images);
+var subtractMeanImage = function(image) { return T.sub(image, meanImage); };
+var model = function() { return sbn(images, subtractMeanImage); };
+
+var params = Optimize(model, {
+  steps: 10000,
+  estimator: {ELBO2: {samples: 1, avgBaselines: true}},
+  optMethod: {adam: {stepSize: .001}}
+});
