@@ -1,11 +1,44 @@
-// run with: webppl examples/techreport/bayesnets/bn1.wppl --require .
+// run with: webppl examples/techreport/bayesnets/bn.wppl --require .
 
 
 // Options
 var nHidden = 3;					// Size of hidden layer for guide recognition net
 var nTrainData = 100;				// Number of training data points to draw from true distribution
 var doModelLearning = true;		// Should we also try to learn the generative model?
-var modelLearnType = 'ML';			// 'ML' = maximum likelihood, 'ML_reg' = Delta w/ prior, 'FullBayes' = mean field
+var modelLearnType = 'ML_reg';			// 'ML' = maximum likelihood, 'ML_reg' = Delta w/ prior, 'FullBayes' = mean field
+
+
+// Creating global parameters
+var makeMu = function(value) {
+	return !doModelLearning ?
+			value :
+		modelLearnType === 'ML' ?
+			paramScalar() :
+		modelLearnType === 'ML_reg' ?
+			sample(Gaussian({mu: 0, sigma: 1}), {
+				guide: Delta({v: paramScalar()})
+			}) :
+		modelLearnType === 'FullBayes' ?
+			sample(Gaussian({mu: 0, sigma: 1}), {
+				guide: Gaussian({mu: paramScalar(), sigma: softplus(paramScalar())})
+			}) :
+		util.fatal('Unrecognized modelLearnType');
+};
+var makeSigma = function(value) {
+	return !doModelLearning ?
+			value :
+		modelLearnType === 'ML' ?
+			softplus(paramScalar()) :
+		modelLearnType === 'ML_reg' ?
+			sample(Gamma({shape: 1, scale: 1}), {
+				guide: Delta({v: softplus(paramScalar())})
+			}) :
+		modelLearnType === 'FullBayes' ?
+			sample(Gamma({shape: 1, scale: 1}), {
+				guide: Gamma({shape: softplus(paramScalar()), scale: softplus(paramScalar())})
+			}) :
+		util.fatal('Unrecognized modelLearnType');
+};
 
 
 // Different model classes
@@ -20,61 +53,26 @@ var models = {
 		},
 		model: function() {
 			// Generative model params
-			var mu = !doModelLearning ?
-					5 :
-				modelLearnType === 'ML' ?
-					paramScalar() :
-				modelLearnType === 'ML_reg' ?
-					sample(Gaussian({mu: 0, sigma: 1}), {
-						guide: Delta({v: paramScalar()})
-					}) :
-				modelLearnType === 'FullBayes' ?
-					sample(Gaussian({mu: 0, sigma: 1}), {
-						guide: Gaussian({mu: paramScalar(), sigma: softplus(paramScalar())})
-					}) :
-				util.fatal('Unrecognized modelLearnType');
-
-			var sigma = !doModelLearning ?
-					1 :
-				modelLearnType === 'ML' ?
-					softplus(paramScalar()) :
-				modelLearnType === 'ML_reg' ?
-					sample(Gamma({shape: 1, scale: 1}), {
-						guide: Delta({v: softplus(paramScalar())})
-					}) :
-				modelLearnType === 'FullBayes' ?
-					sample(Gamma({shape: 1, scale: 1}), {
-						guide: Gamma({shape: softplus(paramScalar()), scale: softplus(paramScalar())})
-					}) :
-				util.fatal('Unrecognized modelLearnType');
+			var mu_a = makeMu(5);
+			var sigma_a = makeSigma(1);
 
 			// Guide params
-			var W_hidden = paramMatrix(nHidden, 1);
-			var b_hidden = paramVector(nHidden);
-			var W_mu = paramMatrix(1, nHidden);
-			var b_mu = paramVector(1);
-			var W_sigma = paramMatrix(1, nHidden);
-			var b_sigma = paramVector(1);
+			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
-				var observed_b = datum.b;
 
-				// Compute guide params as nonlinear function of datum
-				var b_moments = globalStore.moments.b;
-				var b_stand = standardize(observed_b, b_moments.mu, b_moments.sigma);
-				var datumvec = Vector([b_stand]);
-				var hidden = sigmoid(linear(datumvec, W_hidden, b_hidden));
-				var gmu = toscalar(linear(hidden, W_mu, b_mu));
-				var gsigma = toscalar(softplus(linear(hidden, W_sigma, b_sigma)));
-
-				// Sample with guide
-				var a = sample(Gaussian({mu: mu, sigma: sigma}), {
-					guide: Gaussian({mu: gmu, sigma: gsigma})
+				// Guided sample the latent
+				var inputs_a = Vector([standardize(datum.b, globalStore.moments.b)]);
+				var outputs_a = perceptron(inputs_a, params_a);
+				var gmu_a = T.get(outputs_a, 0);
+				var gsigma_a = softplus(T.get(outputs_a, 1));
+				var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
+					guide: Gaussian({mu: gmu_a, sigma: gsigma_a})
 				});
 
 				// Observe datum
-				observe(Gaussian({mu: a + 2, sigma: 0.5}), observed_b);
+				observe(Gaussian({mu: a + 2, sigma: 0.5}), datum.b);
 
 				// Return latents
 				return {a: a};
@@ -82,18 +80,125 @@ var models = {
 
 			// Return global params + latents
 			return {
-				params: { mu: mu, sigma: sigma },
+				params: { mu_a: mu_a, sigma_a: sigma_a },
 				latents: latents
 			};
 		}
 	},
 
+	// Two continuous latent variables feeding into one continuous observed variable
+	// Guide predicts latents independently
+	twoLatents_indep: {
+		targetModel: function() {
+			var a = sample(Gaussian({mu: 1, sigma: 1}));
+			var b = sample(Gaussian({mu: 5, sigma: 1}));
+			var c = sample(Gaussian({mu: a + b, sigma: 0.5}));
+			return {a: a, b: b, c: c};
+		},
+		model: function() {
+			// Generative model params;
+			var mu_a = makeMu(1);
+			var sigma_a = makeSigma(1);
+			var mu_b = makeMu(5);
+			var sigma_b = makeSigma(1);
 
+			// Guide params
+			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var params_b = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
+			// Map over data
+			var latents = mapData({data: globalStore.data}, function(datum) {
+
+				var inputs_a = Vector([standardize(datum.c, globalStore.moments.c)]);
+				var outputs_a = perceptron(inputs_a, params_a);
+				var gmu_a = T.get(outputs_a, 0);
+				var gsigma_a = softplus(T.get(outputs_a, 1));
+				var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
+					guide: Gaussian({mu: gmu_a, sigma: gsigma_a})
+				});
+
+				var inputs_b = inputs_a;
+				var outputs_b = perceptron(inputs_b, params_b);
+				var gmu_b = T.get(outputs_b, 0);
+				var gsigma_b = softplus(T.get(outputs_b, 1));
+				var b = sample(Gaussian({mu: mu_b, sigma: sigma_b}), {
+					guide: Gaussian({mu: gmu_b, sigma: gsigma_b})
+				});
+
+				// Observe datum
+				observe(Gaussian({mu: a + b, sigma: 0.5}), datum.c);
+
+				// Return latents
+				return {a: a, b: b};
+			});
+			
+			// Return global params + latents
+			return {
+				params: { mu_a: mu_a, sigma_a: sigma_a, mu_b: mu_b, sigma_b: sigma_b },
+				latents: latents
+			};
+		}	
+	},
+
+	// Two continuous latent variables feeding into one continuous observed variable
+	// Second latent is predicted as a function of the first
+	twoLatents_dep: {
+		targetModel: function() {
+			var a = sample(Gaussian({mu: 1, sigma: 1}));
+			var b = sample(Gaussian({mu: 5, sigma: 1}));
+			var c = sample(Gaussian({mu: a + b, sigma: 0.5}));
+			return {a: a, b: b, c: c};
+		},
+		model: function() {
+			// Generative model params;
+			var mu_a = makeMu(1);
+			var sigma_a = makeSigma(1);
+			var mu_b = makeMu(5);
+			var sigma_b = makeSigma(1);
+
+			// Guide params
+			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var params_b = perceptronParams({nIn: 2, nHidden: nHidden, nOut: 2});
+
+			// Map over data
+			var latents = mapData({data: globalStore.data}, function(datum) {
+
+				var inputs_a = Vector([standardize(datum.c, globalStore.moments.c)]);
+				var outputs_a = perceptron(inputs_a, params_a);
+				var gmu_a = T.get(outputs_a, 0);
+				var gsigma_a = softplus(T.get(outputs_a, 1));
+				var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
+					guide: Gaussian({mu: gmu_a, sigma: gsigma_a})
+				});
+
+				var inputs_b = Vector([T.get(inputs_a, 0), standardize(a, globalStore.moments.a)]);
+				var outputs_b = perceptron(inputs_b, params_b);
+				var gmu_b = T.get(outputs_b, 0);
+				var gsigma_b = softplus(T.get(outputs_b, 1));
+				var b = sample(Gaussian({mu: mu_b, sigma: sigma_b}), {
+					guide: Gaussian({mu: gmu_b, sigma: gsigma_b})
+				});
+
+				// Observe datum
+				observe(Gaussian({mu: a + b, sigma: 0.5}), datum.c);
+
+				// Return latents
+				return {a: a, b: b};
+			});
+			
+			// Return global params + latents
+			return {
+				params: { mu_a: mu_a, sigma_a: sigma_a, mu_b: mu_b, sigma_b: sigma_b },
+				latents: latents
+			};
+		}	
+	}
 };
 
 // Select which model to run
-var whichModel = 'oneLatent';
+// var whichModel = 'oneLatent';
+// var whichModel = 'twoLatents_indep';
+var whichModel = 'twoLatents_dep';
 var model = models[whichModel];
 
 
@@ -109,8 +214,8 @@ globalStore.moments = mapObject(function(varname, varval) {
 
 // Optimize parameters
 var params = Optimize(model.model, {
-	steps: 100,
-	optMethod: { adam: { stepSize: 1 } },
+	steps: 500,
+	optMethod: { adam: { stepSize: 0.1 } },
 	estimator: { ELBO: { samples: 1 } },
 	verbose: true
 });

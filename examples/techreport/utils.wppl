@@ -11,10 +11,34 @@ var toscalar = function(vec) {
 
 var isNumberOrScalarNode = function(x) {
 	return (typeof x === 'number') || (ad.isLifted(x) && (typeof ad.value(x) === 'number'));
-}
+};
 
 
-// Neural network layers
+// Parameters
+
+var paramScalar = function() {
+	return scalarParam(0, 0.1);
+};
+
+var paramVector = function(n) {
+	return param([n, 1], 0, 0.1);
+};
+
+var paramMatrix = function(n, m) {
+	return param([n, m], 0, 0.1);
+};
+
+var perceptronParams = function(opts) {
+	return {
+		W_hidden: paramMatrix(opts.nHidden, opts.nIn),
+		b_hidden: paramVector(opts.nHidden),
+		W_out: paramMatrix(opts.nOut, opts.nHidden),
+		b_out: paramVector(opts.nOut)
+	};
+};
+
+
+// Neural network layers, etc.
 
 var linear = function(x, W, b) {
 	return T.add(T.dot(W, x), b);
@@ -32,19 +56,9 @@ var sigmoid = function(x) {
 		T.sigmoid(x);
 };
 
-
-// Parameters
-
-var paramScalar = function() {
-	return scalarParam(0, 0.1);
-};
-
-var paramVector = function(n) {
-	return param([n, 1], 0, 0.1);
-};
-
-var paramMatrix = function(n, m) {
-	return param([n, m], 0, 0.1);
+var perceptron = function(x, params) {
+	var hidden = sigmoid(linear(x, params.W_hidden, params.b_hidden));
+	return linear(hidden, params.W_out, params.b_out);
 };
 
 
@@ -66,6 +80,6 @@ var stddev = function(xs, optmean) {
 	return Math.sqrt(variance(xs, optmean));
 };
 
-var standardize = function(x, mu, sigma) {
-	return (x - mu) / sigma;
+var standardize = function(x, moments) {
+	return (x - moments.mu) / moments.sigma;
 };
