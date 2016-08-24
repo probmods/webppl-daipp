@@ -58,6 +58,7 @@ var models = {
 
 			// Guide params
 			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			// var params_b = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
@@ -73,6 +74,11 @@ var models = {
 
 				// Observe datum
 				observe(Gaussian({mu: a + 2, sigma: 0.5}), datum.b);
+				// var inputs_b = Vector([standardize(a, globalStore.moments.a)]);
+				// var outputs_b = perceptron(inputs_b, params_b);
+				// var mu_b = T.get(outputs_b, 0);
+				// var sigma_b = softplus(T.get(outputs_b, 1));
+				// observe(Gaussian({mu: mu_b, sigma: sigma_b}), datum.b);
 
 				// Return latents
 				return {a: a};
@@ -196,9 +202,9 @@ var models = {
 };
 
 // Select which model to run
-// var whichModel = 'oneLatent';
+var whichModel = 'oneLatent';
 // var whichModel = 'twoLatents_indep';
-var whichModel = 'twoLatents_dep';
+// var whichModel = 'twoLatents_dep';
 var model = models[whichModel];
 
 
