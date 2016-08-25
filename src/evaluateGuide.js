@@ -11,13 +11,12 @@ module.exports = function(env) {
 
   function EvaluateGuide(s, k, a, wpplFn, options) {
     this.opts = util.mergeDefaults(options, {
-      datumIndices: [], //if this is an array, use multiple data points, if it is [] use all data.
+      datumIndices: null, // null means use all the data, otherwise it'll pick out certain data points
       samples: 100,
       params: {}
     });
 
     this.params = this.opts.params;
-    this.opts.datumIndices = _.isArray(this.opts.datumIndices) ? this.opts.datumIndices : [this.opts.datumIndices];
 
     this.wpplFn = wpplFn;
     this.s = s;

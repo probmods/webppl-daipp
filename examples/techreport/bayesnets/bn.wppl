@@ -1,15 +1,26 @@
 // run with: webppl examples/techreport/bayesnets/bn.wppl --require .
 
 
-// Options
-var nHidden = 3;					// Size of hidden layer for guide recognition net
-var nTrainData = 100;				// Number of training data points to draw from true distribution
-var doModelLearning = true;		// Should we also try to learn the generative model?
-var modelLearnType = 'ML_reg';			// 'ML' = maximum likelihood, 'ML_reg' = Delta w/ prior, 'FullBayes' = mean field
+// ----------------------------------------------------------------------------
 
+// Options
+
+// Size of hidden layer for guide recognition net
+var nHidden = 3;
+
+// Number of training data points to draw from true distribution
+var nTrainData = 100;
+
+// Model learning
+var doModelLearning = true;
+// var modelLearnType = 'ML';
+var modelLearnType = 'ML_reg';
+// var modelLearnType = 'FullBayes';
+
+// ----------------------------------------------------------------------------
 
 // Creating global parameters
-var makeMu = function(value) {
+var makeMuGlobal = function(value) {
 	return !doModelLearning ?
 			value :
 		modelLearnType === 'ML' ?
@@ -24,7 +35,7 @@ var makeMu = function(value) {
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
-var makeSigma = function(value) {
+var makeSigmaGlobal = function(value) {
 	return !doModelLearning ?
 			value :
 		modelLearnType === 'ML' ?
@@ -40,8 +51,9 @@ var makeSigma = function(value) {
 		util.fatal('Unrecognized modelLearnType');
 };
 
+// ----------------------------------------------------------------------------
 
-// Different model classes
+// Different Bayes net topologies
 var models = {
 
 	// One continuous latent variable feeding into one continuous observed variable.
@@ -53,12 +65,11 @@ var models = {
 		},
 		model: function() {
 			// Generative model params
-			var mu_a = makeMu(5);
-			var sigma_a = makeSigma(1);
+			var mu_a = makeMuGlobal(5);
+			var sigma_a = makeSigmaGlobal(1);
 
 			// Guide params
 			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
-			// var params_b = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
@@ -74,11 +85,6 @@ var models = {
 
 				// Observe datum
 				observe(Gaussian({mu: a + 2, sigma: 0.5}), datum.b);
-				// var inputs_b = Vector([standardize(a, globalStore.moments.a)]);
-				// var outputs_b = perceptron(inputs_b, params_b);
-				// var mu_b = T.get(outputs_b, 0);
-				// var sigma_b = softplus(T.get(outputs_b, 1));
-				// observe(Gaussian({mu: mu_b, sigma: sigma_b}), datum.b);
 
 				// Return latents
 				return {a: a};
@@ -103,10 +109,10 @@ var models = {
 		},
 		model: function() {
 			// Generative model params;
-			var mu_a = makeMu(1);
-			var sigma_a = makeSigma(1);
-			var mu_b = makeMu(5);
-			var sigma_b = makeSigma(1);
+			var mu_a = makeMuGlobal(1);
+			var sigma_a = makeSigmaGlobal(1);
+			var mu_b = makeMuGlobal(5);
+			var sigma_b = makeSigmaGlobal(1);
 
 			// Guide params
 			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
@@ -157,10 +163,10 @@ var models = {
 		},
 		model: function() {
 			// Generative model params;
-			var mu_a = makeMu(1);
-			var sigma_a = makeSigma(1);
-			var mu_b = makeMu(5);
-			var sigma_b = makeSigma(1);
+			var mu_a = makeMuGlobal(1);
+			var sigma_a = makeSigmaGlobal(1);
+			var mu_b = makeMuGlobal(5);
+			var sigma_b = makeSigmaGlobal(1);
 
 			// Guide params
 			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
@@ -201,6 +207,8 @@ var models = {
 	}
 };
 
+// ----------------------------------------------------------------------------
+
 // Select which model to run
 var whichModel = 'oneLatent';
 // var whichModel = 'twoLatents_indep';
@@ -209,7 +217,9 @@ var model = models[whichModel];
 
 
 // Generate data from true distribution
-globalStore.data = repeat(nTrainData, model.targetModel);
+var trainingData = repeat(nTrainData, model.targetModel);
+globalStore.data = trainingData;
+
 // Compute moments for standardization
 globalStore.moments = mapObject(function(varname, varval) {
 	var vals = map(function(x) { return x[varname]; }, globalStore.data);
@@ -222,13 +232,20 @@ globalStore.moments = mapObject(function(varname, varval) {
 var params = Optimize(model.model, {
 	steps: 500,
 	optMethod: { adam: { stepSize: 0.1 } },
-	estimator: { ELBO: { samples: 1 } },
-	verbose: true
+	estimator: { ELBO2: { samples: 1 } },
+	verbose: true,
+	logProgress: 'examples/techreport/bayesnets/elbo_progress.csv'
 });
+
+// ----------------------------------------------------------------------------
+
+// Simple, 'eyeball' evaluations
+
+display('');
 
 // Compute expected value of params
 var paramExpectations = function() {
-	globalStore.data = [];
+	globalStore.data = [trainingData[0]];
 	var post = SampleGuide(model.model, {params: params, samples: 100});
 	var paramExample = sample(post).params;
 	return mapObject(function(name, val) {
@@ -250,20 +267,37 @@ var latentExpectations = function(observations) {
 	}, latentExample)
 };
 
-
-
 // Compare param expectations and latent expectations to true values
 // TODO: Also compare to expectations computed via MCMC?
-display('');
 if (doModelLearning) {
 	var prmEx = paramExpectations();
 	display('Inferred expectation of params: ' + JSON.stringify(prmEx));
 }
-var testData = repeat(10, model.targetModel);
 map(function(testDatum) {
 	var latEx = latentExpectations(testDatum);
 	display('True datum: ' + JSON.stringify(testDatum) +
 		' | Inferred expectation of latents: ' + JSON.stringify(latEx));
-}, testData);
+}, repeat(10, model.targetModel));
 undefined;
+
+// ----------------------------------------------------------------------------
+
+// More formal evaluations
+// (ELBO progress is already saved )
+
+display('');
+
+// (Only if model learning) probability of data under learned model
+if (doModelLearning) {
+	var logZ = ForwardSample(model.model, {guide: true, params: params, samples: 1000}).normalizationConstant;
+	display('Log probability of data under model: ' + logZ);
+}
+
+// (Only if not model learning?) ESS of guide as importance sampler
+var testData = repeat(nTrainData, model.targetModel);
+globalStore.data = testData;
+var nEvalSamps = 100;
+var ess = EvaluateGuide(model.model, {samples: nEvalSamps, params: params});
+display('ESS % for recognition model: ' + (ess / nEvalSamps));
+
 
