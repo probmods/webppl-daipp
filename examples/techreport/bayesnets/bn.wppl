@@ -294,10 +294,15 @@ if (doModelLearning) {
 }
 
 // (Only if not model learning?) ESS of guide as importance sampler
-var testData = repeat(nTrainData, model.targetModel);
-globalStore.data = testData;
-var nEvalSamps = 100;
-var ess = EvaluateGuide(model.model, {samples: nEvalSamps, params: params});
-display('ESS % for recognition model: ' + (ess / nEvalSamps));
+var nEvalData = 100;
+var ess_estimates = repeat(nEvalData, function() {
+	var testData = repeat(1, model.targetModel);
+	globalStore.data = testData;
+	var nEvalParticles = 100;
+	var ess = EvaluateGuide(model.model, {samples: nEvalParticles, params: params});
+	return (ess / nEvalParticles);
+});
+var avgESS = sum(ess_estimates) / nEvalData;
+display('Average ESS % for recognition model: ' + avgESS);
 
 
