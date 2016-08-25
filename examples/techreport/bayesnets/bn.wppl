@@ -17,6 +17,10 @@ var doModelLearning = true;
 var modelLearnType = 'ML_reg';
 // var modelLearnType = 'FullBayes';
 
+// Local guide
+// var localGuideType = 'MeanField';
+var localGuideType = 'Recognition';
+
 // ----------------------------------------------------------------------------
 
 // Creating global parameters
@@ -51,6 +55,11 @@ var makeSigmaGlobal = function(value) {
 		util.fatal('Unrecognized modelLearnType');
 };
 
+// Local mean field guides
+var gaussianMeanFieldParams = function() {
+	return {mu: paramScalar(), sigma: softplus(paramScalar())};
+};
+
 // ----------------------------------------------------------------------------
 
 // Different Bayes net topologies
@@ -69,18 +78,21 @@ var models = {
 			var sigma_a = makeSigmaGlobal(1);
 
 			// Guide params
-			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
 
-				// Guided sample the latent
-				var inputs_a = Vector([standardize(datum.b, globalStore.moments.b)]);
-				var outputs_a = perceptron(inputs_a, params_a);
-				var gmu_a = T.get(outputs_a, 0);
-				var gsigma_a = softplus(T.get(outputs_a, 1));
+				// Compute guide params for latent a
+				var gparams_a = localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+					var inputs = Vector([standardize(datum.b, globalStore.moments.b)]);
+					var outputs = perceptron(inputs, nnparams_a);
+					return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+				})();
+
+				// Guided sample the latent a
 				var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
-					guide: Gaussian({mu: gmu_a, sigma: gsigma_a})
+					guide: Gaussian(gparams_a)
 				});
 
 				// Observe datum
@@ -115,26 +127,32 @@ var models = {
 			var sigma_b = makeSigmaGlobal(1);
 
 			// Guide params
-			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
-			var params_b = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_b = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
 
-				var inputs_a = Vector([standardize(datum.c, globalStore.moments.c)]);
-				var outputs_a = perceptron(inputs_a, params_a);
-				var gmu_a = T.get(outputs_a, 0);
-				var gsigma_a = softplus(T.get(outputs_a, 1));
+				// Compute guide params for latent a
+				var gparams_a = localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+					var inputs = Vector([standardize(datum.c, globalStore.moments.c)]);
+					var outputs = perceptron(inputs, nnparams_a);
+					return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+				})();
+				// Guided sample latent a
 				var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
-					guide: Gaussian({mu: gmu_a, sigma: gsigma_a})
+					guide: Gaussian(gparams_a)
 				});
 
-				var inputs_b = inputs_a;
-				var outputs_b = perceptron(inputs_b, params_b);
-				var gmu_b = T.get(outputs_b, 0);
-				var gsigma_b = softplus(T.get(outputs_b, 1));
+				// Compute guide params for latent b
+				var gparams_b = localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+					var inputs = Vector([standardize(datum.c, globalStore.moments.c)]);
+					var outputs = perceptron(inputs, nnparams_b);
+					return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+				})();
+				// Guided sample latent b
 				var b = sample(Gaussian({mu: mu_b, sigma: sigma_b}), {
-					guide: Gaussian({mu: gmu_b, sigma: gsigma_b})
+					guide: Gaussian(gparams_b)
 				});
 
 				// Observe datum
@@ -169,26 +187,33 @@ var models = {
 			var sigma_b = makeSigmaGlobal(1);
 
 			// Guide params
-			var params_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
-			var params_b = perceptronParams({nIn: 2, nHidden: nHidden, nOut: 2});
+			var nnparams_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_b = perceptronParams({nIn: 2, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
 
-				var inputs_a = Vector([standardize(datum.c, globalStore.moments.c)]);
-				var outputs_a = perceptron(inputs_a, params_a);
-				var gmu_a = T.get(outputs_a, 0);
-				var gsigma_a = softplus(T.get(outputs_a, 1));
+				// Compute guide params for latent a
+				var gparams_a = localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+					var inputs = Vector([standardize(datum.c, globalStore.moments.c)]);
+					var outputs = perceptron(inputs, nnparams_a);
+					return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+				})();
+				// Guided sample latent a
 				var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
-					guide: Gaussian({mu: gmu_a, sigma: gsigma_a})
+					guide: Gaussian(gparams_a)
 				});
 
-				var inputs_b = Vector([T.get(inputs_a, 0), standardize(a, globalStore.moments.a)]);
-				var outputs_b = perceptron(inputs_b, params_b);
-				var gmu_b = T.get(outputs_b, 0);
-				var gsigma_b = softplus(T.get(outputs_b, 1));
+				// Compute guide params for latent b
+				var gparams_b = localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+					var inputs = Vector([standardize(datum.c, globalStore.moments.c),
+										 standardize(a, globalStore.moments.a)]);
+					var outputs = perceptron(inputs, nnparams_b);
+					return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+				})();
+				// Guided sample latent b
 				var b = sample(Gaussian({mu: mu_b, sigma: sigma_b}), {
-					guide: Gaussian({mu: gmu_b, sigma: gsigma_b})
+					guide: Gaussian(gparams_b)
 				});
 
 				// Observe datum
