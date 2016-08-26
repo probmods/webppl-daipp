@@ -4,11 +4,6 @@
 
 // Scalars vs. tensors
 
-// Turn single-element vector into a scalar
-var toscalar = function(vec) {
-	return T.get(vec, 0);
-};
-
 var isNumberOrScalarNode = function(x) {
 	return (typeof x === 'number') || (ad.isLifted(x) && (typeof ad.value(x) === 'number'));
 };
@@ -59,6 +54,13 @@ var sigmoid = function(x) {
 var perceptron = function(x, params) {
 	var hidden = sigmoid(linear(x, params.W_hidden, params.b_hidden));
 	return linear(hidden, params.W_out, params.b_out);
+};
+
+// Transform d dimensional vector onto (d+1)-dimensional simplex
+var simplex = function(x) {
+	var d = ad.value(x).dims[0];
+	var u = T.reshape(T.concat(x, ad.scalarsToTensor(0)), [d + 1, 1]);
+	return T.softmax(u);
 };
 
 

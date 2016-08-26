@@ -15,7 +15,7 @@ var nTrainData = 100;
 var doModelLearning = true;
 // var modelLearnType = 'ML';
 var modelLearnType = 'ML_reg';
-// var modelLearnType = 'FullBayes';
+// var modelLearnType = 'MeanField';
 
 // Local guide
 // var localGuideType = 'MeanField';
@@ -33,7 +33,7 @@ var makeMuGlobal = function(value) {
 			sample(Gaussian({mu: 0, sigma: 1}), {
 				guide: Delta({v: paramScalar()})
 			}) :
-		modelLearnType === 'FullBayes' ?
+		modelLearnType === 'MeanField' ?
 			sample(Gaussian({mu: 0, sigma: 1}), {
 				guide: Gaussian({mu: paramScalar(), sigma: softplus(paramScalar())})
 			}) :
@@ -48,16 +48,38 @@ var makeSigmaGlobal = function(value) {
 			sample(Gamma({shape: 1, scale: 1}), {
 				guide: Delta({v: softplus(paramScalar())})
 			}) :
-		modelLearnType === 'FullBayes' ?
+		modelLearnType === 'MeanField' ?
 			sample(Gamma({shape: 1, scale: 1}), {
 				guide: Gamma({shape: softplus(paramScalar()), scale: softplus(paramScalar())})
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
+var makeWeightsGlobal = function(ws) {
+	var n = ws.length; 
+
+	var ones = function() { return Vector(repeat(n, function() { return 1; })); };
+
+	return !doModelLearning ?
+		Vector(ws) :
+	modelLearnType === 'ML' ?
+		simplex(paramVector(n-1)) :
+	modelLearnType === 'ML_reg' ?
+		sample(Dirichlet({alpha: ones()}), {
+			guide: Delta({v: simplex(paramVector(n-1))})
+		}) :
+	modelLearnType === 'MeanField' ?
+		sample(Dirichlet({alpha: ones()}), {
+			guide: LogisticNormal({mu: paramVector(n-1), sigma: softplus(paramVector(n-1))})
+		}) :
+	util.fatal('Unrecognized modelLearnType');
+};
 
 // Local mean field guides
 var gaussianMeanFieldParams = function() {
 	return {mu: paramScalar(), sigma: softplus(paramScalar())};
+};
+var discreteMeanFieldParams = function(n) {
+	return simplex(paramVector(n-1));
 };
 
 // ----------------------------------------------------------------------------
@@ -78,7 +100,8 @@ var models = {
 			var sigma_a = makeSigmaGlobal(1);
 
 			// Guide params
-			var nnparams_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_a = localGuideType === 'MeanField' ? null :
+				perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
@@ -127,8 +150,10 @@ var models = {
 			var sigma_b = makeSigmaGlobal(1);
 
 			// Guide params
-			var nnparams_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
-			var nnparams_b = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_a = localGuideType === 'MeanField' ? null :
+				perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_b = localGuideType === 'MeanField' ? null :
+				perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
@@ -187,8 +212,10 @@ var models = {
 			var sigma_b = makeSigmaGlobal(1);
 
 			// Guide params
-			var nnparams_a = perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
-			var nnparams_b = perceptronParams({nIn: 2, nHidden: nHidden, nOut: 2});
+			var nnparams_a = localGuideType === 'MeanField' ? null :
+				perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+			var nnparams_b = localGuideType === 'MeanField' ? null :
+				perceptronParams({nIn: 2, nHidden: nHidden, nOut: 2});
 
 			// Map over data
 			var latents = mapData({data: globalStore.data}, function(datum) {
@@ -229,15 +256,71 @@ var models = {
 				latents: latents
 			};
 		}	
+	},
+
+	// Gaussian mixture model: one discrete latent feeding into one continuous observed variable
+	gmm:  {
+		targetModel: function() {
+			var gaussParams = [
+				{mu: 0, sigma: 2},
+				{mu: -3, sigma: 0.5},
+				{mu: 2, sigma: 1}
+			];
+			var i = sample(Discrete({ps: [0.1, 0.6, 0.3]}));
+			var a = sample(Gaussian(gaussParams[i]));
+			return {i: i, a: a};
+		},
+		model: function() {
+			// Generative model params
+			var weights = makeWeightsGlobal([0.1, 0.6, 0.3]);
+			var gaussParams = [
+				{mu: makeMuGlobal(0), sigma: makeSigmaGlobal(2)},
+				{mu: makeMuGlobal(-3), sigma: makeSigmaGlobal(0.5)},
+				{mu: makeMuGlobal(2), sigma: makeSigmaGlobal(1)}
+			];
+
+			// Guide params
+			var nnparams_i = localGuideType === 'MeanField' ? null :
+				perceptronParams({nIn: 1, nHidden: nHidden, nOut: gaussParams.length-1});
+
+			// Map over data
+			var latents = mapData({data: globalStore.data}, function(datum) {
+
+				// Compute guide params for latent i
+				var gparams_i = localGuideType === 'MeanField' ? discreteMeanFieldParams(gaussParams.length) : 
+				(function() {
+					var inputs = Vector([standardize(datum.a, globalStore.moments.a)]);
+					var outputs = perceptron(inputs, nnparams_i);
+					return simplex(outputs);
+				})();
+				// Sample latent i
+				var i = sample(Discrete({ps: weights}), {
+					guide: Discrete({ps: gparams_i})
+				});
+
+				// Observe datum
+				observe(Gaussian(gaussParams[i]), datum.a);
+
+				// Return latents
+				return {i: i}
+			});
+
+			// Return global params + latents
+			return {
+				params: {weights: weights, gaussParams: gaussParams},
+				latents: latents
+			};
+		}
 	}
 };
 
 // ----------------------------------------------------------------------------
 
 // Select which model to run
-var whichModel = 'oneLatent';
+// var whichModel = 'oneLatent';
 // var whichModel = 'twoLatents_indep';
 // var whichModel = 'twoLatents_dep';
+var whichModel = 'gmm';
 var model = models[whichModel];
 
 
