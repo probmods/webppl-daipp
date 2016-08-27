@@ -1,0 +1,67 @@
+// Two continuous latent variables feeding into one continuous observed variable
+// Second latent is predicted as a function of the first
+
+var nHidden = opts.nHidden || 3;
+
+var preprocessData = computeVariableMoments;
+
+var targetModel = function() {
+	var a = sample(Gaussian({mu: 1, sigma: 1}));
+	var b = sample(Gaussian({mu: 5, sigma: 1}));
+	var c = sample(Gaussian({mu: a + b, sigma: 0.5}));
+	return {a: a, b: b, c: c};
+};
+
+var model = function() {
+	// Generative model params;
+	var mu_a = makeMuGlobal(1);
+	var sigma_a = makeSigmaGlobal(1);
+	var mu_b = makeMuGlobal(5);
+	var sigma_b = makeSigmaGlobal(1);
+	var sigma_c = makeSigmaGlobal(0.5);
+
+	// Guide params
+	var nnparams_a = opts.localGuideType === 'MeanField' ? null :
+		perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+	var nnparams_b = opts.localGuideType === 'MeanField' ? null :
+		perceptronParams({nIn: 2, nHidden: nHidden, nOut: 2});
+
+	// Map over data
+	var latents = mapData({data: globalStore.data}, function(datum) {
+
+		// Compute guide params for latent a
+		var gparams_a = opts.localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+			var inputs = Vector([standardize(datum.c, globalStore.moments.c)]);
+			var outputs = perceptron(inputs, nnparams_a);
+			return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+		})();
+		// Guided sample latent a
+		var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
+			guide: Gaussian(gparams_a)
+		});
+
+		// Compute guide params for latent b
+		var gparams_b = opts.localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+			var inputs = Vector([standardize(datum.c, globalStore.moments.c),
+								 standardize(a, globalStore.moments.a)]);
+			var outputs = perceptron(inputs, nnparams_b);
+			return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+		})();
+		// Guided sample latent b
+		var b = sample(Gaussian({mu: mu_b, sigma: sigma_b}), {
+			guide: Gaussian(gparams_b)
+		});
+
+		// Observe datum
+		observe(Gaussian({mu: a + b, sigma: sigma_c}), datum.c);
+
+		// Return latents
+		return {a: a, b: b};
+	});
+	
+	// Return global params + latents
+	return {
+		params: { mu_a: mu_a, sigma_a: sigma_a, mu_b: mu_b, sigma_b: sigma_b, sigma_c: sigma_c },
+		latents: latents
+	};
+};

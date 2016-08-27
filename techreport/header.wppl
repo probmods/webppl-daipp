@@ -1,0 +1,167 @@
+
+// --------------------------------------------------------------------------------------
+
+// Common stuff that all models/experiments need
+
+// --------------------------------------------------------------------------------------
+
+// Scalars vs. tensors
+
+var isNumberOrScalarNode = function(x) {
+	return (typeof x === 'number') || (ad.isLifted(x) && (typeof ad.value(x) === 'number'));
+};
+
+// --------------------------------------------------------------------------------------
+
+// Parameters
+
+var paramScalar = function() {
+	return scalarParam(0, 0.1);
+};
+
+var paramVector = function(n) {
+	return param([n, 1], 0, 0.1);
+};
+
+var paramMatrix = function(n, m) {
+	return param([n, m], 0, 0.1);
+};
+
+var perceptronParams = function(spec) {
+	return {
+		W_hidden: paramMatrix(spec.nHidden, spec.nIn),
+		b_hidden: paramVector(spec.nHidden),
+		W_out: paramMatrix(spec.nOut, spec.nHidden),
+		b_out: paramVector(spec.nOut)
+	};
+};
+
+
+// Creating global parameters
+var makeMuGlobal = function(value) {
+	return !opts.doModelLearning ?
+			value :
+		opts.modelLearnType === 'ML' ?
+			paramScalar() :
+		opts.modelLearnType === 'ML_reg' ?
+			sample(Gaussian({mu: 0, sigma: 1}), {
+				guide: Delta({v: paramScalar()})
+			}) :
+		opts.modelLearnType === 'MeanField' ?
+			sample(Gaussian({mu: 0, sigma: 1}), {
+				guide: Gaussian({mu: paramScalar(), sigma: softplus(paramScalar())})
+			}) :
+		util.fatal('Unrecognized modelLearnType');
+};
+var makeSigmaGlobal = function(value) {
+	return !opts.doModelLearning ?
+			value :
+		opts.modelLearnType === 'ML' ?
+			softplus(paramScalar()) :
+		opts.modelLearnType === 'ML_reg' ?
+			sample(Gamma({shape: 1, scale: 1}), {
+				guide: Delta({v: softplus(paramScalar())})
+			}) :
+		opts.modelLearnType === 'MeanField' ?
+			sample(Gamma({shape: 1, scale: 1}), {
+				guide: Gamma({shape: softplus(paramScalar()), scale: softplus(paramScalar())})
+			}) :
+		util.fatal('Unrecognized modelLearnType');
+};
+var makeWeightsGlobal = function(ws) {
+	var n = ws.length; 
+
+	var ones = function() { return Vector(repeat(n, function() { return 1; })); };
+
+	return !opts.doModelLearning ?
+		Vector(ws) :
+	opts.modelLearnType === 'ML' ?
+		simplex(paramVector(n-1)) :
+	opts.modelLearnType === 'ML_reg' ?
+		sample(Dirichlet({alpha: ones()}), {
+			guide: Delta({v: simplex(paramVector(n-1))})
+		}) :
+	opts.modelLearnType === 'MeanField' ?
+		sample(Dirichlet({alpha: ones()}), {
+			guide: LogisticNormal({mu: paramVector(n-1), sigma: softplus(paramVector(n-1))})
+		}) :
+	util.fatal('Unrecognized modelLearnType');
+};
+
+// Local mean field guides
+var gaussianMeanFieldParams = function() {
+	return {mu: paramScalar(), sigma: softplus(paramScalar())};
+};
+var discreteMeanFieldParams = function(n) {
+	return simplex(paramVector(n-1));
+};
+
+// --------------------------------------------------------------------------------------
+
+// Neural network layers, etc.
+
+var linear = function(x, W, b) {
+	return T.add(T.dot(W, x), b);
+};
+
+var softplus = function(x) {
+	return isNumberOrScalarNode(x) ?
+		Math.log(Math.exp(x) + 1) :
+		T.log(T.add(T.exp(x), 1));
+};
+
+var sigmoid = function(x) { 
+	return isNumberOrScalarNode(x) ?
+		Math.sigmoid(x) :
+		T.sigmoid(x);
+};
+
+var perceptron = function(x, params) {
+	var hidden = sigmoid(linear(x, params.W_hidden, params.b_hidden));
+	return linear(hidden, params.W_out, params.b_out);
+};
+
+// Transform d dimensional vector onto (d+1)-dimensional simplex
+var simplex = function(x) {
+	var d = ad.value(x).dims[0];
+	var u = T.reshape(T.concat(x, ad.scalarsToTensor(0)), [d + 1, 1]);
+	return T.softmax(u);
+};
+
+// --------------------------------------------------------------------------------------
+
+// Data processing
+
+var mean = function(xs) {
+	return sum(xs) / xs.length;
+};
+
+var variance = function(xs, optmean) {
+	var m = optmean == undefined ? mean(xs) : optmean;
+	return reduce(function(x, acc) {
+		var diff = x - m;
+		return diff*diff + acc;
+	}, 0, xs) / xs.length;
+};
+
+var stddev = function(xs, optmean) {
+	return Math.sqrt(variance(xs, optmean));
+};
+
+var standardize = function(x, moments) {
+	return (x - moments.mu) / moments.sigma;
+};
+
+var computeVariableMoments = function(data) {
+	globalStore.moments = mapObject(function(varname, varval) {
+		var vals = map(function(x) { return x[varname]; }, data);
+		var mu = mean(vals);
+		var sigma = stddev(vals, mu);
+		return {mu: mu, sigma: sigma};
+	}, data[0]);
+
+	return data;
+};
+
+// ----------------------------------------------------------------------------
+

@@ -1,0 +1,106 @@
+
+// ----------------------------------------------------------------------------
+
+// Gotta have a model
+if (typeof model === 'undefined') {
+	util.fatal('No model defined.');
+}
+
+// ----------------------------------------------------------------------------
+
+// Prepare data
+
+// One of 'targetModel', 'data' must be defined
+if (typeof targetModel === 'undefined' && typeof data === 'undefined') {
+	util.fatal('Model must define either "targetModel" or "data"');
+}
+
+// Define data
+var allDataRaw = _.shuffle(typeof targetModel === 'undefined' ? data : repeat(opts.nData, function() {
+	return targetModel();
+}));
+
+// Do any data preprocessing (e.g. computing moments for standardization)
+var allDataProcessed = (typeof preprocessData !== 'undefined') ? preprocessData(allDataRaw) : allDataRaw
+
+// Define data splits
+var nTrain = opts.testSplit * allDataProcessed.length;
+var trainingData = allDataProcessed.slice(0, nTrain);
+var testData = allDataProcessed.slice(nTrain);
+
+// ----------------------------------------------------------------------------
+
+// Optimize parameters
+
+globalStore.data = trainingData;
+
+var params = Optimize(model, {
+	steps: opts.optimize_nSteps,
+	optMethod: opts.optimize_optMethod,
+	estimator: opts.optimize_estimator,
+	verbose: opts.optimize_verbose,
+	logProgress: opts.optimize_logProgress
+});
+
+// ----------------------------------------------------------------------------
+
+// Compute & record evaluation metrics
+
+// (Only if model learning) probability of data under learned model
+var dataLogProb = !opts.doModelLearning || !opts.doDataLogProb ? undefined : (function() {
+	globalStore.data = testData;
+	return ForwardSample(model, {
+		guide: true,
+		params: params,
+		samples: opts.dataLogProb_nSamples
+	}).normalizationConstant;
+})();
+
+// ESS of guide as importance sampler
+var guideESS = !opts.doGuideESS ? undefined : (function() {
+	if (opts.ess_nDataPoints > testData.length) {
+		util.fatal('ess_nDataPoints > testData.length: ' + opts.ess_nDataPoints + ' > ' + testData.length);
+	}
+	var ess_estimates = map(function(datum) {
+		globalStore.data = [datum];
+		var ess = EvaluateGuide(model, {samples: opts.ess_nParticles, params: params});
+		return (ess / opts.ess_nParticles);
+	}, testData.slice(0, opts.ess_nDataPoints));
+	return sum(ess_estimates) / opts.ess_nDataPoints;
+})();
+
+// Return
+var ret = {
+	dataLogProb: dataLogProb,
+	guideESS: guideESS,
+	elboProgress: !opts.doELBOProgress ? undefined : params.optimizeProgressLog
+};
+ret;
+
+
+
+// // These were useful for debugging in the past, so I'm leaving them here for now
+
+// // Compute expected value of params
+// var paramExpectations = function(model, data, params, nSamples) {
+// 	globalStore.data = [data[0]];
+// 	var post = SampleGuide(model, {params: params, samples: nSamples});
+// 	var paramExample = sample(post).params;
+// 	return mapObject(function(name, val) {
+// 		return expectation(post, function(ret) {
+// 			return ad.value(ret.params[name]);
+// 		});
+// 	}, paramExample);
+// };
+
+// // Compute expected value of latents for given datum
+// var latentExpectations = function(model, datum, params, nSamples) {
+// 	globalStore.data = [datum];
+// 	var post = SampleGuide(model, {params: params, samples: nSamples});
+// 	var latentExample = sample(post).latents[0];
+// 	return mapObject(function(name, val) {
+// 		return expectation(post, function(ret) {
+// 			return ret.latents[0][name];
+// 		});
+// 	}, latentExample)
+// };

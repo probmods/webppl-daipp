@@ -1,0 +1,58 @@
+// Gaussian mixture model: one discrete latent feeding into one continuous observed variable
+
+var nHidden = opts.nHidden || 3;
+
+var preprocessData = computeVariableMoments;
+
+var targetModel = function() {
+	var gaussParams = [
+		{mu: 0, sigma: 2},
+		{mu: -3, sigma: 0.5},
+		{mu: 2, sigma: 1}
+	];
+	var i = sample(Discrete({ps: [0.1, 0.6, 0.3]}));
+	var a = sample(Gaussian(gaussParams[i]));
+	return {i: i, a: a};
+};
+
+var model = function() {
+	// Generative model params
+	var weights = makeWeightsGlobal([0.1, 0.6, 0.3]);
+	var gaussParams = [
+		{mu: makeMuGlobal(0), sigma: makeSigmaGlobal(2)},
+		{mu: makeMuGlobal(-3), sigma: makeSigmaGlobal(0.5)},
+		{mu: makeMuGlobal(2), sigma: makeSigmaGlobal(1)}
+	];
+
+	// Guide params
+	var nnparams_i = opts.localGuideType === 'MeanField' ? null :
+		perceptronParams({nIn: 1, nHidden: nHidden, nOut: gaussParams.length-1});
+
+	// Map over data
+	var latents = mapData({data: globalStore.data}, function(datum) {
+
+		// Compute guide params for latent i
+		var gparams_i = opts.localGuideType === 'MeanField' ? discreteMeanFieldParams(gaussParams.length) : 
+		(function() {
+			var inputs = Vector([standardize(datum.a, globalStore.moments.a)]);
+			var outputs = perceptron(inputs, nnparams_i);
+			return simplex(outputs);
+		})();
+		// Sample latent i
+		var i = sample(Discrete({ps: weights}), {
+			guide: Discrete({ps: gparams_i})
+		});
+
+		// Observe datum
+		observe(Gaussian(gaussParams[i]), datum.a);
+
+		// Return latents
+		return {i: i}
+	});
+
+	// Return global params + latents
+	return {
+		params: {weights: weights, gaussParams: gaussParams},
+		latents: latents
+	};
+};
