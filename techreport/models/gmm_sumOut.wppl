@@ -26,7 +26,7 @@ var model = function() {
 	];
 
 	// Map over data
-	var latents = mapData({data: globalStore.data}, function(datum) {
+	var latents = mapData({data: globalStore.data, batchSize: opts.batchSize}, function(datum) {
 
 		// Explicitly sum out latent mixture component
 		var scores = mapIndexed(function(i, muSigma) {

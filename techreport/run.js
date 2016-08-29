@@ -44,10 +44,13 @@ function run(opts) {
 		saveCode: false		// Can be a filename to output the complete code
 	});
 	programOpts = mergeDefaults(programOpts, {
+		// Data stuff
 		// If the model provides a true data-generating model, how many data points to generate
 		nData: 200,
 		// What percentage of the data should be reserved as test data
 		testSplit: 0.5,
+		// Batch size
+		batchSize: undefined,
 
 		// Parameters to be given to Optimize
 		optimize_nSteps: 100,
@@ -63,12 +66,13 @@ function run(opts) {
 		dataLogProb_nSamples: 100,
 		ess_nDataPoints: 100,
 		ess_nParticles: 100,
+		ess_requireGuides: true,
 
 		// Turn model learning on/off
 		doModelLearning: true,
 		// Can be 'ML', 'ML_reg', 'MeanField',
 		modelLearnType: 'ML_reg',
-		// Can be 'MeanField', 'Recognition' (TODO: auto recognition guide, eventually)
+		// Can be 'MeanField', 'Recognition' (TODO: also auto recognition guide, eventually)
 		localGuideType: 'Recognition'		
 	});
 

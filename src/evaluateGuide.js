@@ -13,10 +13,12 @@ module.exports = function(env) {
     this.opts = util.mergeDefaults(options, {
       datumIndices: null, // null means use all the data, otherwise it'll pick out certain data points
       samples: 100,
+      requireGuides: true,  // throws an error if we encounter an un-guided sample
       params: {}
     });
 
     this.params = this.opts.params;
+    this.requireGuides = this.opts.requireGuides;
 
     this.wpplFn = wpplFn;
     this.s = s;
@@ -96,17 +98,18 @@ module.exports = function(env) {
     sample: function(s, k, a, dist, options) {
       options = options || {};
 
-      if (!_.has(options, 'guide')) {
+      var hasGuide = _.has(options, 'guide');
+      if (this.requireGuides && !hasGuide) {
         throw 'Guide not specified.';
       }
 
-      // Sample from the guide.
-      var guideDist = options.guide;
-      var _val = guideDist.sample();
+      // Sample from the guide, if present
+      var sampleDist = hasGuide ? options.guide : dist;
+      var _val = sampleDist.sample();
 
       // Compute scores.
       this.logp += ad.value(dist.score(_val));
-      this.logq += ad.value(guideDist.score(_val));
+      this.logq += ad.value(sampleDist.score(_val));
 
       return k(s, _val);
     },

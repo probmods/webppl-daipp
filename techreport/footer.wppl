@@ -58,15 +58,17 @@ var dataLogProb = !opts.doModelLearning || !opts.doDataLogProb ? undefined : (fu
 
 // ESS of guide as importance sampler
 var guideESS = !opts.doGuideESS ? undefined : (function() {
-	if (opts.ess_nDataPoints > testData.length) {
-		util.fatal('ess_nDataPoints > testData.length: ' + opts.ess_nDataPoints + ' > ' + testData.length);
-	}
+	var nDataPoints = Math.min(testData.length, opts.ess_nDataPoints);
 	var ess_estimates = map(function(datum) {
 		globalStore.data = [datum];
-		var ess = EvaluateGuide(model, {samples: opts.ess_nParticles, params: params});
+		var ess = EvaluateGuide(model, {
+			samples: opts.ess_nParticles,
+			params: params,
+			requireGuides: opts.ess_requireGuides
+		});
 		return (ess / opts.ess_nParticles);
-	}, testData.slice(0, opts.ess_nDataPoints));
-	return sum(ess_estimates) / opts.ess_nDataPoints;
+	}, testData.slice(0, nDataPoints));
+	return sum(ess_estimates) / nDataPoints;
 })();
 
 // Return

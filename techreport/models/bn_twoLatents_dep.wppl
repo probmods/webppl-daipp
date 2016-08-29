@@ -27,7 +27,7 @@ var model = function() {
 		perceptronParams({nIn: 2, nHidden: nHidden, nOut: 2});
 
 	// Map over data
-	var latents = mapData({data: globalStore.data}, function(datum) {
+	var latents = mapData({data: globalStore.data, batchSize: opts.batchSize}, function(datum) {
 
 		// Compute guide params for latent a
 		var gparams_a = opts.localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {

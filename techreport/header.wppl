@@ -38,38 +38,38 @@ var perceptronParams = function(spec) {
 
 
 // Creating global parameters
-var makeMuGlobal = function(value) {
+var makeMuGlobal = function(value, priorMu, priorSigma) {
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
 			paramScalar() :
 		opts.modelLearnType === 'ML_reg' ?
-			sample(Gaussian({mu: 0, sigma: 1}), {
+			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
 				guide: Delta({v: paramScalar()})
 			}) :
 		opts.modelLearnType === 'MeanField' ?
-			sample(Gaussian({mu: 0, sigma: 1}), {
+			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
 				guide: Gaussian({mu: paramScalar(), sigma: softplus(paramScalar())})
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
-var makeSigmaGlobal = function(value) {
+var makeSigmaGlobal = function(value, priorShape, priorScale) {
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
 			softplus(paramScalar()) :
 		opts.modelLearnType === 'ML_reg' ?
-			sample(Gamma({shape: 1, scale: 1}), {
+			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
 				guide: Delta({v: softplus(paramScalar())})
 			}) :
 		opts.modelLearnType === 'MeanField' ?
-			sample(Gamma({shape: 1, scale: 1}), {
+			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
 				guide: Gamma({shape: softplus(paramScalar()), scale: softplus(paramScalar())})
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
-var makeWeightsGlobal = function(ws) {
-	var n = ws.length; 
+var makeWeightsGlobal = function(ws, priorAlpha) {
+	var n = ws !== undefined ? ws.length : priorAlpha.length; 
 
 	var ones = function() { return Vector(repeat(n, function() { return 1; })); };
 
@@ -78,11 +78,11 @@ var makeWeightsGlobal = function(ws) {
 	opts.modelLearnType === 'ML' ?
 		simplex(paramVector(n-1)) :
 	opts.modelLearnType === 'ML_reg' ?
-		sample(Dirichlet({alpha: ones()}), {
+		sample(Dirichlet({alpha: priorAlpha || ones()}), {
 			guide: Delta({v: simplex(paramVector(n-1))})
 		}) :
 	opts.modelLearnType === 'MeanField' ?
-		sample(Dirichlet({alpha: ones()}), {
+		sample(Dirichlet({alpha: priorAlpha || ones()}), {
 			guide: LogisticNormal({mu: paramVector(n-1), sigma: softplus(paramVector(n-1))})
 		}) :
 	util.fatal('Unrecognized modelLearnType');
@@ -167,5 +167,6 @@ var computeVariableMoments = function(data) {
 	return data;
 };
 
-// ----------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------
+
 
