@@ -4,9 +4,11 @@
 // dritchie: Idk how to write a good manual guide for this, so I'm assuming that we're just going
 //    to do either mean field or full auto DAIPP with this one...
 
+assert(opts.doModelLearning);
+
 var nHidden = opts.nHidden || 3;
 
-var data = readJSON('examples/data/bars2.json');
+var trainingData = readJSON('examples/data/bars2.json');
 var vocabSize = 4;
 var numTopics = 4;
 

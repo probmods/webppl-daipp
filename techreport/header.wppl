@@ -85,7 +85,7 @@ var makeWeightsGlobal = function(ws, priorAlpha) {
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
 			guide: LogisticNormal({mu: paramVector(n-1), sigma: softplus(paramVector(n-1))})
 		}) :
-	util.fatal('Unrecognized modelLearnType');
+	util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
 };
 
 // Local mean field guides
@@ -156,17 +156,22 @@ var standardize = function(x, moments) {
 	return (x - moments.mu) / moments.sigma;
 };
 
-var computeVariableMoments = function(data) {
+var computeVariableMoments = function(trainingData, testData) {
+	var data = trainingData;	// Could also concat testData, but whatevs.
 	globalStore.moments = mapObject(function(varname, varval) {
 		var vals = map(function(x) { return x[varname]; }, data);
 		var mu = mean(vals);
 		var sigma = stddev(vals, mu);
 		return {mu: mu, sigma: sigma};
 	}, data[0]);
-
-	return data;
 };
 
 // --------------------------------------------------------------------------------------
+
+// Misc.
+
+var assert = function(b, msg) {
+	if (!b) { util.fatal(msg); }
+};
 
 

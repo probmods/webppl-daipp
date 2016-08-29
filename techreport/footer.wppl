@@ -10,29 +10,52 @@ if (typeof model === 'undefined') {
 
 // Prepare data
 
-// One of 'targetModel', 'data' must be defined
-if (typeof targetModel === 'undefined' && typeof data === 'undefined') {
-	util.fatal('Model must define either "targetModel" or "data"');
+// One of 'targetModel', 'trainingData' must be defined
+if (typeof targetModel === 'undefined' && typeof trainingData === 'undefined') {
+	util.fatal('Model must define either "targetModel" or "trainingData"');
 }
 
-// Define data
-var allDataRaw = _.shuffle(typeof targetModel === 'undefined' ? data : repeat(opts.nData, function() {
-	return targetModel();
-}));
+// Training data is either provided or generated from targetModel
+var _trainingData = (function() {
+	if (typeof trainingData === 'undefined') {
+		return repeat(opts.nGenTrainingData, function() { return targetModel(); });
+	} else {
+		// (Optionally) Limit the amount of training data used
+		var n = opts.nTrainingData ? Math.min(opts.nTrainingData, trainingData.length) : trainingData.length;
+		return _.shuffle(trainingData).slice(0, n);
+	}
+})();
 
-// Do any data preprocessing (e.g. computing moments for standardization)
-var allDataProcessed = (typeof preprocessData !== 'undefined') ? preprocessData(allDataRaw) : allDataRaw
+// Test data is either provided, generated from targetModel, or taken as some proportion
+//   of the provided training data
+var _testData = (function() {
+	if (typeof testData === 'undefined' && typeof trainingData === 'undefined') {
+		return repeat(opts.nGenTestData, function() { return targetModel(); });
+	} else if (typeof testData === 'undefined') {
+		var _n = opts.testSplit * _trainingData.length;
+		// (Optionally) limit the amount of test data used
+		var n = opts.nTestData ? Math.min(opts.nTestData, _n) : _n;
+		var i = _trainingData.length - n;
+		var test = _trainingData.slice(i, _trainingData.length);
+		_trainingData.splice(i, n);   // Safe to do mutation here
+		return test;
+	} else {
+		// (Optionally) limit the amount of test data used
+		var n = opts.nTestData ? Math.min(opts.nTestData, testData.length) : testData.length;
+		return _.shuffle(testData).slice(0, n);
+	}
+})();
 
-// Define data splits
-var nTrain = opts.testSplit * allDataProcessed.length;
-var trainingData = allDataProcessed.slice(0, nTrain);
-var testData = allDataProcessed.slice(nTrain);
+// Do any data preprocessing
+if (typeof preprocessData !== 'undefined') {
+	preprocessData(_trainingData, _testData);
+}
 
 // ----------------------------------------------------------------------------
 
 // Optimize parameters
 
-globalStore.data = trainingData;
+globalStore.data = _trainingData;
 
 var params = Optimize(model, {
 	steps: opts.optimize_nSteps,
@@ -48,7 +71,7 @@ var params = Optimize(model, {
 
 // (Only if model learning) probability of data under learned model
 var dataLogProb = !opts.doModelLearning || !opts.doDataLogProb ? undefined : (function() {
-	globalStore.data = testData;
+	globalStore.data = _testData;
 	return ForwardSample(model, {
 		guide: true,
 		params: params,
@@ -58,7 +81,7 @@ var dataLogProb = !opts.doModelLearning || !opts.doDataLogProb ? undefined : (fu
 
 // ESS of guide as importance sampler
 var guideESS = !opts.doGuideESS ? undefined : (function() {
-	var nDataPoints = Math.min(testData.length, opts.ess_nDataPoints);
+	var nDataPoints = Math.min(_testData.length, opts.ess_nDataPoints);
 	var ess_estimates = map(function(datum) {
 		globalStore.data = [datum];
 		var ess = EvaluateGuide(model, {
@@ -67,7 +90,7 @@ var guideESS = !opts.doGuideESS ? undefined : (function() {
 			requireGuides: opts.ess_requireGuides
 		});
 		return (ess / opts.ess_nParticles);
-	}, testData.slice(0, nDataPoints));
+	}, _testData.slice(0, nDataPoints));
 	return sum(ess_estimates) / nDataPoints;
 })();
 

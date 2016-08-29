@@ -45,14 +45,19 @@ function run(opts) {
 	});
 	programOpts = mergeDefaults(programOpts, {
 		// Data stuff
-		// If the model provides a true data-generating model, how many data points to generate
-		nData: 200,
-		// What percentage of the data should be reserved as test data
-		testSplit: 0.5,
-		// Batch size
-		batchSize: undefined,
+		// If model provides targetModel: how many training/test data points to generate
+		nGenTrainingData: 100,
+		nGenTestData: 100,
+		// If model provides training/test data, can still optionally limit the amount of that
+		//    data to use
+		nTrainingData: undefined,
+		nTestData: undefined,
+		// If model provides trainingData but not testData: What percentage of the data should
+		//    be reserved as test data
+		testSplit: 0.2,
 
-		// Parameters to be given to Optimize
+		// Optimization stuff
+		batchSize: undefined,
 		optimize_nSteps: 100,
 		optimize_optMethod: { adam: { stepSize: 0.1 } },
 		optimize_estimator: { ELBO2: { samples: 1 } },
