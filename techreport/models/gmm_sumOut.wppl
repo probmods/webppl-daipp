@@ -1,0 +1,49 @@
+// Gaussian mixture model: one discrete latent feeding into one continuous observed variable
+// Explicitly summing out latent mixture component
+
+var nHidden = opts.nHidden || 3;
+
+var preprocessData = computeVariableMoments;
+
+var targetModel = function() {
+	var gaussParams = [
+		{mu: 0, sigma: 2},
+		{mu: -3, sigma: 0.5},
+		{mu: 2, sigma: 1}
+	];
+	var i = sample(Discrete({ps: [0.1, 0.6, 0.3]}));
+	var a = sample(Gaussian(gaussParams[i]));
+	return {i: i, a: a};
+};
+
+var model = function() {
+	// Generative model params
+	var weights = makeWeightsGlobal([0.1, 0.6, 0.3]);
+	var gaussParams = [
+		{mu: makeMuGlobal(0), sigma: makeSigmaGlobal(2)},
+		{mu: makeMuGlobal(-3), sigma: makeSigmaGlobal(0.5)},
+		{mu: makeMuGlobal(2), sigma: makeSigmaGlobal(1)}
+	];
+
+	// Map over data
+	var latents = mapData({data: globalStore.data}, function(datum) {
+
+		// Explicitly sum out latent mixture component
+		var scores = mapIndexed(function(i, muSigma) {
+			var w = T.get(weights, i);
+			return Gaussian(muSigma).score(datum.a) + Math.log(w);
+		}, gaussParams);
+
+		// Summed-out likelihod
+		factor(logsumexp(scores));
+
+		// Return latents
+		return {}
+	});
+
+	// Return global params + latents
+	return {
+		params: {weights: weights, gaussParams: gaussParams},
+		latents: latents
+	};
+};
