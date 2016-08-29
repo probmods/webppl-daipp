@@ -50,7 +50,7 @@ function run(opts) {
 		testSplit: 0.5,
 
 		// Parameters to be given to Optimize
-		optimize_nSteps: 500,
+		optimize_nSteps: 100,
 		optimize_optMethod: { adam: { stepSize: 0.1 } },
 		optimize_estimator: { ELBO2: { samples: 1 } },
 		optimize_verbose: false,
