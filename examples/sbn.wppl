@@ -35,7 +35,7 @@ var priorProbs = T.div(ones([numhid, 1]), 2); // [.5, .5, ...]
 
 var loadData = function() {
   console.time('load data');
-  var data = map(Vector, readJSON('examples/data/mnist_images.json'));
+  var data = map(Vector, readJSON('examples/data/mnist_images_train.json'));
   console.timeEnd('load data');
   return data;
 };

@@ -1,2 +1,4 @@
-mnist_images.json
-mnist_labels.json
+mnist_images_train.json
+mnist_labels_train.json
+mnist_images_test.json
+mnist_labels_test.json

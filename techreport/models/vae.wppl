@@ -1,0 +1,79 @@
+// Variational autoencoder
+
+assert(opts.doModelLearning);
+
+var zDim = opts.zDim || 2;
+var hDecodeDim = opts.hDecodeDim || 500;
+var hEncodeDim = opts.hEncodeDim || 500;
+var xDim = 784;
+
+// Can specify dataset in opts, if desired (useful e.g. for only loading dataset
+//    once when running a bunch of experiments on model variants)
+var trainingData = opts.trainingData || readDataSetJSON('examples/data/mnist_images_train.json');
+var testData = opts.testData || readDataSetJSON('examples/data/mnist_images_test.json');
+
+// Recognition network.
+// Maps from an input image to the parameters of the guide
+// distribution.
+var encode = function(x, W, b) {
+  var h = T.tanh(T.add(T.dot(W[0], x), b[0]));
+  var mu = T.add(T.dot(W[1], h), b[1]);
+  var sigma = T.exp(T.add(T.dot(W[2], h), b[2]));
+  return {mu: mu, sigma: sigma};
+};
+
+// Generative network.
+// Maps from the latent space to pixels.
+var decode = function(z, W, b) {
+  var h = T.tanh(T.add(T.dot(W[0], z), b[0]));
+  return T.sigmoid(T.add(T.dot(W[1], h), b[1]));
+};
+
+// Like in header.wppl, determines what type of model learning we do
+var makeNNParam = function(n, m, priorMu, priorSigma) {
+  return
+  opts.modelLearnType === 'ML' ?
+    paramMatrix(n, m) :
+  opts.modelLearnType === 'ML_reg' ?
+    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
+      guide: Delta({v: paramMatrix(n, m)})
+    }) :
+  opts.modelLearnType === 'MeanField' ?
+    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
+      guide: TensorGaussian({mu: paramMatrix(n, m), sigma: softplus(paramMatrix(n, m)), dims: [n, m]})
+    }) :
+  util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
+};
+
+var model = function() {
+
+  // Define parameters.
+
+  // Variational.
+  var W0 = paramMatrix(hEncodeDim, xDim);
+  var W1 = paramMatrix(zDim, hEncodeDim);
+  var W2 = paramMatrix(zDim, hEncodeDim);
+  var b0 = paramMatrix(hEncodeDim, 1);
+  var b1 = paramMatrix(zDim, 1);
+  var b2 = paramMatrix(zDim, 1);
+
+  // Generative.
+  var W3 = makeNNParam(hDecodeDim, zDim);
+  var W4 = makeNNParam(xDim, hDecodeDim);
+  var b3 = makeNNParam(hDecodeDim, 1);
+  var b4 = makeNNParam(xDim, 1);
+
+  mapData({data: globalStore.data, batchSize: opts.batchSize || 100}, function(image) {
+
+    var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
+      guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
+    });
+
+    var probs = decode(z, [W3, W4], [b3, b4]);
+
+    factor(MultivariateBernoulli({ps: probs}).score(image));
+
+  });
+
+  return;
+};

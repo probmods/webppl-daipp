@@ -3,7 +3,7 @@ var hDecodeDim = 500;
 var hEncodeDim = 500;
 var xDim = 784;
 
-var images = readDataSetJSON('examples/data/mnist_images.json');
+var images = readDataSetJSON('examples/data/mnist_images_train.json');
 
 // Recognition network.
 // Maps from an input image to the parameters of the guide
