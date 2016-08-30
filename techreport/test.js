@@ -51,7 +51,14 @@ data
 	.remove(['elboProgress'])
 	.saveCSV(__dirname + '/dataLPAndESS.csv');
 
+var renameMap = (function(basenames) {
+	return _.object(
+		basenames.map(function(n) { return 'elboProgress_'+n; }),
+		basenames
+	);
+})(['index', 'iter', 'objective', 'time']);
 data
 	.remove(['dataLogProb', 'guideESS'])
 	.normalizeArrayColumn('elboProgress')
+	.rename(renameMap)
 	.saveCSV(__dirname + '/elboProgress.csv');
