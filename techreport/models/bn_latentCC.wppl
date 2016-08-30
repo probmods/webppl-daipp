@@ -1,7 +1,8 @@
 // Two continuous latent variables feeding into one continuous observed variable
-// Guide predicts latents independently
 
 var nHidden = opts.nHidden || 3;
+// Should the guide prediction for the second latent be dependent on the first?
+var guideDependence = (opts.guideDependence === undefined) ? true : opts.guideDependence;
 
 var preprocessData = computeVariableMoments;
 
@@ -24,7 +25,7 @@ var model = function() {
 	var nnparams_a = opts.localGuideType === 'MeanField' ? null :
 		perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
 	var nnparams_b = opts.localGuideType === 'MeanField' ? null :
-		perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+		perceptronParams({nIn: guideDependence ? 2 : 1, nHidden: nHidden, nOut: 2});
 
 	// Map over data
 	var latents = mapData({data: globalStore.data, batchSize: opts.batchSize}, function(datum) {
@@ -42,7 +43,11 @@ var model = function() {
 
 		// Compute guide params for latent b
 		var gparams_b = opts.localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
-			var inputs = Vector([standardize(datum.c, globalStore.moments.c)]);
+			var inputs = guideDependence ?
+				Vector([standardize(datum.c, globalStore.moments.c),
+						standardize(a, globalStore.moments.a)])
+					:
+				Vector([standardize(datum.c, globalStore.moments.c)]);
 			var outputs = perceptron(inputs, nnparams_b);
 			return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
 		})();

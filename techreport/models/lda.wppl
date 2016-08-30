@@ -7,7 +7,9 @@
 assert(opts.doModelLearning);
 
 var nHidden = opts.nHidden || 3;
+var enumOut = opts.enumOut || false;	// Enumerate out latent topic per word?
 
+// TODO: We need a better LDA dataset...
 var trainingData = readJSON('examples/data/bars2.json');
 var vocabSize = 4;
 var numTopics = 4;
@@ -28,19 +30,25 @@ var model = function() {
 	// Map over documents
 	mapData({data: globalStore.data, batchSize: opts.batchSize}, function(doc) {
 
-		// TODO: Add auto guide
 		var topicDistForDoc = Discrete({ps: makeWeightsGenerative(undefined, alpha)});
 
 		mapIndexed(function(word, count) {
 
 			if (count > 0) {
-				// TODO: Add auto guide?
-				// var topic = sample(topicDistForDoc);
-				var topic = sample(topicDistForDoc, {
-					guide: Discrete({ps: discreteMeanFieldParams(numTopics)})
-				});
-				var wordDistForTopic = wordDistsForTopics[topic];
-				factor(count * wordDistForTopic.score(word));
+				if (!enumOut) {
+					var topic = sample(topicDistForDoc, {
+						guide: Discrete({ps: discreteMeanFieldParams(numTopics)})
+					});
+					var wordDistForTopic = wordDistsForTopics[topic];
+					factor(count * wordDistForTopic.score(word));
+				} else  {
+					var wordMarginalDist = Enumerate(function() {
+						var topic = sample(topicDistForDoc);
+						var wordDistForTopic = wordDistsForTopics[topic];
+						return sample(wordDistForTopic);
+					});
+					factor(count * wordMarginalDist.score(word));
+				}
 			}
 
 		}, doc);
