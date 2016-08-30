@@ -15,16 +15,16 @@ var isNumberOrScalarNode = function(x) {
 
 // Parameters
 
-var paramScalar = function() {
-	return scalarParam(0, 0.1);
+var paramScalar = function(mu, sigma) {
+	return scalarParam(mu || 0, sigma || 0.1);
 };
 
-var paramVector = function(n) {
-	return param([n, 1], 0, 0.1);
+var paramVector = function(n, mu, sigma) {
+	return param([n, 1], mu || 0, sigma || 0.1);
 };
 
-var paramMatrix = function(n, m) {
-	return param([n, m], 0, 0.1);
+var paramMatrix = function(n, m, mu, sigma) {
+	return param([n, m], mu || 0, sigma || 0.1);
 };
 
 var perceptronParams = function(spec) {
@@ -36,64 +36,82 @@ var perceptronParams = function(spec) {
 	};
 };
 
-
-// Creating global parameters
-var makeMuGlobal = function(value, priorMu, priorSigma) {
+// Creating parameters for generative models under different conditions
+var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma) {
+	var prm = function() { return paramScalar(paramMu, paramSigma) };
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			paramScalar() :
+			prm() :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
-				guide: Delta({v: paramScalar()})
+				guide: Delta({v: prm()})
 			}) :
 		opts.modelLearnType === 'MeanField' ?
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
-				guide: Gaussian({mu: paramScalar(), sigma: softplus(paramScalar())})
+				guide: Gaussian({mu: prm(), sigma: softplus(prm())})
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
-var makeSigmaGlobal = function(value, priorShape, priorScale) {
+var makeSigmaGenerative = function(value, priorShape, priorScale, paramMu, paramSigma) {
+	var prm = function() { return paramScalar(paramMu, paramSigma) };
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			softplus(paramScalar()) :
+			softplus(prm()) :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
-				guide: Delta({v: softplus(paramScalar())})
+				guide: Delta({v: softplus(prm())})
 			}) :
 		opts.modelLearnType === 'MeanField' ?
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
-				guide: Gamma({shape: softplus(paramScalar()), scale: softplus(paramScalar())})
+				guide: Gamma({shape: softplus(prm()), scale: softplus(prm())})
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
-var makeWeightsGlobal = function(ws, priorAlpha) {
+var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma) {
 	var n = ws !== undefined ? ws.length : priorAlpha.length; 
 
+	var prm = function() { return paramVector(n-1, paramMu, paramSigma) };
 	var ones = function() { return Vector(repeat(n, function() { return 1; })); };
 
 	return !opts.doModelLearning ?
 		Vector(ws) :
 	opts.modelLearnType === 'ML' ?
-		simplex(paramVector(n-1)) :
+		simplex(prm()) :
 	opts.modelLearnType === 'ML_reg' ?
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
-			guide: Delta({v: simplex(paramVector(n-1))})
+			guide: Delta({v: simplex(prm())})
 		}) :
 	opts.modelLearnType === 'MeanField' ?
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
-			guide: LogisticNormal({mu: paramVector(n-1), sigma: softplus(paramVector(n-1))})
+			guide: LogisticNormal({mu: prm(), sigma: softplus(prm())})
 		}) :
 	util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
 };
+var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSigma) {
+  var prm = function() { return paramMatrix(n, m, paramMu, paramSigma); };
+  return
+  opts.modelLearnType === 'ML' ?
+    prm() :
+  opts.modelLearnType === 'ML_reg' ?
+    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
+      guide: Delta({v: prm()})
+    }) :
+  opts.modelLearnType === 'MeanField' ?
+    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
+      guide: TensorGaussian({mu: prm(), sigma: softplus(prm()), dims: [n, m]})
+    }) :
+  util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
+};
 
 // Local mean field guides
-var gaussianMeanFieldParams = function() {
-	return {mu: paramScalar(), sigma: softplus(paramScalar())};
+var gaussianMeanFieldParams = function(paramMu, paramSigma) {
+	var prm = function() { return paramScalar(paramMu, paramSigma) };
+	return {mu: prm(), sigma: softplus(prm())};
 };
-var discreteMeanFieldParams = function(n) {
-	return simplex(paramVector(n-1));
+var discreteMeanFieldParams = function(n, paramMu, paramSigma) {
+	return simplex(paramVector(n-1, paramMu, paramSigma));
 };
 
 // --------------------------------------------------------------------------------------

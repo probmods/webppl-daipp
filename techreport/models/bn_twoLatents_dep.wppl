@@ -14,11 +14,11 @@ var targetModel = function() {
 
 var model = function() {
 	// Generative model params;
-	var mu_a = makeMuGlobal(1);
-	var sigma_a = makeSigmaGlobal(1);
-	var mu_b = makeMuGlobal(5);
-	var sigma_b = makeSigmaGlobal(1);
-	var sigma_c = makeSigmaGlobal(0.5);
+	var mu_a = makeMuGenerative(1);
+	var sigma_a = makeSigmaGenerative(1);
+	var mu_b = makeMuGenerative(5);
+	var sigma_b = makeSigmaGenerative(1);
+	var sigma_c = makeSigmaGenerative(0.5);
 
 	// Guide params
 	var nnparams_a = opts.localGuideType === 'MeanField' ? null :

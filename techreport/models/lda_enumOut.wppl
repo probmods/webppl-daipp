@@ -22,14 +22,14 @@ var alpha = Vector(repeat(numTopics, constF(0.1)));
 var model = function() {
 	// Top-level parameters
 	var wordDistsForTopics = repeat(numTopics, function() {
-		return Discrete({ps: makeWeightsGlobal(undefined, eta)});
+		return Discrete({ps: makeWeightsGenerative(undefined, eta)});
 	});
 
 	// Map over documents
 	mapData({data: globalStore.data, batchSize: opts.batchSize}, function(doc) {
 
 		// TODO: Add auto guide
-		var topicDistForDoc = Discrete({ps: makeWeightsGlobal(undefined, alpha)});
+		var topicDistForDoc = Discrete({ps: makeWeightsGenerative(undefined, alpha)});
 
 		mapIndexed(function(word, count) {
 

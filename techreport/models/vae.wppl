@@ -29,22 +29,6 @@ var decode = function(z, W, b) {
   return T.sigmoid(T.add(T.dot(W[1], h), b[1]));
 };
 
-// Like in header.wppl, determines what type of model learning we do
-var makeNNParam = function(n, m, priorMu, priorSigma) {
-  return
-  opts.modelLearnType === 'ML' ?
-    paramMatrix(n, m) :
-  opts.modelLearnType === 'ML_reg' ?
-    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
-      guide: Delta({v: paramMatrix(n, m)})
-    }) :
-  opts.modelLearnType === 'MeanField' ?
-    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
-      guide: TensorGaussian({mu: paramMatrix(n, m), sigma: softplus(paramMatrix(n, m)), dims: [n, m]})
-    }) :
-  util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
-};
-
 var model = function() {
 
   // Define parameters.
@@ -58,10 +42,10 @@ var model = function() {
   var b2 = paramMatrix(zDim, 1);
 
   // Generative.
-  var W3 = makeNNParam(hDecodeDim, zDim);
-  var W4 = makeNNParam(xDim, hDecodeDim);
-  var b3 = makeNNParam(hDecodeDim, 1);
-  var b4 = makeNNParam(xDim, 1);
+  var W3 = makeNNParamGenerative(hDecodeDim, zDim);
+  var W4 = makeNNParamGenerative(xDim, hDecodeDim);
+  var b3 = makeNNParamGenerative(hDecodeDim, 1);
+  var b4 = makeNNParamGenerative(xDim, 1);
 
   mapData({data: globalStore.data, batchSize: opts.batchSize || 100}, function(image) {
 
@@ -76,4 +60,9 @@ var model = function() {
   });
 
   return;
+};
+
+// Model-specific Optimize options
+var optimizeOpts = {
+  optMethod: { adam: { stepSize: 0.001 } }
 };

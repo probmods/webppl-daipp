@@ -1,0 +1,98 @@
+assert(opts.doModelLearning);
+
+// This is an attempt to implement the sigmoid belief net described
+// in:
+
+// Neural Variational Inference and Learning in Belief Networks
+// http://arxiv.org/abs/1402.0030
+
+// Possible differences between this and the model/inference algorithm
+// in the paper.
+
+// 1. Variance normalization. Do the fancy optimization methods (e.g.
+// adam) give us this (or something similar) anyway?
+
+// 2. Data dependent baselines.
+
+// 3. Average baselines shared across random choices in mapData?
+
+// 4. Regularization for everything? Not mentioned, but I wouldn't be
+// surprised if this was done.
+
+// This code gets to about -130 (elbo per datum on the training set)
+// after 10K steps, probably fewer. This may be close to the result
+// reported in the paper for the version without variance
+// normalization and data-dependant baselines?
+
+// Usage:
+
+// webppl examples/sbn.wppl --require .
+
+// Requires the version of webppl in the "new-vi-estimator" branch:
+// https://github.com/probmods/webppl/tree/new-vi-estimator
+
+var numhid = opts.numhid || 200;
+var numviz = 784;
+var priorProbs = T.div(ones([numhid, 1]), 2); // [.5, .5, ...]
+
+var loadData = function(filename) {
+  console.time('load data');
+  var data = map(Vector, readJSON(filename));
+  console.timeEnd('load data');
+  return data;
+};
+
+// Can specify dataset in opts, if desired (useful e.g. for only loading dataset
+//    once when running a bunch of experiments on model variants)
+var trainingData = opts.trainingData || loadData('examples/data/mnist_images_train.json');
+var testData = opts.testData || loadData('examples/data/mnist_images_test.json');
+
+var dataMean = function(data) {
+  var dim = data[0].dims[0];
+  var init = zeros([dim, 1]);
+  var sum = reduce(function(x, acc) { return T.add(x, acc); }, init, data);
+  return T.div(sum, data.length);
+};
+var preprocessData = function(trainingData, testData) {
+  globalStore.meanImage = dataMean(trainingData);
+};
+var subtractMeanImage = function(image) { return T.sub(image, globalStore.meanImage); };
+
+var model = function() {
+
+  // Variational guide params
+  var We = paramMatrix(numhid, numviz, 0, 0.001);
+  var be = paramMatrix(numhid, 1);
+
+  // Generative params
+  var Wd = makeNNParamGenerative(numviz, numhid, undefined, undefined, 0, 0.001);
+  var bd = makeNNParamGenerative(numviz, 1);
+
+  var encode = function(datum) {
+    return T.sigmoid(T.add(T.dot(We, subtractMeanImage(datum)), be));
+  };
+
+  var decode = function(h) {
+    return T.sigmoid(T.add(T.dot(Wd, h), bd));
+  };
+
+  mapData({data: globalStore.data, batchSize: opts.batchSize || 100}, function(datum) {
+
+    var h = sample(MultivariateBernoulli({ps: priorProbs}), {
+      guide: MultivariateBernoulli({ps: encode(datum)})
+    });
+
+    var ps = decode(h);
+    observe(MultivariateBernoulli({ps: ps}), datum);
+
+  });
+
+  return {We: We, Wd: Wd};
+
+};
+
+// Model-specific Optimize options
+var optimizeOpts = {
+  estimator: {ELBO2: {samples: 1, avgBaselines: true}},
+  optMethod: {adam: {stepSize: .001}}
+};

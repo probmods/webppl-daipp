@@ -17,11 +17,11 @@ var targetModel = function() {
 
 var model = function() {
 	// Generative model params
-	var weights = makeWeightsGlobal([0.1, 0.6, 0.3]);
+	var weights = makeWeightsGenerative([0.1, 0.6, 0.3]);
 	var gaussParams = [
-		{mu: makeMuGlobal(0), sigma: makeSigmaGlobal(2)},
-		{mu: makeMuGlobal(-3), sigma: makeSigmaGlobal(0.5)},
-		{mu: makeMuGlobal(2), sigma: makeSigmaGlobal(1)}
+		{mu: makeMuGenerative(0), sigma: makeSigmaGenerative(2)},
+		{mu: makeMuGenerative(-3), sigma: makeSigmaGenerative(0.5)},
+		{mu: makeMuGenerative(2), sigma: makeSigmaGenerative(1)}
 	];
 
 	// Guide params

@@ -4,15 +4,20 @@ var exp = require('./experiment.js');
 var ret = run(
 {
 	programOpts:  {
-		model: 'lda',
-		modelLearnType: 'MeanField',
+		model: 'sbn',
+		modelLearnType: 'ML',
 		optimize_verbose: true,
-		optimize_nSteps: 1000,
-		ess_requireGuides: true,
 		doELBOProgress: false
 	},
+	// programOpts:  {
+	// 	model: 'lda',
+	// 	modelLearnType: 'MeanField',
+	// 	optimize_verbose: true,
+	// 	optimize_nSteps: 500,
+	// 	doELBOProgress: false
+	// },
 	runOpts:  {
-		// saveCode: 'techreport/__code.wppl'
+
 	}
 });
 console.log(ret);
