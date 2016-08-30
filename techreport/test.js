@@ -3,54 +3,40 @@ var exp = require('./experiment.js');
 
 // var ret = runModel(
 // {
-// 	programOpts:  {
-// 		model: 'bn_latentCC',
-// 		modelLearnType: 'ML_reg',
-// 		optimize_verbose: true,
-// 		doELBOProgress: false
-// 	},
-// 	// programOpts:  {
-// 	// 	model: 'lda',
-// 	// 	modelLearnType: 'MeanField',
-// 	// 	optimize_verbose: true,
-// 	// 	optimize_nSteps: 500,
-// 	// 	doELBOProgress: false
-// 	// },
-// 	runtimeOpts:  {
+// 	model: 'bn_latentCC',
+// 	modelLearnType: 'ML_reg',
+// 	optimize_verbose: true,
+// 	doELBOProgress: false
 
-// 	}
+// 	// model: 'lda',
+// 	// modelLearnType: 'MeanField',
+// 	// optimize_verbose: true,
+// 	// optimize_nSteps: 500,
+// 	// doELBOProgress: false
 // });
 // console.log(ret);
 
 // ----------------------------------------------------------------------------
 
-var runtimeOpts = {
-
-};
-
 var baseProgramOpts = {
-	model: 'bn_latentCC',
-	optimize_verbose: true
+	model: 'bn_latentC',
+	optimize_verbose: true,
+	optimize_logProgress: 100
 };
 
-var data = 
+var data =
 exp.start(baseProgramOpts,
-	exp.condition('guideDependence', [false, true],
-		exp.condition('localGuideType', ['MeanField', 'Recognition'],
-			exp.run(function(programOpts) {
-				return runModel({
-					programOpts: programOpts,
-					runtimeOpts: runtimeOpts
-				});
-			})
-		)
+	exp.repeat(10,
+		exp.run(runModel)
 	)
 );
 
+// Test LL and ESS
 data
 	.remove(['elboProgress'])
 	.saveCSV(__dirname + '/dataLPAndESS.csv');
 
+// ELBO progress
 var renameMap = (function(basenames) {
 	return _.object(
 		basenames.map(function(n) { return 'elboProgress_'+n; }),

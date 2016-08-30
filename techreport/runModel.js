@@ -28,22 +28,17 @@ function mergeDefaults(options, defaults) {
 
 // ----------------------------------------------------------------------------
 
+// We cache the header and footer code, so we only go to disk to load those once.
 var headerCode;
 var footerCode;
 
-function runModel(opts) {
+function compileModel(opts) {
+	opts = mergeDefaults(opts, {
+		// WebPPL runtime stuff
+		webppl_verbose: false,
+		webppl_debug: true,
+		webppl_packages: [],
 
-	var runOpts = opts.runtimeOpts;
-	var programOpts = opts.programOpts;
-
-	// Merge defaults for options
-	runOpts = mergeDefaults(runOpts, {
-		verbose: false,
-		debug: true,
-		packages: [],
-		saveCode: false		// Can be a filename to output the complete code
-	});
-	programOpts = mergeDefaults(programOpts, {
 		// Data stuff
 		// If model provides targetModel: how many training/test data points to generate
 		nGenTrainingData: 100,
@@ -81,7 +76,7 @@ function runModel(opts) {
 		localGuideType: 'Recognition'		
 	});
 
-	var model = programOpts.model;
+	var model = opts.model;
 	assert(model, 'Must provide a model to run.');
 
 	// Load header and footer code, if we haven't already
@@ -92,33 +87,57 @@ function runModel(opts) {
 
 	// Load model code, prepend opts and header, append footer
 	var modelCode = fs.readFileSync(__dirname + '/models/' + model + '.wppl');
-	var code = 'var opts = ' + JSON.stringify(programOpts) + ';\n' +
+	var code = 'var opts = ' + JSON.stringify(opts) + ';\n' +
 				headerCode + '\n' +
 				modelCode + '\n' +
 				footerCode;
 
-	if (runOpts.saveCode) {
-		fs.writeFileSync(runOpts.saveCode, code);
-	}
-
-	// Put through webppl run pipeline
+	// Put through webppl compile pipeline
 	var packagePaths = [pkg.globalPkgDir()];
-	var packageNames = runOpts.packages.concat(['.']);	// Assume running from root of 'webppl-daipp'
+	var packageNames = opts.webppl_packages.concat(['.']);	// Assume running from root of 'webppl-daipp'
 	var packages = packageNames.map(function(name_or_path) {
-		return pkg.load(pkg.read(name_or_path, packagePaths, runOpts.verbose));
+		return pkg.load(pkg.read(name_or_path, packagePaths, opts.webppl_verbose));
 	});	
 	packages.forEach(function(pkg) {
 		if (pkg.js) { global[pkg.js.identifier] = require(pkg.js.path); }
 		pkg.headers.forEach(webppl.requireHeader);
 	});
+	return webppl.compile(code, {
+		bundles: webppl.parsePackageCode(packages, opts.webppl_verbose),
+		verbose: opts.webppl_verbose,
+		debug: opts.webppl_debug
+	});
+}
+
+// We cache the compiled code so that if we ever see the exact same options object
+//    again, we can re-use it. This is useful when re-running a random program
+//    multiple times as part of an experiment.
+var nextOptsID = 0;
+function getID(opts) {
+	if (!_.has(opts, '__uniqueID')) {
+		opts.__uniqueID = nextOptsID;
+		nextOptsID++;
+	}
+	return opts.__uniqueID;
+}
+var compiledCodeCache = {};
+function getCompiledCode(opts) {
+	var code = cache[getID(opts)];
+	if (code === undefined) {
+		code = compileModel(opts);
+		cache[getID(opts)] = code;
+	}
+	return code;
+}
+
+
+function runModel(opts) {
+	var code = getCompiledCode(opts);
+	
 	try {
 		var retval;
 		var topK = function(s, x) { retval = x; };
-		webppl.run(code, topK, {
-			bundles: webppl.parsePackageCode(packages, runOpts.verbose),
-			verbose: runOpts.verbose,
-			debug: runOpts.debug
-		});
+		webppl.prepare(code, topK).run();
 		return retval;
 	} catch (error) {
 		if (error instanceof Error && error.wpplRuntimeError) {
