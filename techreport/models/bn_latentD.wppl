@@ -41,7 +41,7 @@ var model = function() {
 				var outputs = perceptron(inputs, nnparams_i);
 				return simplex(outputs);
 			})();
-			// Sample latent i
+			// Guided sample latent i
 			var i = sample(Discrete({ps: weights}), {
 				guide: Discrete({ps: gparams_i})
 			});

@@ -1,0 +1,85 @@
+// One continuous latent + one discrete latent feeding into one continuous observed variable
+
+var nHidden = opts.nHidden || 3;
+// Should the guide prediction for the second latent be dependent on the first?
+var guideDependence = (opts.guideDependence === undefined) ? true : opts.guideDependence;
+
+var preprocessData = computeVariableMoments;
+
+var targetModel = function() {
+	var a = sample(Gaussian({mu: 5, sigma: 1}));
+
+	var gaussParams = [
+		{mu: 0, sigma: 2},
+		{mu: -3, sigma: 0.5},
+		{mu: 2, sigma: 1}
+	];
+	var i = sample(Discrete({ps: [0.1, 0.6, 0.3]}));
+	var gaussParams_i = gaussParams[i];
+
+	var b = sample(Gaussian({mu: gaussParams_i.mu + a, sigma: gaussParams_i.sigma}));
+
+	return {i: i, a: a, b: b};
+};
+
+var model = function() {
+	// Generative model params
+	var weights = makeWeightsGenerative([0.1, 0.6, 0.3]);
+	var gaussParams = [
+		{mu: makeMuGenerative(0), sigma: makeSigmaGenerative(2)},
+		{mu: makeMuGenerative(-3), sigma: makeSigmaGenerative(0.5)},
+		{mu: makeMuGenerative(2), sigma: makeSigmaGenerative(1)}
+	];
+	var mu_a = makeMuGenerative(1);
+	var sigma_a = makeSigmaGenerative(1);
+
+	// Guide params
+	var nnparams_a = opts.localGuideType === 'MeanField' ? null :
+		perceptronParams({nIn: 1, nHidden: nHidden, nOut: 2});
+	var nnparams_i = opts.localGuideType === 'MeanField' ? null :
+		perceptronParams({nIn: guideDependence ? 2 : 1, nHidden: nHidden, nOut: gaussParams.length-1});
+
+	// Map over data
+	var latents = mapData({data: globalStore.data, batchSize: opts.batchSize}, function(datum) {
+
+		// Compute guide params for latent a
+		var gparams_a = opts.localGuideType === 'MeanField' ? gaussianMeanFieldParams() : (function() {
+			var inputs = Vector([standardize(datum.b, globalStore.moments.b)]);
+			var outputs = perceptron(inputs, nnparams_a);
+			return {mu: T.get(outputs, 0), sigma: softplus(T.get(outputs, 1))};
+		})();
+		// Guided sample latent a
+		var a = sample(Gaussian({mu: mu_a, sigma: sigma_a}), {
+			guide: Gaussian(gparams_a)
+		});
+
+		// Compute guide params for latent i
+		var gparams_i = opts.localGuideType === 'MeanField' ? discreteMeanFieldParams(gaussParams.length) : 
+		(function() {
+			var inputs = guideDependence ?
+				Vector([standardize(datum.b, globalStore.moments.b),
+						standardize(a, globalStore.moments.a)])
+					:
+				Vector([standardize(datum.b, globalStore.moments.b)]);
+			var outputs = perceptron(inputs, nnparams_i);
+			return simplex(outputs);
+		})();
+		// Guided sample latent i
+		var i = sample(Discrete({ps: weights}), {
+			guide: Discrete({ps: gparams_i})
+		});
+		var gaussParams_i = gaussParams[i];
+
+		// Observe datum
+		observe(Gaussian({mu: gaussParams_i.mu + a, sigma: gaussParams_i.sigma}), datum.b);
+
+		// Return latents
+		return {a: a, i: i};
+	});
+	
+	// Return global params + latents
+	return {
+		params: { mu_a: mu_a, sigma_a: sigma_a, weights: weights, gaussParams: gaussParams },
+		latents: latents
+	};
+};

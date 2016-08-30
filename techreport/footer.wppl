@@ -57,16 +57,17 @@ if (typeof preprocessData !== 'undefined') {
 
 globalStore.data = _trainingData;
 
-// Merge in any optimization options provided by the model itself (in optimizeOpts).
-var _optParams = _.extend({
+var _optParams = {
 	steps: opts.optimize_nSteps,
 	optMethod: opts.optimize_optMethod,
 	estimator: opts.optimize_estimator,
 	verbose: opts.optimize_verbose,
 	logProgress: opts.optimize_logProgress
-}, optimizeOpts);
+};
+// Merge in any optimization options provided by the model itself (in optimizeOpts).
+var optParams = typeof optimizeOpts !== 'undefined' ? _.extend(_optParams, optimizeOpts) : _optParams;
 
-var params = Optimize(model, _optParams);
+var params = Optimize(model, optParams);
 
 // ----------------------------------------------------------------------------
 
