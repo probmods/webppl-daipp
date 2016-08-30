@@ -1,6 +1,5 @@
 var runModel = require('./runModel.js');
 var exp = require('./experiment.js');
-var data = require('./data.js');
 
 // var ret = runModel(
 // {
@@ -34,7 +33,7 @@ var baseProgramOpts = {
 	optimize_verbose: true
 };
 
-var expdat = 
+var data = 
 exp.start(baseProgramOpts,
 	exp.condition('guideDependence', [false, true],
 		exp.condition('localGuideType', ['MeanField', 'Recognition'],
@@ -48,9 +47,11 @@ exp.start(baseProgramOpts,
 	)
 );
 
-var lpAndESS = data.remove(expdat, ['elboProgress']);
-data.saveCSV(lpAndESS, __dirname + '/dataLPAndESS.csv');
+data
+	.remove(['elboProgress'])
+	.saveCSV(__dirname + '/dataLPAndESS.csv');
 
-var elboProgress = data.remove(expdat, ['dataLogProb', 'guideESS']);
-elboProgress = data.normalizeArrayColumn(elboProgress, 'elboProgress');
-data.saveCSV(elboProgress, __dirname + '/elboProgress.csv');
+data
+	.remove(['dataLogProb', 'guideESS'])
+	.normalizeArrayColumn('elboProgress')
+	.saveCSV(__dirname + '/elboProgress.csv');

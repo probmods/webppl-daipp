@@ -4,6 +4,7 @@
 
 var _ = require('underscore');
 var assert = require('assert');
+var DataFrame = require('./dataFrame.js');
 
 // ----------------------------------------------------------------------------
 
@@ -18,7 +19,7 @@ function start(opts, nextfn) {
 	console.log('Experiment start!');
 	var data = nextfn(_.clone(opts), 1);
 	console.log('Experiment done!');
-	return data;
+	return new DataFrame(data);
 }
 
 // Repeat something multiple times
