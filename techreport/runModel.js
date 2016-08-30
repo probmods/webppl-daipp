@@ -31,9 +31,9 @@ function mergeDefaults(options, defaults) {
 var headerCode;
 var footerCode;
 
-function run(opts) {
+function runModel(opts) {
 
-	var runOpts = opts.runOpts;
+	var runOpts = opts.runtimeOpts;
 	var programOpts = opts.programOpts;
 
 	// Merge defaults for options
@@ -139,6 +139,6 @@ function run(opts) {
 
 // ----------------------------------------------------------------------------
 
-module.exports = run;
+module.exports = runModel;
 
 

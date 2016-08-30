@@ -1,58 +1,56 @@
-var run = require('./run.js');
+var runModel = require('./runModel.js');
 var exp = require('./experiment.js');
+var data = require('./data.js');
 
-var ret = run(
-{
-	programOpts:  {
-		model: 'sbn',
-		modelLearnType: 'ML',
-		optimize_verbose: true,
-		doELBOProgress: false
-	},
-	// programOpts:  {
-	// 	model: 'lda',
-	// 	modelLearnType: 'MeanField',
-	// 	optimize_verbose: true,
-	// 	optimize_nSteps: 500,
-	// 	doELBOProgress: false
-	// },
-	runOpts:  {
+// var ret = runModel(
+// {
+// 	programOpts:  {
+// 		model: 'bn_latentCC',
+// 		modelLearnType: 'ML_reg',
+// 		optimize_verbose: true,
+// 		doELBOProgress: false
+// 	},
+// 	// programOpts:  {
+// 	// 	model: 'lda',
+// 	// 	modelLearnType: 'MeanField',
+// 	// 	optimize_verbose: true,
+// 	// 	optimize_nSteps: 500,
+// 	// 	doELBOProgress: false
+// 	// },
+// 	runtimeOpts:  {
 
-	}
-});
-console.log(ret);
+// 	}
+// });
+// console.log(ret);
 
 // ----------------------------------------------------------------------------
 
-// var runOpts = {
+var runtimeOpts = {
 
-// };
+};
 
-// var baseProgramOpts = {
-// 	model: 'bn_oneLatent'
-// };
+var baseProgramOpts = {
+	model: 'bn_latentCC',
+	optimize_verbose: true
+};
 
-// var data = 
-// exp.start(baseProgramOpts,
-// 	exp.condition('model', ['bn_twoLatents_indep', 'bn_twoLatents_dep'],
-// 		exp.condition('localGuideType', ['MeanField', 'Recognition'],
-// 			exp.row(function(programOpts) {
-// 				return run({
-// 					programOpts: programOpts,
-// 					runOpts: runOpts
-// 				});
-// 			})
-// 		)
-// 	)
-// );
+var expdat = 
+exp.start(baseProgramOpts,
+	exp.condition('guideDependence', [false, true],
+		exp.condition('localGuideType', ['MeanField', 'Recognition'],
+			exp.run(function(programOpts) {
+				return runModel({
+					programOpts: programOpts,
+					runtimeOpts: runtimeOpts
+				});
+			})
+		)
+	)
+);
 
-// var dataLPAndESS = exp.filterData(data, function(colname) {
-// 	return colname !== 'elboProgress';
-// });
-// exp.saveDataToCSV(dataLPAndESS, __dirname + '/dataLPAndESS.csv');
+var lpAndESS = data.remove(expdat, ['elboProgress']);
+data.saveCSV(lpAndESS, __dirname + '/dataLPAndESS.csv');
 
-// var elboProgress = exp.filterData(data, function(colname) {
-// 	return colname !== 'dataLogProb' && colname !== 'guideESS';
-// });
-// elboProgress = exp.normalizeArrayColumn(elboProgress, 'elboProgress');
-// exp.saveDataToCSV(elboProgress, __dirname + '/elboProgress.csv');
+var elboProgress = data.remove(expdat, ['dataLogProb', 'guideESS']);
+elboProgress = data.normalizeArrayColumn(elboProgress, 'elboProgress');
+data.saveCSV(elboProgress, __dirname + '/elboProgress.csv');
