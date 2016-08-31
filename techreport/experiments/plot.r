@@ -1,4 +1,4 @@
-source('techreport/rUtils.r')	# Assume running from webppl-daipp root
+source('techreport/experiments/rUtils.r')	# Assume running from webppl-daipp root
 
 
 data = read.csv('techreport/experiments/elboProgress.csv')
