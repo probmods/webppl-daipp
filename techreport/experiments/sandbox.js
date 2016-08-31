@@ -1,22 +1,9 @@
-var runModel = require('./runModel.js');
+var runModel = require('../runModel.js');
 var exp = require('./experiment.js');
 
-// var ret = runModel(
-// {
-// 	model: 'bn_latentCC',
-// 	modelLearnType: 'ML_reg',
-// 	optimize_verbose: true,
-// 	doELBOProgress: false
-
-// 	// model: 'lda',
-// 	// modelLearnType: 'MeanField',
-// 	// optimize_verbose: true,
-// 	// optimize_nSteps: 500,
-// 	// doELBOProgress: false
-// });
-// console.log(ret);
-
 // ----------------------------------------------------------------------------
+
+// Play with running different experiments here
 
 var baseProgramOpts = {
 	model: 'bn_latentC',
