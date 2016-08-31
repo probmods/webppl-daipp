@@ -44,8 +44,8 @@ var loadData = function(filename) {
 
 // Can specify dataset in opts, if desired (useful e.g. for only loading dataset
 //    once when running a bunch of experiments on model variants)
-var trainingData = opts.trainingData || loadData('examples/data/mnist_images_train.json');
-var testData = opts.testData || loadData('examples/data/mnist_images_test.json');
+var trainingData = opts.trainingData || loadData('techreport/data/mnist_images_train.json');
+var testData = opts.testData || loadData('techreport/data/mnist_images_test.json');
 
 var dataMean = function(data) {
   var dim = data[0].dims[0];

@@ -10,7 +10,7 @@ var nHidden = opts.nHidden || 3;
 var enumOut = opts.enumOut || false;	// Enumerate out latent topic per word?
 
 // TODO: We need a better LDA dataset...
-var trainingData = readJSON('examples/data/bars2.json');
+var trainingData = readJSON('techreport/data/bars2.json');
 var vocabSize = 4;
 var numTopics = 4;
 

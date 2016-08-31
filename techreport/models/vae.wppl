@@ -9,8 +9,8 @@ var xDim = 784;
 
 // Can specify dataset in opts, if desired (useful e.g. for only loading dataset
 //    once when running a bunch of experiments on model variants)
-var trainingData = opts.trainingData || readDataSetJSON('examples/data/mnist_images_train.json');
-var testData = opts.testData || readDataSetJSON('examples/data/mnist_images_test.json');
+var trainingData = opts.trainingData || readDataSetJSON('techreport/data/mnist_images_train.json');
+var testData = opts.testData || readDataSetJSON('techreport/data/mnist_images_test.json');
 
 // Recognition network.
 // Maps from an input image to the parameters of the guide
