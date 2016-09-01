@@ -58,6 +58,7 @@ function compileModel(opts) {
 		optimize_estimator: { ELBO2: { samples: 1 } },
 		optimize_verbose: false,
 		optimize_logProgress: 200,
+		saveParams: false,	// Can be a filename where params should be saved
 
 		// Evaluation stuff
 		doCustomReturns: true,

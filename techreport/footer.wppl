@@ -69,6 +69,10 @@ var optParams = typeof optimizeOpts !== 'undefined' ? _.extend(_optParams, optim
 
 var params = Optimize(model, optParams);
 
+if (opts.saveParams) {
+	writeJSON(opts.saveParams, params);
+}
+
 // ----------------------------------------------------------------------------
 
 // Compute & record evaluation metrics
