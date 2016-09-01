@@ -20,6 +20,19 @@ rUtils.saferequire('ggplot2')
 rUtils.saferequire('ggthemes')
 rUtils.saferequire('memoise')
 
+rUtils.dirOfThisFile <- function() {
+  cmdArgs <- commandArgs(trailingOnly = FALSE)
+  needle <- "--file="
+  match <- grep(needle, cmdArgs)
+  if (length(match) > 0) {
+    # Rscript
+    return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+  } else {
+    # 'source'd via R console
+    return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+  }
+}
+
 # -----------------------------------------------------------------------------
 
 rUtils.ci <- memoise(function(x, n = 5000){
@@ -52,7 +65,48 @@ rUtils.plot.tableauify <- function(plot) {
 rUtils.plot.lineSize = 1
 rUtils.plot.ribbonAlpha = 0.5
 
-rUtils.plot.linePlotDefaultHeight = 4;
-rUtils.plot.linePlotDefaultAspect = 1.5;
+rUtils.plot.linePlotHeight = 4;
+rUtils.plot.linePlotAspect = 1.5;
 
 }
+
+rUtils.plot.elboProgress <- function(datafilename, outfilename,
+                                     condition = NULL, ribbon = TRUE,
+                                     height = rUtils.plot.linePlotHeight,
+                                     aspect = rUtils.plot.linePlotAspect) {
+  data = read.csv(datafilename)
+
+  data.agg = if (!is.null(condition)) data %>% group_by(condition) else data
+  data.agg = data.agg %>% 
+    group_by(index) %>%
+    summarise(iter = median(iter),
+          objective.mean = mean(objective),
+          objective.ci.l = rUtils.ci.l(objective),
+          objective.ci.u = rUtils.ci.u(objective))
+
+  line_aes = if (!is.null(condition))
+    aes(y = objective.mean, color = get('condition')) else
+    aes(y = objective.mean)
+
+  plot = rUtils.plot.tableauify(
+       ggplot(data = data.agg,
+          mapping = aes(x = iter)) +
+         geom_line(mapping = line_aes,
+                   size = rUtils.plot.lineSize) +
+         xlab("Iteration") +
+         ylab("ELBO"))
+
+  if (ribbon) {
+    ribbon_aes = if (!is.null(condition))
+      aes(ymin = objective.ci.l, fill = get('condition'), ymax = objective.ci.u) else
+      aes(ymin = objective.ci.l, ymax = objective.ci.u)
+
+    plot = plot + geom_ribbon(mapping = ribbon_aes,
+                              alpha = rUtils.plot.ribbonAlpha)
+  }
+  
+  ggsave(outfilename, plot,
+       width = rUtils.plot.linePlotHeight * rUtils.plot.linePlotAspect,
+       height = rUtils.plot.linePlotHeight)
+}
+
