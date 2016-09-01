@@ -203,6 +203,17 @@ plotUtils.plot.nll <- function(data, condition = NULL, ...) {
     colorby = NULL, ...)
 }
 
+plotUtils.plot.ess <- function(data, condition = NULL, ...) {
+  if (is.null(condition)) {
+    condition = 'condition'
+    data = data %>% mutate(condition = 'default')
+  }
+
+  plotUtils.plot.barPlot(data,
+    groupbys = c(condition), x = condition, y = 'guideESS', xlabel = '', ylabel = 'Guide ESS',
+    colorby = NULL, ...)
+}
+
 # -----------------------------------------------------------------------------
 
 }
