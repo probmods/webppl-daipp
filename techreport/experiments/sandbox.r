@@ -1,4 +1,11 @@
-source('techreport/experiments/rUtils.r')	# Assume running from webppl-daipp root
+source('techreport/experiments/plotUtils.r')	# Assume running from webppl-daipp root
 
-dir = rUtils.dirOfThisFile()
-rUtils.plot.elboProgress(paste0(dir, '/elboProgress.csv'), paste0(dir, '/elboProgress.pdf'))
+# dir = plotUtils.dirOfThisFile()
+# data = read.csv(paste0(dir, '/elboProgress.csv'))
+# plot = plotUtils.plot.elboProgress(data)
+# plotUtils.plot.save(plot, paste0(dir, '/elboProgress.pdf'))
+
+dir = plotUtils.dirOfThisFile()
+data = read.csv(paste0(dir, '/dataLPAndESS.csv'))
+plot = plotUtils.plot.nll(data, condition = 'condition')
+plotUtils.plot.save(plot, paste0(dir, '/nll.pdf'))
