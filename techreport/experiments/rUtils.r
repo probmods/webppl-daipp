@@ -19,6 +19,7 @@ rUtils.saferequire('dplyr')
 rUtils.saferequire('ggplot2')
 rUtils.saferequire('ggthemes')
 rUtils.saferequire('memoise')
+rUtils.saferequire('lazyeval')
 
 rUtils.dirOfThisFile <- function() {
   cmdArgs <- commandArgs(trailingOnly = FALSE)
@@ -68,45 +69,64 @@ rUtils.plot.ribbonAlpha = 0.5
 rUtils.plot.linePlotHeight = 4;
 rUtils.plot.linePlotAspect = 1.5;
 
-}
-
-rUtils.plot.elboProgress <- function(datafilename, outfilename,
-                                     condition = NULL, ribbon = TRUE,
-                                     height = rUtils.plot.linePlotHeight,
-                                     aspect = rUtils.plot.linePlotAspect) {
+rUtils.plot.linePlot <- function(datafilename, outfilename, groupbys, x, y, xlabel, ylabel,
+                                 colorby = NULL, ribbon = TRUE,
+                                 height = rUtils.plot.linePlotHeight,
+                                 aspect = rUtils.plot.linePlotAspect) {
   data = read.csv(datafilename)
 
-  data.agg = if (!is.null(condition)) data %>% group_by(condition) else data
-  data.agg = data.agg %>% 
-    group_by(index) %>%
-    summarise(iter = median(iter),
-          objective.mean = mean(objective),
-          objective.ci.l = rUtils.ci.l(objective),
-          objective.ci.u = rUtils.ci.u(objective))
+  # Arcane bullshittery: turn the groupbys character vector into a symbol vector
+  data.agg = data %>% group_by_(.dots = lapply(groupbys, as.symbol)) %>%
+  # More arcane bullshittery: using lazyeval's interp to partially-evaluate a variable value into a quote
+    summarise_(
+      x.median = interp(~median(x), x = as.symbol(x)),
+      y.mean = interp(~mean(y), y = as.symbol(y)),
+      y.ci.l = interp(~rUtils.ci.l(y), y = as.symbol(y)),
+      y.ci.u = interp(~rUtils.ci.u(y), y = as.symbol(y))
+    )
 
-  line_aes = if (!is.null(condition))
-    aes(y = objective.mean, color = get('condition')) else
-    aes(y = objective.mean)
+  line_aes = if (!is.null(colorby))
+    aes(y = y.mean, color = get('colorby')) else
+    aes(y = y.mean)
 
   plot = rUtils.plot.tableauify(
        ggplot(data = data.agg,
-          mapping = aes(x = iter)) +
+              mapping = aes(x = x.median)) +
          geom_line(mapping = line_aes,
                    size = rUtils.plot.lineSize) +
-         xlab("Iteration") +
-         ylab("ELBO"))
+         xlab(xlabel) +
+         ylab(ylabel))
 
   if (ribbon) {
-    ribbon_aes = if (!is.null(condition))
-      aes(ymin = objective.ci.l, fill = get('condition'), ymax = objective.ci.u) else
-      aes(ymin = objective.ci.l, ymax = objective.ci.u)
+    ribbon_aes = if (!is.null(colorby))
+      aes(ymin = y.ci.l, ymax = y.ci.u, fill = get('colorby')) else
+      aes(ymin = y.ci.l, ymax = y.ci.u)
 
     plot = plot + geom_ribbon(mapping = ribbon_aes,
                               alpha = rUtils.plot.ribbonAlpha)
   }
-  
+
   ggsave(outfilename, plot,
        width = rUtils.plot.linePlotHeight * rUtils.plot.linePlotAspect,
        height = rUtils.plot.linePlotHeight)
 }
 
+# -----------------------------------------------------------------------------
+
+rUtils.plot.elboProgress <- function(datafilename, outfilename,
+                                     condition = NULL, ribbon = TRUE,
+                                     height, aspect) {
+  groupbys = if (!is.null(condition))
+    c(condition, 'index') else
+    c('index')
+
+  rUtils.plot.linePlot(datafilename, outfilename,
+    groupbys = groupbys, x = 'iter', y = 'objective',
+    xlabel = 'Iteration', ylabel = 'ELBO',
+    colorby = condition, ribbon = ribbon,
+    height = height, aspect = aspect)
+}
+
+# -----------------------------------------------------------------------------
+
+)
