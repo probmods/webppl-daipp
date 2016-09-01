@@ -98,12 +98,16 @@ var guideESS = !opts.doGuideESS ? undefined : (function() {
 	return sum(ess_estimates) / nDataPoints;
 })();
 
+// Anything requested by the model
+var customReturns = (opts.doCustomReturns && typeof computeCustomReturns !== 'undefined') ? 
+	computeCustomReturns() : {};
+
 // Return
-var ret = {
+var ret = _.extend({
 	dataLogProb: dataLogProb,
 	guideESS: guideESS,
 	elboProgress: !opts.doELBOProgress ? undefined : params.optimizeProgressLog
-};
+}, customReturns);
 ret;
 
 

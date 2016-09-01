@@ -64,5 +64,6 @@ var model = function() {
 
 // Model-specific Optimize options
 var optimizeOpts = {
+  steps: 500,
   optMethod: { adam: { stepSize: 0.001 } }
 };

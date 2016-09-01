@@ -60,6 +60,7 @@ function compileModel(opts) {
 		optimize_logProgress: 200,
 
 		// Evaluation stuff
+		doCustomReturns: true,
 		doDataLogProb: true,
 		doGuideESS: true,
 		doELBOProgress: true,

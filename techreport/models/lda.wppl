@@ -9,9 +9,9 @@ assert(opts.doModelLearning);
 var nHidden = opts.nHidden || 3;
 var enumOut = opts.enumOut || false;	// Enumerate out latent topic per word?
 
-// TODO: We need a better LDA dataset...
-var trainingData = readJSON('techreport/data/bars2.json');
-var vocabSize = 4;
+var cocolabAbstracts = opts.trainingData || readJSON('techreport/data/cocolabAbstractCorpus.json')
+var trainingData = cocolabAbstracts.documentsAsCounts;
+var vocabSize = cocolabAbstracts.numWords;
 var numTopics = 4;
 
 
@@ -54,5 +54,31 @@ var model = function() {
 		}, doc);
 
 	});
+
+	return wordDistsForTopics;
 };
 
+// Model-specific Optimize options
+var optimizeOpts = {
+	estimator: {ELBO2: {samples: 3, avgBaselines: true}},
+};
+
+// Model-specific quantities to compute / return after optimization
+var computeCustomReturns = function(params) {
+	// Generate an approximate posterior sample of the word distributions per topic,
+	//    report the top N most likely words for each topic.
+	var N = 10;
+	var wordDistsForTopics = sample(SampleGuide(model, {params: params}));
+	var topWordsPerTopic = map(function(wordDist) {
+		var indicesWithScores = map(function(i) {
+			return {i: i, s: wordDist.score(i)};
+		}, wordDist.support());
+		var topN = sort(indicesWithScores, gt, function(is) { return is.s; }).slice(0, N);
+		return map(function(is) {
+			return cocolabAbstracts.indexToWordDict[is.i];
+		}, topN);
+	}, wordDistsForTopics);
+	return {
+		topWordsPerTopic: topWordsPerTopic
+	};
+};
