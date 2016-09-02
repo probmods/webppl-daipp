@@ -15,24 +15,27 @@ var isNumberOrScalarNode = function(x) {
 
 // Parameters
 
-var paramScalar = function(mu, sigma) {
-	return scalarParam(mu || 0, sigma || 0.1);
+var paramScalar = function(mu, sigma, name) {
+	return scalarParam(mu || 0, sigma || 0.1, name);
 };
 
-var paramVector = function(n, mu, sigma) {
-	return param([n, 1], mu || 0, sigma || 0.1);
+var paramVector = function(n, mu, sigma, name) {
+	return param([n, 1], mu || 0, sigma || 0.1, name);
 };
 
-var paramMatrix = function(n, m, mu, sigma) {
-	return param([n, m], mu || 0, sigma || 0.1);
+var paramMatrix = function(n, m, mu, sigma, name) {
+	return param([n, m], mu || 0, sigma || 0.1, name);
 };
 
-var perceptronParams = function(spec) {
+var perceptronParams = function(spec, name) {
+	var extendname = function(suffix) {
+		return name === undefined ? undefined : name + suffix;
+	};
 	return {
-		W_hidden: paramMatrix(spec.nHidden, spec.nIn),
-		b_hidden: paramVector(spec.nHidden),
-		W_out: paramMatrix(spec.nOut, spec.nHidden),
-		b_out: paramVector(spec.nOut)
+		W_hidden: paramMatrix(spec.nHidden, spec.nIn, extendname('_Whidden')),
+		b_hidden: paramVector(spec.nHidden, extendname('_bhidden')),
+		W_out: paramMatrix(spec.nOut, spec.nHidden, extendname('_Wout')),
+		b_out: paramVector(spec.nOut, extendname('_bout'))
 	};
 };
 
