@@ -32,7 +32,8 @@ var model = function() {
 
 		var topicDistForDoc = Discrete({ps: makeWeightsGenerative(undefined, alpha)});
 
-		mapIndexed(function(word, count) {
+		// mapIndexed(function(word, count) {
+		mapData({data: doc}, function(count, word) {
 
 			if (count > 0) {
 				if (!enumOut) {
@@ -51,7 +52,8 @@ var model = function() {
 				}
 			}
 
-		}, doc);
+		// }, doc);
+		});
 
 	});
 
