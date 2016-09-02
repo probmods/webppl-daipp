@@ -49,17 +49,17 @@ var dataMean = function(data) {
 
 var sbn = function(data, processDatum) {
 
-  var We = param([numhid, numviz], 0, 0.001);
-  var be = param([numhid, 1]);
+  var We = paramMatrix(numhid, numviz, 0, 0.001);
+  var be = paramVector(numhid);
 
-  var Wd = param([numviz, numhid], 0, 0.001);
-  var bd = param([numviz, 1]);
+  var Wd = paramMatrix(numviz, numhid, 0, 0.001);
+  var bd = paramVector(numviz);
 
   // var Wd = sample(TensorGaussian({mu: 0, sigma: 1, dims: [numviz, numhid]}), {
-  //   guide: Delta({v: param([numviz, numhid], 0, 0.001)})
+  //   guide: Delta({v: paramMatrix(numviz, numhid, 0, 0.001)})
   // });
   // var bd = sample(TensorGaussian({mu: 0, sigma: 1, dims: [numviz, 1]}), {
-  //   guide: Delta({v: param([numviz, 1], 0, 0.001)})
+  //   guide: Delta({v: paramVector(numviz, 0, 0.001)})
   // });
 
   var encode = function(datum) {

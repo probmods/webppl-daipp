@@ -23,8 +23,8 @@ var lda = function(corpus, vocabSize, numTopics, alpha, eta) {
     return sampleDaipp(Dirichlet({alpha: eta}));
     // return sample(Dirichlet({alpha: eta}), {
     //   guide: LogisticNormal({
-    //     mu: param([3, 1], 0),
-    //     sigma: softplus(param([3, 1], 0))
+    //     mu: paramVector(3),
+    //     sigma: softplus(paramVector(3))
     //   })
     // });
   });
@@ -39,8 +39,8 @@ var lda = function(corpus, vocabSize, numTopics, alpha, eta) {
     var topicDist = sampleDaipp(Dirichlet({alpha: alpha}));
     // var topicDist = sample(Dirichlet({alpha: alpha}), {
     //   guide: LogisticNormal({
-    //     mu: param([3, 1], 0),
-    //     sigma: softplus(param([3, 1], 0))
+    //     mu: paramVector(3),
+    //     sigma: softplus(paramVector(3))
     //   })
     // });
 

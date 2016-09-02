@@ -23,7 +23,7 @@ var decode = function(z, W, b) {
 };
 
 var nnparam = function(a, b) {
-  return param([a, b], 0, 0.1);
+  return paramMatrix(a, b, 0, 0.1);
 };
 
 var model = function() {

@@ -15,18 +15,6 @@ var isNumberOrScalarNode = function(x) {
 
 // Parameters
 
-var paramScalar = function(mu, sigma, name) {
-	return scalarParam(mu || 0, sigma || 0.1, name);
-};
-
-var paramVector = function(n, mu, sigma, name) {
-	return param([n, 1], mu || 0, sigma || 0.1, name);
-};
-
-var paramMatrix = function(n, m, mu, sigma, name) {
-	return param([n, m], mu || 0, sigma || 0.1, name);
-};
-
 var perceptronParams = function(spec, name) {
 	var extendname = function(suffix) {
 		return name === undefined ? undefined : name + suffix;
