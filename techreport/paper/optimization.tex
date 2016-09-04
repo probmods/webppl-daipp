@@ -1,0 +1,12 @@
+%auto-ignore
+\section{Optimizing Guide Parameters}
+\label{sec:optimization}
+
+Background: The ELBo objective, the PW and LR estimators and when they are each applicable.
+
+Hybrid PW/LR estimator. Each term drops out in certain conditions (refer to appendix for proofs). How our AD implementation handles this dropping out implicitly.
+
+Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depend on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.
+
+Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but referto appendix for its own proof?) Neural baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
+

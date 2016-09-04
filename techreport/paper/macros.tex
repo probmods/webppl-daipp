@@ -1,0 +1,32 @@
+%auto-ignore
+%% For adding comments to the text
+\newcommand{\remark}[1]{\textcolor{red}{[#1]}}
+% \newcommand{\remark}[1]{}
+
+%% Vector quantities
+\newcommand{\vecstyle}[1]{\mathbf{#1}}
+
+\newcommand{\specialcell}[2][c]{%
+  \begin{tabular}[#1]{@{}l@{}}#2\end{tabular}}
+
+%% Units of measurement
+\newcommand{\unit}[1]{\ensuremath{\,\mathrm{#1}}}
+
+%% The indicator function
+\newcommand{\indicator}[1]{\ensuremath{\mathds{1}\{#1\}}}
+
+%% The normal distribution
+\newcommand{\normdist}{\ensuremath{\mathcal{N}}}
+
+%% The set of real numbers
+\newcommand{\Rn}{\ensuremath{\mathds{R}^n}}
+
+%% Inline code listings
+\newcommand{\ic}[1]{\lstinline[basicstyle=\fontsize{8pt}{8.25pt}\selectfont\ttfamily]{#1}}
+
+
+%% ----------------------------------------------------------------
+
+%% The name of our neurally-guided models
+\newcommand{\neuralModel}{neurally-guided procedural model}
+\newcommand{\NeuralModel}{Neurally-guided procedural model}

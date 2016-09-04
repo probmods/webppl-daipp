@@ -1,0 +1,31 @@
+\definecolor{strings}{rgb}{.624,.251,.259}
+\definecolor{keywords}{rgb}{.224,.451,.686}
+\definecolor{comment}{rgb}{.322,.451,.322}
+
+\lstdefinelanguage{js}{
+  keywords={break, case, catch, continue, debugger, default, delete, do, else, false, finally, for, function, if, in, instanceof, new, null, return, switch, this, throw, true, try, typeof, var, void, while, with},
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]',
+  morestring=[b]",
+  keywordstyle=\color{keywords}\bfseries,
+  commentstyle=\color{comment}\ttfamily,
+  stringstyle=\color{strings}\ttfamily,
+  sensitive=true
+}
+
+\lstset{
+  language=js,
+  basicstyle=\fontsize{8pt}{8.25pt}\selectfont\ttfamily,
+  basewidth=0.5em,
+%  numbers=left, 
+  numbers=none,
+  numberstyle=\tiny,
+  stepnumber=1,
+  columns=fixed,
+  xleftmargin=2ex,%0.25in,
+  firstnumber=1,
+  showstringspaces=false, 
+  mathescape=true,
+  %breaklines
+}

@@ -1,0 +1,54 @@
+%auto-ignore
+\section{Experiments}
+\label{sec:results}
+
+For each example give hand written guide and convergence results of various versions of the algorithm.
+
+
+\subsection{Simple Bayesian Networks}
+\label{sec:results_bn}
+
+i.e. the running examples from earlier, plus the one that's equivalent to a GMM(?)
+
+Amortized inference alone.
+
+Model learning plus inference.
+
+
+\subsection{Variational Autoencoder}
+\label{sec:results_vae}
+
+Cite AEVB paper.
+
+Show learned MNIST manifold?
+
+Explore model uncertainty?
+
+Explore mixture guides?
+
+Consider factorial version (ie multiple latents)?
+
+
+\subsection{Sigmoid Belief Network}
+\label{sec:results_sbn}
+
+Cite similarities between this model and the NVIL one.
+
+
+\subsection{Latent Dirichlet Allocation}
+\label{sec:results_lda}
+
+Introduce the CoCoLab abstracts dataset (is there a citation for this yet?)
+
+Just (manually-specified) mean-field guides, for now.
+
+Show Top N words for each learned topic?
+
+
+Things to try if we have time:
+\begin{itemize}
+\item{Simple bayesian NN (show how easy it is to do full variational Bayes)}
+\item{HMM-type families: Deep kalman filter? Or other RNN VAE type thing?}
+\item{PCFG (prob won’t work, but useful to understand). Continuous feature-passing version?}
+\end{itemize}
+

@@ -1,0 +1,45 @@
+%auto-ignore
+% \usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{amsmath,listings,xspace,color,amssymb}
+\usepackage{amsfonts}
+\usepackage{dsfont}
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{bm}
+
+%% Better font for code blocks
+\usepackage{inconsolata}
+
+%% For auto-inserting line breaks in extra long equations
+\usepackage{etoolbox}
+\usepackage{breqn}
+
+% Specifying reft/left alignment of figures
+\usepackage[export]{adjustbox}
+
+%% For algorithm pseudocode listings
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+%% Advance theorem/proof formatting
+\usepackage{amsthm}
+
+% Yo dawg, I heard you like figures...
+\usepackage{subcaption}
+% arXiv has problems if I don't do this
+\captionsetup{compatibility=false}
+
+%% Because dmath and line numbering don't play well together
+% See http://tex.stackexchange.com/questions/86529/breqn-and-lineno-incompatibility
+\BeforeBeginEnvironment{dmath}{\begin{nolinenumbers}}
+\AfterEndEnvironment{dmath}{\end{nolinenumbers}}
+\BeforeBeginEnvironment{dmath*}{\begin{nolinenumbers}}
+\AfterEndEnvironment{dmath*}{\end{nolinenumbers}}
+
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+
+\usepackage[percent]{overpic}
+
+\usepackage{wrapfig}
