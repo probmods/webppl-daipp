@@ -153,8 +153,6 @@ module.exports = function(env) {
       }
       //otherwise treat as enum: only equal objects have same vec.
       return nneval(getConstant(val));
-    case "null":
-      val = "iamnull" //just in case cache doesn't deal properly with null key.
     default:
       //default case: treat as enum type and memoize embedding vector.
       //this catches, boolean, string, symbol, etc.
