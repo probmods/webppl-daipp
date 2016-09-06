@@ -82,7 +82,6 @@ module.exports = function(env) {
   }
 
   // dritchie: We need a function that wraps any call to nn.eval(), which will do parameter registration
-  // IMPORTANT: We assume that every nn has been given a name, which we use for the param name/address
   // -------------
   // Doing this in raw WebPPL would be incorrect; the address at each call to eval() could be different,
   //    and so we'd end up registering multiple sets of parameters for the same network
@@ -100,6 +99,7 @@ module.exports = function(env) {
 
     // registerParams is made globally available in the WebPPL header.
     if (nn.getParameters().length > 0) {
+      assert.ok(nn.name && nn.name.length > 0, 'daipp: Parameterized net cannot be anonymous.');
       util.registerParams(env, nn.name,
                           useXavierInit ? wrapGetParamsWithXavier(nn) : nn.getParameters.bind(nn),
                           nn.setParameters.bind(nn));
