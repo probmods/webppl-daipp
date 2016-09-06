@@ -39,8 +39,8 @@ var initContext = function(data) {
 //TODO: make deeper? use GRU / LSTM? ResNet?
 //TODO: take optional name/type to allow different update nets, eg for sample vs deterministic vs return.
 
-var updateNet = daipp.makeRU(daipp.latentSize, 2*daipp.latentSize, 'updateNet');
-updateNet.setTraining(true)
+var updateNet = daipp.makeRU('rnn', daipp.latentSize, 2*daipp.latentSize, 'updateNet', daipp.debug);
+
 
 var updateContext = function(val) {
   var dataVec = daipp.val2vec(val)
@@ -69,8 +69,7 @@ var updateContext = function(val) {
 
 // paul: note that params isn't necessarily an array of reals.
 
-var predictNet = daipp.makeRU(daipp.latentSize, 2*daipp.latentSize, 'predictNet');
-predictNet.setTraining(true)
+var predictNet = daipp.makeRU('rnn', daipp.latentSize, 2*daipp.latentSize, 'predictNet', daipp.debug);
 
 var DAIPPguide = function(dist, val) {
   var dataVec = daipp.val2vec(val)

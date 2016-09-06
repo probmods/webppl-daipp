@@ -10,6 +10,7 @@ var LRU = require('lru-cache');
 // * nn
 // * T
 
+var rnn = require('./rnn');
 var Tensor = T['__Tensor'];
 
 module.exports = function(env) {
@@ -60,64 +61,6 @@ module.exports = function(env) {
     }
   }
 
-  var makeRU = function(hdim, xdim, name) {
-    // Create a simple recurrent unit.
-    var net =  nn.sequence(
-      [nn.linear(hdim+xdim, hdim), nn.tanh],
-      name + ':activation',
-      debug);
-    var fn = function(args) {
-      var hprev = args[0];
-      var x = args[1];
-      var hprevx = nn.concat.eval(hprev, x);
-      return net.eval(hprevx);
-    };
-    return nn.compound(fn, [net, nn.concat], name);
-  };
-
-  var makeGRU = function(hdim, xdim, name) {
-    // Create a Gated Recurrent Unit.
-
-    // Update gate.
-    // z = sigmoid(Wz . [hprev, x])
-    var updateNet = nn.sequence(
-      [nn.linear(hdim+xdim, hdim), nn.sigmoid],
-      name + ':update',
-      debug);
-
-    // Reset gate.
-    // r = sigmoid(Wr . [hprev, x])
-    var resetNet = nn.sequence(
-      [nn.linear(hdim+xdim, hdim), nn.sigmoid],
-      name + ':reset',
-      debug);
-
-    // Candidate activation.
-    // h' = tanh(W . [r*hprev, x])
-    var candidateNet = nn.sequence(
-      [nn.linear(hdim+xdim, hdim), nn.tanh],
-      name + ':activation',
-      debug);
-
-    // Take a single arg to play nicely with daipp's nneval.
-    var fn = function(args) {
-      var hprev = args[0];
-      var x = args[1];
-      var hprevx = nn.concat.eval(hprev, x);
-      var z = updateNet.eval(hprevx);
-      var r = resetNet.eval(hprevx);
-      var candidate = candidateNet.eval(nn.concat.eval(nn.mul.eval(r, hprev), x));
-      // Output.
-      // h = (1-z)*hprev + z*h'
-      var h = nn.add.eval(nn.mul.eval(nn.add.eval(nn.mul.eval(z, -1), 1), hprev), nn.mul.eval(z, candidate));
-      return h;
-    };
-
-    var subnets = [updateNet, resetNet, candidateNet, nn.concat, nn.mul, nn.add];
-    return nn.compound(fn, subnets, name);
-  };
-
-  // TODO: Add "bilinear resnet", LSTM.
 
   // dritchie: We need a function that wraps any call to nn.eval(), which will do parameter registration
   // IMPORTANT: We assume that every nn has been given a name, which we use for the param name/address
@@ -163,8 +106,7 @@ module.exports = function(env) {
   }
 
 
-  var arrayRNN = makeRU(latentSize, latentSize, 'arrayRNN');
-  arrayRNN.setTraining(true);
+  var arrayRNN = rnn.makeRU('rnn', latentSize, latentSize, 'arrayRNN', debug);
 
   //val2vec takes an object and turns it into a vector.
   function val2vec(val) {
@@ -402,8 +344,7 @@ module.exports = function(env) {
       vec2dist: vec2dist,
       orderedValues: orderedValues,
       debug: debug,
-      makeRU: makeRU,
-      makeGRU: makeGRU
+      makeRU: rnn.makeRU
     },
     getObsFnAddress: getObsFnAddress
   };
