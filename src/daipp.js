@@ -14,7 +14,10 @@ module.exports = function(env) {
   var config = util.mergeDefaults(global.DAIPP_CONFIG, {
     debug: true, // Enable debug checks for nets?
     latentSize: 10, // Sets the size of the context net throughout.
-    useXavierInit: false // Use Xavier weight init. when true, otherwise use adnn default.
+    useXavierInit: false, // Use Xavier weight init. when true, otherwise use adnn default.
+    predictUsingContext: true, // When false, zero out chosen input to predict net.
+    predictUsingAddress: true,
+    predictUsingValue: true
   });
 
   // Core daipp functions.
@@ -48,6 +51,7 @@ module.exports = function(env) {
 
   return {
     daipp: {
+      config: config,
       debug: config.debug,
       latentSize: config.latentSize,
       val2vec: val2vec,

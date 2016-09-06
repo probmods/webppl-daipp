@@ -16,6 +16,7 @@ daipp.val2vec embeds js objects into vectors,
 daipp.vec2dist chooses an importance distribution ad generates its params.
 */
 
+var daippZeroVec = zeros([daipp.latentSize]);
 
 //A function used to initialize the context, given some data (or a summary of data)
 // dritchie: It's not clear to me why we really need another net here? Why not let the initial
@@ -72,12 +73,12 @@ var updateContext = function(val) {
 var predictNet = daipp.makeRU('rnn', daipp.latentSize, 2*daipp.latentSize, 'predictNet', daipp.debug);
 
 var DAIPPguide = function(dist, val) {
-  var dataVec = daipp.val2vec(val)
   var address = getObsFnAddress()
+
+  var dataVec = daipp.config.predictUsingVal ? daipp.val2vec(val) : daippZeroVec;
   //TODO: at the moment the address will be a single string, so val2vec will learn a separate embedding per address. we may want to split the string into an array (of syntax sites); in that case val2vec will use an RNN along the array, making related addresses have related vectors.
-  var addressVec = daipp.val2vec(address)
-  // var context = zeros([daipp.latentSize]) //for testing how much the context net matters...
-  var context = globalStore.context
+  var addressVec = daipp.config.predictUsingAddress ? daipp.val2vec(address) : daippZeroVec;
+  var context = daipp.config.predictUsingContext ? globalStore.context : daippZeroVec;
 
   //merge the val, address together
   var predictInput = ad.tensor.concat(addressVec, dataVec);
