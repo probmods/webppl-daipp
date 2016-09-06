@@ -153,12 +153,6 @@ module.exports = function(env) {
       }
       //otherwise treat as enum: only equal objects have same vec.
       return nneval(getConstant(val));
-
-      // FIXME: The fall through here means the all objects not
-      // implementing embed2vec are treat as null. Fix by checking
-      // cache handles null and removing the case below? I'd also be
-      // tempted to not rely on fall through at all, it's a frequent
-      // source of bugs.
     case "null":
       val = "iamnull" //just in case cache doesn't deal properly with null key.
     default:
