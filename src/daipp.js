@@ -21,6 +21,9 @@ module.exports = function(env) {
   //this sets the size of the context network throughout daipp
   var latentSize = 10
 
+  // When true uses Xavier weight init. scheme. Otherwise uses adnn default.
+  var useXavierInit = false;
+
   // Returns the part of the stack address which has been added since
   // entering the inner-most mapData. Outside of any mapData the
   // address relative to the inner-most coroutine is returned.
@@ -61,6 +64,22 @@ module.exports = function(env) {
     }
   }
 
+  // Wrap a net's getParameters function with a function that
+  // re-initializes all parameters using the Xavier initialization
+  // scheme.
+
+  // One further advantage of this is that initialization can be made
+  // repeatable using webppl's --random-seed option.
+
+  function wrapGetParamsWithXavier(nn) {
+    return function() {
+      var params = nn.getParameters().map(ad.value);
+      params.forEach(xavierInit);
+      // It's OK that we don't re-lift params here, registerParams
+      // handles this.
+      return params;
+    };
+  }
 
   // dritchie: We need a function that wraps any call to nn.eval(), which will do parameter registration
   // IMPORTANT: We assume that every nn has been given a name, which we use for the param name/address
@@ -82,18 +101,7 @@ module.exports = function(env) {
     // registerParams is made globally available in the WebPPL header.
     if (nn.getParameters().length > 0) {
       util.registerParams(env, nn.name,
-                          function() {
-                            var params = nn.getParameters().map(ad.value);
-                            // Replace the adnn initialization with 'xavier
-                            // initialization'.
-                            // One further advantage of this is that
-                            // initialization can be made repeatable using
-                            // webppl's --random-seed option.
-                            params.forEach(xavierInit);
-                            // It's OK that we don't re-lift params here,
-                            // registerParams handles this.
-                            return params;
-                          },
+                          useXavierInit ? wrapGetParamsWithXavier(nn) : nn.getParameters.bind(nn),
                           nn.setParameters.bind(nn));
     }
 
