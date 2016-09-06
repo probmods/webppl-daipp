@@ -11,11 +11,11 @@ var rnn = require('./rnn');
 
 module.exports = function(env) {
 
-  var config = {
+  var config = util.mergeDefaults(global.DAIPP_CONFIG, {
     debug: true, // Enable debug checks for nets?
     latentSize: 10, // Sets the size of the context net throughout.
     useXavierInit: false // Use Xavier weight init. when true, otherwise use adnn default.
-  };
+  });
 
   // Core daipp functions.
 
