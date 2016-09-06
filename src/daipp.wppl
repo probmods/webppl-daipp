@@ -40,7 +40,7 @@ var initContext = function(data) {
 //TODO: make deeper? use GRU / LSTM? ResNet?
 //TODO: take optional name/type to allow different update nets, eg for sample vs deterministic vs return.
 
-var updateNet = daipp.makeRU('rnn', daipp.latentSize, 2*daipp.latentSize, 'updateNet', daipp.debug);
+var updateNet = daipp.makeRU(daipp.config.updateNetType, daipp.latentSize, 2*daipp.latentSize, 'updateNet', daipp.debug);
 
 
 var updateContext = function(val) {

@@ -15,6 +15,7 @@ module.exports = function(env) {
     debug: true, // Enable debug checks for nets?
     latentSize: 10, // Sets the size of the context net throughout.
     useXavierInit: false, // Use Xavier weight init. when true, otherwise use adnn default.
+    updateNetType: 'rnn', // See rnn.js for available options.
     predictUsingContext: true, // When false, zero out chosen input to predict net.
     predictUsingAddress: true,
     predictUsingValue: true
