@@ -1,11 +1,5 @@
-// We depend on webppl making the following global variables
-// available:
-
-// * dists
-// * util
-// * ad
-// * nn
-// * T
+// Throughout the daipp package we make use of the fact that webppl
+// defines the following global variables: dists, util, ad, nn, T.
 
 var rnn = require('./rnn');
 var daippUtil = require('./util');

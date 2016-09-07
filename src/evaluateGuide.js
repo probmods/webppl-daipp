@@ -1,12 +1,5 @@
 'use strict';
 
-// We depend on webppl making the following global variables
-// available:
-
-// * _
-// * util
-// * ad
-
 module.exports = function(env) {
 
   function EvaluateGuide(s, k, a, wpplFn, options) {
