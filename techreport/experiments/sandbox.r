@@ -7,7 +7,7 @@ source('techreport/experiments/plotUtils.r')	# Assume running from webppl-daipp 
 
 dir = plotUtils.dirOfThisFile()
 data = read.csv(paste0(dir, '/dataLPAndESS.csv'))
-plot = plotUtils.plot.nll(data, condition = 'condition')
+plot = plotUtils.plot.nll(data)
 plotUtils.plot.save(plot, paste0(dir, '/nll.pdf'))
-plot = plotUtils.plot.ess(data, condition = 'condition')
+plot = plotUtils.plot.ess(data)
 plotUtils.plot.save(plot, paste0(dir, '/ess.pdf'))
