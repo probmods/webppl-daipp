@@ -1,3 +1,5 @@
+'use strict';
+
 var LRU = require('lru-cache');
 
 //TODO: should this be in utils?

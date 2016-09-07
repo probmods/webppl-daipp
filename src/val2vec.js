@@ -1,3 +1,5 @@
+'use strict';
+
 var rnn = require('./rnn');
 var cache = require('./cache');
 

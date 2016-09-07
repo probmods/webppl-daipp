@@ -1,3 +1,5 @@
+'use strict';
+
 var units = {
   rnn: function(hdim, xdim, name, debug) {
     // Create a simple recurrent unit.

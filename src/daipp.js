@@ -1,3 +1,5 @@
+'use strict';
+
 // Throughout the daipp package we make use of the fact that webppl
 // defines the following global variables: dists, util, ad, nn, T.
 

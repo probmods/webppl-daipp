@@ -1,3 +1,5 @@
+'use strict';
+
 var assert = require('assert');
 var cache = require('./cache');
 var Tensor = T['__Tensor'];
