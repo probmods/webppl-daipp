@@ -45,6 +45,13 @@ module.exports = function(env, config) {
         mu: [distDim-1, 1],
         sigma: {dim: [distDim-1, 1], dom: [0, Infinity]}
       }, 'Dirichlet');
+    } else if (dist instanceof dists.Discrete) {
+      guideDistType = dists.Discrete;
+      // This will work for either array or vector valued ps.
+      var distDim = ad.value(dist.params.ps).length;
+      guideParamNets = makeParamAdaptorNets({
+        ps: {dim: [distDim, 1], dom: [0, Infinity]}
+      }, 'Discrete');
     } else {
       throw 'daipp: Unhandled distribution type in vec2dist: ' + dist;
     }
