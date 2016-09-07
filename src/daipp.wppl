@@ -40,8 +40,7 @@ var initContext = function(data) {
 //TODO: make deeper? use GRU / LSTM? ResNet?
 //TODO: take optional name/type to allow different update nets, eg for sample vs deterministic vs return.
 
-var updateNet = daipp.makeRU(daipp.config.updateNetType, daipp.latentSize, 2*daipp.latentSize, 'updateNet', daipp.debug);
-
+var updateNet = daipp.makeUpdateNet(daipp.config, 'updateNet');
 
 var updateContext = function(val) {
   var dataVec = daipp.val2vec(val)
@@ -49,7 +48,7 @@ var updateContext = function(val) {
   var addressVec = daipp.val2vec(address)
   var context = globalStore.context
 
-  var newContext = daipp.nneval(updateNet, [context, ad.tensor.concat(addressVec, dataVec)]);
+  var newContext = daipp.nneval(updateNet, [context, dataVec, addressVec]);
   globalStore.context = newContext
 
   return
