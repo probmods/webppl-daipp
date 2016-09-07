@@ -75,7 +75,7 @@ var makeRU = function(type, hdim, xdim, name, debug) {
 };
 
 var makeUpdateNet = function(config, name) {
-  var constructor = config.updateNetSkip ? makeUpdateNetWithSkip : makeUpdateNetNoSkip;
+  var constructor = config.updateNetIsResNet ? makeUpdateNetWithSkip : makeUpdateNetNoSkip;
   return constructor(config.updateNetType, config.latentSize, name, config.debug);
 };
 

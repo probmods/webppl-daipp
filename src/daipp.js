@@ -13,7 +13,7 @@ module.exports = function(env) {
     latentSize: 10, // Sets the size of the context net throughout.
     useXavierInit: false, // Use Xavier weight init. when true, otherwise use adnn default.
     updateNetType: 'rnn', // See rnn.js for available options.
-    updateNetSkip: false, // Add skip connections to the update net.
+    updateNetIsResNet: false, // Add skip connections to the update net.
     predictUsingContext: true, // When false, zero out chosen input to predict net.
     predictUsingAddress: true,
     predictUsingValue: true,
