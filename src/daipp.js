@@ -7,6 +7,8 @@
 // * nn
 // * T
 
+var assert = require('assert');
+var cache = require('./cache');
 var rnn = require('./rnn');
 
 module.exports = function(env) {
@@ -19,7 +21,8 @@ module.exports = function(env) {
     updateNetSkip: false, // Add skip connections to the update net.
     predictUsingContext: true, // When false, zero out chosen input to predict net.
     predictUsingAddress: true,
-    predictUsingValue: true
+    predictUsingValue: true,
+    splitAddresses: false // Split addresses into arrays before embedding.
   });
 
   // Core daipp functions.
@@ -53,6 +56,12 @@ module.exports = function(env) {
     });
   }
 
+  var splitAddress = cache(function(address) {
+    var arr = address.split('_').slice(1).map(function(s) { return '_' + s; });
+    assert.ok(arr.join('') === address);
+    return arr;
+  });
+
   return {
     daipp: {
       config: config,
@@ -62,6 +71,7 @@ module.exports = function(env) {
       vec2dist: vec2dist,
       nneval: nneval,
       orderedValues: orderedValues,
+      splitAddress: splitAddress,
       makeRU: rnn.makeRU,
       makeUpdateNet: rnn.makeUpdateNet
     },

@@ -18,6 +18,13 @@ daipp.vec2dist chooses an importance distribution ad generates its params.
 
 var daippZeroVec = zeros([daipp.latentSize]);
 
+// We may want to split the address into an array (of syntax sites);
+// in that case val2vec will use an RNN along the array, making
+// related addresses have related vectors.
+var embedAddress = daipp.config.splitAddresses ?
+    function(address) { return daipp.val2vec(daipp.splitAddress(address)); } :
+    function(address) { return daipp.val2vec(address); };
+
 //A function used to initialize the context, given some data (or a summary of data)
 // dritchie: It's not clear to me why we really need another net here? Why not let the initial
 //    context be the output of val2vec?
@@ -45,7 +52,7 @@ var updateNet = daipp.makeUpdateNet(daipp.config, 'updateNet');
 var updateContext = function(val) {
   var dataVec = daipp.val2vec(val)
   var address = getObsFnAddress()
-  var addressVec = daipp.val2vec(address)
+  var addressVec = embedAddress(address);
   var context = globalStore.context
 
   var newContext = daipp.nneval(updateNet, [context, dataVec, addressVec]);
@@ -75,8 +82,7 @@ var DAIPPguide = function(dist, val) {
   var address = getObsFnAddress()
 
   var dataVec = daipp.config.predictUsingVal ? daipp.val2vec(val) : daippZeroVec;
-  //TODO: at the moment the address will be a single string, so val2vec will learn a separate embedding per address. we may want to split the string into an array (of syntax sites); in that case val2vec will use an RNN along the array, making related addresses have related vectors.
-  var addressVec = daipp.config.predictUsingAddress ? daipp.val2vec(address) : daippZeroVec;
+  var addressVec = daipp.config.predictUsingAddress ? embedAddress(address) : daippZeroVec;
   var context = daipp.config.predictUsingContext ? globalStore.context : daippZeroVec;
 
   //merge the val, address together
