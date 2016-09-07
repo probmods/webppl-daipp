@@ -7,9 +7,8 @@
 // * nn
 // * T
 
-var assert = require('assert');
-var cache = require('./cache');
 var rnn = require('./rnn');
+var daippUtil = require('./util');
 
 module.exports = function(env) {
 
@@ -50,28 +49,15 @@ module.exports = function(env) {
     return k(s, rel.slice(rel.indexOf('_', rel.lastIndexOf('$$'))));
   }
 
-  function orderedValues(obj) {
-    return Object.keys(obj).sort().map(function(key) {
-      return obj[key];
-    });
-  }
-
-  var splitAddress = cache(function(address) {
-    var arr = address.split('_').slice(1).map(function(s) { return '_' + s; });
-    assert.ok(arr.join('') === address);
-    return arr;
-  });
-
   return {
     daipp: {
+      util: daippUtil,
       config: config,
       debug: config.debug,
       latentSize: config.latentSize,
       val2vec: val2vec,
       vec2dist: vec2dist,
       nneval: nneval,
-      orderedValues: orderedValues,
-      splitAddress: splitAddress,
       makeRU: rnn.makeRU,
       makeUpdateNet: rnn.makeUpdateNet
     },

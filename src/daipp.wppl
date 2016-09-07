@@ -22,7 +22,7 @@ var daippZeroVec = zeros([daipp.latentSize]);
 // in that case val2vec will use an RNN along the array, making
 // related addresses have related vectors.
 var embedAddress = daipp.config.splitAddresses ?
-    function(address) { return daipp.val2vec(daipp.splitAddress(address)); } :
+    function(address) { return daipp.val2vec(daipp.util.splitAddress(address)); } :
     function(address) { return daipp.val2vec(address); };
 
 //A function used to initialize the context, given some data (or a summary of data)
@@ -102,7 +102,7 @@ var sampleDaipp = function(dist,opt) {
     // Convert the dist params to an array to retain the behavior we
     // had under the old ERP interface. Probably better to have some
     // handling of this directly in val2vec at some point.
-    var params = daipp.orderedValues(dist.params);
+    var params = daipp.util.orderedValues(dist.params);
     var val = sample(dist, {guide: DAIPPguide(dist, params)})
     updateContext(val)
     return val
