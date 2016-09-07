@@ -31,8 +31,10 @@ module.exports = function(env) {
   // Other helpers.
 
   // Returns the part of the stack address which has been added since
-  // entering the inner-most mapData. Outside of any mapData the
-  // address relative to the inner-most coroutine is returned.
+  // entering the inner-most mapData. Importantly, this doesn't
+  // include the portion of the address corresponding to the index of
+  // the current datum. Outside of any mapData the address relative to
+  // the inner-most coroutine is returned.
 
   // The magic string '$$' comes from the implementation of
   // `wpplCpsMapWithAddresses`. We need to make this less brittle. One
