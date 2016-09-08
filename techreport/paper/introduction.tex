@@ -7,7 +7,7 @@
 Probabilistic programs are cool.
 What they are: deterministic programs + sampling + conditioning + inference.
 What inference means: sampling space of program executions that are consistent with constraints / observations.
-What they allow: modeling of any computable distribution, including stochastic recursion, open-world models, non-parametrics, etc. (citations)
+What they allow: modeling of any computable distribution, including stochastic recursion, open-world models, non-parametrics, etc.~\remark{Need citations}
 
 %% What's the problem?
 
@@ -22,17 +22,17 @@ But many inference problems (many observation sets) have shared structure: it's 
 In fact, there's reason to believe that this is how people are able to perform inferences such as visual recognition so quickly.
 We benefit from having solved specific previous inferences: parsing a scene more quickly once we've seen it from another viewpoint (cite amortized inference paper).
 We also get benefit from long-term accumulated experience of viewing the real world.
-This idea of using results of previous inferences---or precomputation in general---to make later inferences more efficient is called \emph{amortized inference} (cite amortized inference, stochastic inverses paper).
+This idea of using results of previous inferences---or precomputation in general---to make later inferences more efficient is called \emph{amortized inference}~\cite{AmortizedInference,StochasticInverses}.
 
 %% What's our approach?
 
 This paper proposes a system for amortized inference in PPLs.
-Instead of computing p(x | y) via Bayes rule for each y, our system attemps to construct (learn?) a program g(x | y) which, when run forward, generates samples distributed approximately according to p(x | y).
-We call g a guide program (cite that 2010 paper that introduced this terminology).
+Instead of computing p(x | y) via Bayes rule for each y, our system attemps to construct (learn?) a program g(x | y) which takes y's as input and, when run forward, generates samples distributed approximately according to p(x | y).
+We call g a \emph{guide program} (terminology was introduced in~\cite{GuidePrograms}).
 The intention is to spend a lot of time up-front constructing/learning g, so that at inference time, sampling from g is extremely fast (just ancestral sampling).
 
 There's a huge space of possible programs you might consider.
-Rather than attempt to solve a general program induction problem (as it was phrased in the 2010 paper), we restrict g to have the same control flow as p, but different data flow.
+Rather than attempt to solve a general program induction problem (as in~\cite{GuidePrograms}), we restrict g to have the same control flow as p, but different data flow.
 That is, g samples the same random variables as p does and in the same order, but the choices in g are parameterized by the output of a different computation.
 We represent this computation with neural networks.
 This reduces the search for g to the much simpler continuous problem of optimizing the weights of these networks.
