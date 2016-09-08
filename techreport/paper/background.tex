@@ -22,7 +22,7 @@ This program uses MCMC to compute an approximate posterior distribution over the
 \remark{Note that \ic{observe} is built on the more general \ic{factor}?}
 In the rest of this paper, we will build on this language to add guide programs and amortized inference to it.
 
-\subsection{Inference as Optimization}
+\subsection{Inference as Optimization: Variational Inference}
 
 Instead of approximating the posterior $p(\vecstyle{x} | \vecstyle{y})$ with a collection of samples, could instead try to approximate it via a parameterized distribution $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ which is itself easy to sample from.
 This is what variational inference is all about~\cite{VariationalInference}.
@@ -46,13 +46,13 @@ This is easy to work with, but it does not capture any of the correlations/depen
 This limitation is often acceptable b/c $\guide_{\vecstyle{y}}$ is defined to be specific to a particular $\vecstyle{y}$, and thus the parameters are re-optimized for each new $\vecstyle{y}$.
 So this gives us an alternative to Monte Carlo methods (e.g. MCMC) that can be faster and more reliable, but it is still solving inference problems from scratch each time.
 
-\subsection{Amortized Inference}
+\subsection{Amortized (Variational) Inference}
 
 Remind what amortized inference is: using results of previous inference solutions, or pre-computation in general, to solve later inference problems faster.
 Evidence that people do this~\cite{AmortizedInference}.
 Some previous work tries to implement this principle for Bayesian networks, by inverting the network topology and learning approximations to the local inverse conditional distributions~\cite{StochasticInverses,NeuralStochasticInverses}.
 
-We can view amortized inference as an extention to the inference as optimization idea.
+We can also view amortized inference as an extention to the variational inference idea.
 Instead of defining a parametric family $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ which is specific to a given $\vecstyle{y}$, we instead define a general family $\guide(\vecstyle{x} | \vecstyle{y} ; \phi)$ which is conditional on $\vecstyle{y}$; that is, it takes $\vecstyle{y}$ as input.
 In this setting, mean field no longer applies, as whatever components are used to make up $\guide$ must now be functions of $\vecstyle{y}$.
 Can extend mean-field to deal with input data by using neural networks:
@@ -73,9 +73,9 @@ Our system is more general; it allows neural nets also to receive as input any r
 %%%
 where $\vecstyle{x}_{<i}$ are the random choices made before choice $i$ is sampled. This allows the networks to capture posterior dependencies between latent variables (which we will demonstrate later in the paper).
 
-\subsection{Model Learning}
+\subsection{Variational Model Learning}
 
-This same amortized inference setup can also be used to learn the parameters of generative models. If the generative model $p$ is also parameterized, i.e. $p(\vecstyle{x} | \vecstyle{y} ; \theta)$, then its parameters $\theta$ can be optimized along with the parameters $\phi$ of the guide program.
+This same amortized variational inference setup can also be used to learn the parameters of generative models. If the generative model $p$ is also parameterized, i.e. $p(\vecstyle{x} | \vecstyle{y} ; \theta)$, then its parameters $\theta$ can be optimized along with the parameters $\phi$ of the guide program.
 The `neural variational inference' methods mentioned above can all do this~\cite{NVIL,DLGM,AEVB}, though their formulations of the optimization problem are all slightly different.
 In our system, $\theta$ and $\phi$ are treated the same, and we can use the same optimization objective and algorithm whether $p$ has any learnable parameters or not.
 We will show examples of how our system makes it easy to use either (regularized) maximum-likelihood learning or full variational Bayesian learning, or to switch between them.

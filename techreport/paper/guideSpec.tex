@@ -2,15 +2,35 @@
 \section{Specifying Guide Programs}
 \label{sec:guideSpec}
 
-Specifying guide families -- shared control flow, different data flow.
+In this section, we describe the user-facing side of our system: the language extensions to WebPPL that allow for the specification of guide programs and their optimizable parameters.
+Here, we focus on manually-specified guide programs. Later, we'll introduce a layer on top of this which can derive guide programs mostly automatically.
 
-Sample and its guide option
+\subsection{Sampling with Guide Distributions}
+
+Previously, we mentioned that our system restricts guide programs to have the same control flow as the original program, and this means that the guide program samples the same variables in the same order.
+We enforce this by having the guide program defined inline with the regular program.
+That is, at each \ic{sample} statement which samples a random variable, in addition to the distribution that the program samples from, we also specify what distribution the guide program should sample from (show example).
+
+\subsection{Declaring Optimizable Parameters}
 
 Parameters: creating and referencing, re-use? For now, assume all params are explicitly named.
 
-The MapData pattern: global vs local, learning vs recognition
+Explain different methods (scalar, vector, matrix), plus bounding transforms (e.g. softplus for sigmoid)
 
-Model learning as variational inference. Model uncertainty. How easy it is to switch from maximum likelihood (+ regularization) to full Bayes.
+Do a non-amortized (mean field) example, then show one with a simple MLP network. Introduce `recognition network' terminology (or wait until one of the full examples below)?
 
-Running examples: Simple Bayes nets. Go from one continuous latent to two continuous latents to one continuous and one discrete latent.
+\subsection{Iterating over Observed Data}
+
+Iterating over IID data is a common pattern.
+Introduce \ic{mapData}.
+Like normal \ic{map}, except it asserts to the backend/runtime/inference engine that all iterations of the mapped function are conditionally independent.
+
+
+\subsection{Putting It All Together: Simple Bayesian Network Examples}
+
+Do model learning, show how easy it is to switch between (regularized) ML and full VB.
+
+Highlight where the generative vs. guide params are, but point out how they're equal in the eyes of the system.
+
+Go from one continuous latent to two continuous latents to one continuous and one discrete latent.
 
