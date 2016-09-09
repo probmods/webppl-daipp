@@ -2,35 +2,143 @@
 \section{Specifying Guide Programs}
 \label{sec:guideSpec}
 
-In this section, we describe the user-facing side of our system: the language extensions to WebPPL that allow for the specification of guide programs and their optimizable parameters.
-Here, we focus on manually-specified guide programs. Later, we'll introduce a layer on top of this which can derive guide programs mostly automatically.
+In this section, we describe the user-facing side of our system: the language extensions to WebPPL that allow for the specification of guide programs.
+Here, we focus on manually-specified guide programs. Later, we'll introduce a layer on top of this which can (semi) automatically derive guide programs.
 
 \subsection{Sampling with Guide Distributions}
 
 Previously, we mentioned that our system restricts guide programs to have the same control flow as the original program, and this means that the guide program samples the same variables in the same order.
-We enforce this by having the guide program defined inline with the regular program.
-That is, at each \ic{sample} statement which samples a random variable, in addition to the distribution that the program samples from, we also specify what distribution the guide program should sample from (show example).
+Our implementation enforces this restriction by having the guide program defined inline with the regular program.
+That is, at each \ic{sample} statement which samples a random variable, in addition to the distribution that the program samples from, we also specify what distribution the guide program should sample from. For example, using the simple program from Section~\ref{sec:pplbasics}:
+%%%
+\begin{lstlisting}
+var model = function() {
+   var x = sample(Bernoulli({p: 0.75}), {
+      guide: Bernoulli({p: 0.475})
+   });
+   var mu = x ? 2 : 0;
+   observe(Gaussian({mu: mu, sigma: 1}), 0.5);
+   return x;
+};
+\end{lstlisting}
+%%%
+Here, we say that the guide should sample from a Bernoulli with a different success probability \ic{p}. This particular value happpens to give the true posterior for this program, since this toy problem is simple enough to solve in closed form.
+We note that the guide distribution does not need to be of the same family as the prior distribution; later in the paper we will see how this property turns out to be useful.
 
 \subsection{Declaring Optimizable Parameters}
 
-Parameters: creating and referencing, re-use? For now, assume all params are explicitly named.
+In real problems, we will not know what the right guides are and will instead want to learn them by specifying guide distributions with tunable parameters:
+%%%
+\begin{lstlisting}
+var x = sample(Gaussian({mu: 0, sigma: 1}), {
+   guide: Gaussian({mu: paramScalar('guideMu'), sigma: softplus(paramScalar('guideSigma'))})
+});
+\end{lstlisting}
+%%%
+Here, \ic{paramScalar(name)} declares an optimizable, real-valued parameter named \ic{name}; there are analogous functions \ic{paramVector}, \ic{paramMatrix}, and \ic{paramTensor} for declaring vector, matrix, and tensor-valued parameters.
+Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value $p$ returned by \ic{paramScalar} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
+Parameters must have unique names so they can be disambiguated by the optimization engine under the hood.
+\remark{Mention how names allow learned parameters to be re-used by other models, or wait until later section?}
 
-Explain different methods (scalar, vector, matrix), plus bounding transforms (e.g. softplus for sigmoid)
+Using variational parameters directly as the guide distribution parameters results in a mean-field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
+We can also compute the guide parameters via a neural network:~\remark{Should we cut this out and only show the adnn version?}
+%%%
+\begin{lstlisting}
+// Observed value
+var y = 0.5;
 
-Do a non-amortized (mean field) example, then show one with a simple MLP network. Introduce `recognition network' terminology (or wait until one of the full examples below)?
+// Neural net setup
+var nIn = 1;
+var nHidden = 3;
+var nOut = 2;
+
+var model = function() {
+   // Neural net params
+   var W1 = paramMatrix(nHidden, nIn, 'W1');
+   var b1 = paramVector(nHidden, 'b1');
+   var W2 = paramMatrix(nOut, nHidden, 'W2');
+   var b3 = paramVector(nOut, 'b2');
+
+   // Use neural net to compute guide params
+   var nnInput = Vector([y]);
+   var nnOutput = linear(sigmoid(linear(nnInput, W1, b1)), W2, b2);
+
+   var x = sample(Gaussian({mu: 0, sigma: 1}), {
+      guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
+   });
+   observe(Gaussian({mu: mu, sigma: 0.5}), y);
+   return x;
+};
+\end{lstlisting}
+%%%
+Explicitly declaring parameters for and defining the structure of large neural networks can become verbose, so we can instead use the adnn\footnote{\url{https://github.com/dritchie/adnn}} neural net library to include neural nets in our programs:
+%%%
+\begin{lstlisting}
+// Observed value
+var y = 0.5;
+
+// Neural net setup
+var guideNet = nn.mlp(1, [
+   {nOut: 3, activation: nn.sigmoid},
+   {nOut: 2}
+], 'guideNet');
+
+var model = function() {
+   // Use neural net to compute guide params
+   var nnInput = Vector([y]);
+   var nnOutput = nnEval(guideNet, nnInput);
+
+   var x = sample(Gaussian({mu: 0, sigma: 1}), {
+      guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
+   });
+   observe(Gaussian({mu: mu, sigma: 0.5}), y);
+   return x;
+};
+\end{lstlisting}
+%%%
+In this case, the \ic{guideNet} object has its own parameters, which are registered with the optimization engine when \ic{nnEval} is called.
 
 \subsection{Iterating over Observed Data}
 
-Iterating over IID data is a common pattern.
-Introduce \ic{mapData}.
-Like normal \ic{map}, except it asserts to the backend/runtime/inference engine that all iterations of the mapped function are conditionally independent.
+The previous examples have thus far conditioned on a single observation. But in real problems we want to condition on multiple observations---a whole dataset of them.
+In our system, you use \ic{mapData} to do this:
+%%%
+\begin{lstlisting}
+var obs = loadData('datafile');   // List of observations
+var guideNet = nn.mlp(1, [
+   {nOut: 3, activation: nn.sigmoid},
+   {nOut: 2}
+], 'guideNet');
+var model = function() {
+   var latents = mapData({data: obs, batchSize: 100}, function(y) {
+      var nnInput = Vector([y]);
+      var nnOutput = nnEval(guideNet, nnInput);
+      var x = sample(Gaussian({mu: 0, sigma: 1}), {
+         guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
+      });
+      observe(Gaussian({mu: mu, sigma: 0.5}), y);
+      return x;
+   });
+   return latents;
+};
+\end{lstlisting}
+%%%
+\ic{mapData} functions much like \ic{map} in a typical functional programming language, but it has two important features: (1) the optimization engine treats every execution of the mapped function as IID~\remark{Is this the right way to phrase this?}, and thus (2) the optimization engine can operate on stochastic mini-batches of the data, sized according to the \ic{batchSize} option.
+Property (2) is clearly important for efficient, scalable optimization, but we will see in Section~\ref{sec:optimization} how property (1) can also be exploited to improve optimization.
 
 
-\subsection{Putting It All Together: Simple Bayesian Network Examples}
+\subsection{Defining Learnable Models}
+
+``Thus far we've just shown inference, not model learning...''
 
 Do model learning, show how easy it is to switch between (regularized) ML and full VB.
 
-Highlight where the generative vs. guide params are, but point out how they're equal in the eyes of the system.
+Point out how guide and model params appear the same to the system (simpler!)
 
-Go from one continuous latent to two continuous latents to one continuous and one discrete latent.
+
+\subsection{Examples: Simple Bayesian Networks}
+
+``The example we've built up in this section corresponds to a simple BN with the following structure...'' (show diagram of the graphical model, and do that for all subsequent examples in this section, too?)
+
+Go from one continuous latent to two continuous latents to one continuous and one discrete latent (for the two latent cases, show difference when you add dependency in the guide).
 

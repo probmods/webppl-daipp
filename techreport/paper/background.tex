@@ -3,6 +3,7 @@
 \label{sec:background}
 
 \subsection{Probabilistic Programming Basics}
+\label{sec:pplbasics}
 
 Our system is implemented in the probabilistic programming language WebPPL, which we'll use for examples throughout this paper~\cite{WebPPL}.
 WebPPL is a PPL embedded in Javascript.
@@ -11,18 +12,19 @@ Here's an example program illustrating its basic features:
 \begin{lstlisting}
 var model = function() {
    var x = sample(Bernoulli({p: 0.75}));
-   var mu = a ? 2 : 0;
-   observe(Gaussian({mu: mu, sigma: 1}), 1);
-   return a;
+   var mu = x ? 2 : 0;
+   observe(Gaussian({mu: mu, sigma: 1}), 0.5);
+   return x;
 };
 
-Infer({method: 'mcmc'}, model);
+Infer({method: 'MCMC'}, model);
 \end{lstlisting}
-This program uses MCMC to compute an approximate posterior distribution over the return value of the function \ic{model}. \ic{model} is a simple generative model with one latent Bernoulli variable (\ic{x}) and one observed Gaussian variable, which in this example is observed to have the value \ic{1}. The mean of the observed Gaussian variable (\ic{mu}) is dependent on the value of \ic{x}. Since \ic{model} returns \ic{x}, the result of this program is the posterior marginal distribution over the variable \ic{x}.
+This program uses MCMC to compute an approximate posterior distribution over the return value of the function \ic{model}. \ic{model} is a simple generative model with one latent Bernoulli variable (\ic{x}) and one observed Gaussian variable, which in this example is observed to have the value \ic{0.5}. The mean of the observed Gaussian variable (\ic{mu}) is dependent on the value of \ic{x}. Since \ic{model} returns \ic{x}, the result of this program is the posterior marginal distribution over the variable \ic{x}.
 \remark{Note that \ic{observe} is built on the more general \ic{factor}?}
 In the rest of this paper, we will build on this language to add guide programs and amortized inference to it.
 
 \subsection{Inference as Optimization: Variational Inference}
+\label{sec:background:variational}
 
 Instead of approximating the posterior $p(\vecstyle{x} | \vecstyle{y})$ with a collection of samples, could instead try to approximate it via a parameterized distribution $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ which is itself easy to sample from.
 This is what variational inference is all about~\cite{VariationalInference}.
@@ -40,7 +42,7 @@ Need to pick a parametrized family $\guide$ to do this; one common choice is the
 \guide^{\textbf{MF}}_{\vecstyle{y}}(\vecstyle{x} ; \phi) = \prod_i g_i(x_i ; \phi_i)
 \end{equation*}
 %%%
-This is a fully-factored distribution: it approximates the posterior as an independent product of marginals $\guide_i$, one for each random variable.
+This is a fully-factored distribution: it approximates the posterior as an independent product of parameterized marginals $\guide_i$, one for each random variable.
 Several existing general-purpose variational inference systems use this scheme~\cite{AVIPP,BBVI}.
 This is easy to work with, but it does not capture any of the correlations/dependencies in the true posterior.
 This limitation is often acceptable b/c $\guide_{\vecstyle{y}}$ is defined to be specific to a particular $\vecstyle{y}$, and thus the parameters are re-optimized for each new $\vecstyle{y}$.
@@ -65,7 +67,7 @@ That is, the parameters of each local conditional in the guide are computed via 
 This is amortized inference b/c you can invest time up-front optimizing the weights of these neural networks such that $\guide(\vecstyle{x} | \vecstyle{y} ; \phi)$ is close to $p(\vecstyle{x} | \vecstyle{y})$, and the trained nets can then be used on never-before-seen $\vecstyle{y}$'s.
 Several recent approaches to `neural variational inference' use some instantiation of this design pattern~\cite{NVIL,DLGM,AEVB}.
 
-Our system is more general; it allows neural nets also to receive as input any random choices already made:
+Our system also takes this general approach using neural nets but is more general; it allows neural nets also to receive as input any random choices already made:
 %%%
 \begin{equation*}
 \guide(\vecstyle{x} | \vecstyle{y} ; \phi) = \prod_i \guide_i(x_i ; \text{NN}_i(\vecstyle{y}, \vecstyle{x}_{<i} ; \phi))
@@ -76,7 +78,8 @@ where $\vecstyle{x}_{<i}$ are the random choices made before choice $i$ is sampl
 \subsection{Variational Model Learning}
 
 This same amortized variational inference setup can also be used to learn the parameters of generative models. If the generative model $p$ is also parameterized, i.e. $p(\vecstyle{x} | \vecstyle{y} ; \theta)$, then its parameters $\theta$ can be optimized along with the parameters $\phi$ of the guide program.
-The `neural variational inference' methods mentioned above can all do this~\cite{NVIL,DLGM,AEVB}, though their formulations of the optimization problem are all slightly different.
-In our system, $\theta$ and $\phi$ are treated the same, and we can use the same optimization objective and algorithm whether $p$ has any learnable parameters or not.
+The `neural variational inference' methods mentioned above can all do this, though their formulations of the optimization problem are all slightly different~\cite{NVIL,DLGM,AEVB}.
+
+In our system, $\theta$ and $\phi$ are treated the same, and we use the same optimization objective and algorithm whether $p$ has any learnable parameters or not.
 We will show examples of how our system makes it easy to use either (regularized) maximum-likelihood learning or full variational Bayesian learning, or to switch between them.
 
