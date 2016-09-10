@@ -66,7 +66,7 @@ var model = function() {
    var x = sample(Gaussian({mu: 0, sigma: 1}), {
       guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
    });
-   observe(Gaussian({mu: mu, sigma: 0.5}), y);
+   observe(Gaussian({mu: x, sigma: 0.5}), y);
    return x;
 };
 \end{lstlisting}
@@ -91,7 +91,7 @@ var model = function() {
    var x = sample(Gaussian({mu: 0, sigma: 1}), {
       guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
    });
-   observe(Gaussian({mu: mu, sigma: 0.5}), y);
+   observe(Gaussian({mu: x, sigma: 0.5}), y);
    return x;
 };
 \end{lstlisting}
@@ -110,13 +110,16 @@ var guideNet = nn.mlp(1, [
    {nOut: 2}
 ], 'guideNet');
 var model = function() {
+   var mu_x = 0;
+   var sigma_x = 1;
+   var sigma_y = 0.5;
    var latents = mapData({data: obs, batchSize: 100}, function(y) {
       var nnInput = Vector([y]);
       var nnOutput = nnEval(guideNet, nnInput);
-      var x = sample(Gaussian({mu: 0, sigma: 1}), {
+      var x = sample(Gaussian({mu: mu_x, sigma: sigma_x}), {
          guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
       });
-      observe(Gaussian({mu: mu, sigma: 0.5}), y);
+      observe(Gaussian({mu: x, sigma: sigma_y}), y);
       return x;
    });
    return latents;
@@ -129,11 +132,49 @@ Property (2) is clearly important for efficient, scalable optimization, but we w
 
 \subsection{Defining Learnable Models}
 
-``Thus far we've just shown inference, not model learning...''
+Thus far we have focused on defining parameterized guides for inference.
+We can also use parameters for the generative part of our models as well, making models learnable.
+The following three code blocks show possible replacements for line 7 of the previous example, replacing the hardcoded constant \ic{mu_x = 0} with a learnable version:
 
-Do model learning, show how easy it is to switch between (regularized) ML and full VB.
+\lstdefinestyle{learnableModels}{numbers=none,basicstyle=\fontsize{6.5pt}{6.75pt}\selectfont\ttfamily}
 
-Point out how guide and model params appear the same to the system (simpler!)
+\begin{minipage}{0.33\linewidth}
+\begin{lstlisting}[style=learnableModels]
+// Maximum likelihood
+var mu_x = paramScalar('mu_x');
+\end{lstlisting}
+\end{minipage}
+%
+\hspace{-2em}
+%
+\begin{minipage}{0.33\linewidth}
+\begin{lstlisting}[style=learnableModels]
+// L2-regularized
+// maximum likelihood
+var mu_x = sample(
+   Gaussian({mu: 0, sigma: 1}),
+   { guide:
+      Delta({v: paramScalar('mu_x')})
+   })
+\end{lstlisting}
+\end{minipage}
+%
+\hspace{-1em}
+%
+\begin{minipage}{0.33\linewidth}
+\begin{lstlisting}[style=learnableModels]
+// Variational Bayes
+var mu_x = sample(
+   Gaussian({
+   	mu: paramScalar('mu_x_m'),
+   	sigma: softplus(paramScalar('mu_x_s'))
+   }))
+\end{lstlisting}
+\end{minipage}
+
+The code in the left block results in maximum likelihood estimation: the inference engine will optimize for the single best parameter value.
+The middle code block shows how to achieve regularized maximum likelihood. Here, \ic{mu_x} is treated as a random choice with a Gaussian prior. However, the guide distribution is simply a Delta distribution whose center is given by an optimizable parameter. Thus, \ic{mu_x} is still a point estimate (i.e. maximum likelihood), but the Gaussian prior results in L2 regularization.
+Finally, the right block shows full variational Bayesian learning---\ic{mu_x} is no longer a point estimate, but is drawn from a Gaussian prior with optimizable parameters.~\remark{I think this is how VB is supposed to work? Make sure the code is also doing it this way...}
 
 
 \subsection{Examples: Simple Bayesian Networks}
