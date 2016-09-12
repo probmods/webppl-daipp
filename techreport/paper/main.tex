@@ -38,6 +38,11 @@
 %% For text color changes in code examples
 \usepackage[dvipsnames]{xcolor}
 
+% Draw Bayes nets
+% From: https://github.com/jluttine/tikz-bayesnet
+\usepackage{tikz}
+\usetikzlibrary{bayesnet}
+
 %% Avoid single line paragraphs at top/bottom of pages
 \widowpenalty=20000
 \clubpenalty=20000
@@ -108,14 +113,23 @@
 
 %% Include files for each section of content
 \input{introduction.tex}
+
 \input{background.tex}
+
 \input{guideSpec.tex}
+
 \input{optimization.tex}
+
 \input{usingLearnedGuides.tex}
+
 \input{results.tex}
+
 \input{autoGuide.tex}
+
 \input{results_autoGuide.tex}
+
 \input{conclusion.tex}
+
 \input{acknowledgments.tex}
 
 % \small

@@ -64,7 +64,7 @@ var model = function() {
    var nnOutput = linear(sigmoid(linear(nnInput, W1, b1)), W2, b2);
 
    var x = sample(Gaussian({mu: 0, sigma: 1}), {
-      guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
+      guide: Gaussian({mu: T.get(nnOutput, 0), sigma: softplus(T.get(nnOutput, 1))})
    });
    observe(Gaussian({mu: x, sigma: 0.5}), y);
    return x;
@@ -89,7 +89,7 @@ var model = function() {
    var nnOutput = nnEval(guideNet, nnInput);
 
    var x = sample(Gaussian({mu: 0, sigma: 1}), {
-      guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
+      guide: Gaussian({mu: T.get(nnOutput, 0), sigma: softplus(T.get(nnOutput, 1))})
    });
    observe(Gaussian({mu: x, sigma: 0.5}), y);
    return x;
@@ -104,7 +104,7 @@ The previous examples have thus far conditioned on a single observation. But in 
 In our system, you use \ic{mapData} to do this:
 %%%
 \begin{lstlisting}
-var obs = loadData('datafile');   // List of observations
+var obs = loadData('data.json');   // List of observations
 var guideNet = nn.mlp(1, [
    {nOut: 3, activation: nn.sigmoid},
    {nOut: 2}
@@ -117,7 +117,7 @@ var model = function() {
       var nnInput = Vector([y]);
       var nnOutput = nnEval(guideNet, nnInput);
       var x = sample(Gaussian({mu: mu_x, sigma: sigma_x}), {
-         guide: Gaussian({mu: T.get(nnOutput, 0) sigma: softplus(T.get(nnOutput, 1))})
+         guide: Gaussian({mu: T.get(nnOutput, 0), sigma: softplus(T.get(nnOutput, 1))})
       });
       observe(Gaussian({mu: x, sigma: sigma_y}), y);
       return x;
@@ -127,7 +127,7 @@ var model = function() {
 \end{lstlisting}
 %%%
 \ic{mapData} functions much like \ic{map} in a typical functional programming language, but it has two important features: (1) the optimization engine treats every execution of the mapped function as IID~\remark{Is this the right way to phrase this?}, and thus (2) the optimization engine can operate on stochastic mini-batches of the data, sized according to the \ic{batchSize} option.
-Property (2) is clearly important for efficient, scalable optimization, but we will see in Section~\ref{sec:optimization} how property (1) can also be exploited to improve optimization.
+Property (2) is clearly important for efficient, scalable optimization, but we will see in Section~\ref{sec:optimization} how property (1) can also be leveraged directly to improve optimization.
 
 
 \subsection{Defining Learnable Models}
@@ -179,7 +179,248 @@ Finally, the right block shows full variational Bayesian learning---\ic{mu_x} is
 
 \subsection{Examples: Simple Bayesian Networks}
 
-``The example we've built up in this section corresponds to a simple BN with the following structure...'' (show diagram of the graphical model, and do that for all subsequent examples in this section, too?)
+The example code we have been building up in this second describes a Bayesian network with one continuous latent variable per continuous observation. Figure~\ref{fig:bn_oneLatent} Top shows the fully assembled code (using maximum likelihood estimation for the generative model parameters), along with a graphical model depiction using the notation of Kigma and Welling~\cite{AEVB}. In this diagram, solid arrows indicate dependencies in the generative model given by the main program, and dashed arrows indicate dependencies in the guide program. $\phi$ is shorthand for all the neural network parameters in the guide program.
 
-Go from one continuous latent to two continuous latents to one continuous and one discrete latent (for the two latent cases, show difference when you add dependency in the guide).
+Figure~\ref{fig:bn_oneLatent} Bottom shows how to modify this code to instead have one discrete latent variable per observation; this is equivalent to a Gaussian mixture model. In this example, the \ic{simplex} function maps a vector in $\Reals^{n-1}$ to the $n$-dimensional simplex (i.e. a vector whose entries sum to one). This process produces a vector of weights suitable for use as the component probabilities of a discrete random variable.
+
+Figure~\ref{fig:bn_twoLatent} Top shows a slightly more complex Bayesian network with two latent continuous variables. Note that the guide program in this example predicts the two latent variables independently given the observation $y$. In Figure~\ref{fig:bn_twoLatent} Bottom, we make some small changes to the code (lines 3 and 17, highlighted in green) to instead have the guide program predict the second latent variable $\vecstyle{x}_2$ as a function of the first latent variable $\vecstyle{x}_1$. This small change allows the guide to capture a posterior dependency that was ingored by the first version.
+\remark{We'll show later how this gives better results?}
+
+\lstdefinestyle{smaller}{basicstyle=\fontsize{7pt}{7.5pt}\selectfont\ttfamily}
+
+\begin{figure}
+
+% Continuous
+\begin{minipage}{\linewidth}
+\begin{minipage}{0.66\linewidth}
+\begin{lstlisting}[style=smaller]
+var obs = loadData('data.json');
+var guideNet = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet');
+var model = function() {
+   var mu_x = paramScalar('mu_x');
+   var sigma_x = softplus(paramScalar('sigma_x'));
+   var sigma_y = softplus(paramScalar('sigma_y'));
+   var latents = mapData({data: obs}, function(y) {
+      var nnInput = Vector([y]);
+      var nnOutput = nnEval(guideNet, nnInput);
+      var x = sample(Gaussian({mu: mu_x, sigma: sigma_x}), {
+         guide: Gaussian({mu: T.get(nnOutput, 0),
+                          sigma: softplus(T.get(nnOutput, 1))})
+      });
+      observe(Gaussian({mu: x, sigma: sigma_y}), y);
+      return {x: x};
+   });
+   return latents;
+};
+\end{lstlisting}
+\end{minipage}
+%
+\begin{minipage}{0.33\linewidth}
+\begin{flushright}
+\begin{tikzpicture}[scale=1, transform shape]
+\node[obs] (y1) {$\mathbf{y}$};
+\node[latent, above=of y1] (x1) {$\mathbf{x}$};
+\node[const, left=of x1] (phi1) {$\phi$};
+\node[const, above right=of x1] (mu_x) {$\mu_{\mathbf{x}}$};
+\node[const, right=of x1] (sigma_x) {$\sigma_{\mathbf{x}}$};
+\node[const, right=of y1] (sigma_y) {$\sigma_{\mathbf{y}}$};
+\edge [dashed] {phi1} {x1};
+\edge {mu_x} {x1};
+\edge {sigma_x} {x1};
+\edge {sigma_y} {y1};
+\draw (y1) edge[out=135,in=225,->,dashed] (x1);
+\edge {x1} {y1};
+\plate [xscale=1.5] {} {(y1)(x1)} {$N$} ;
+\end{tikzpicture}
+\end{flushright}
+\end{minipage}
+\end{minipage}
+
+% Discrete
+\begin{minipage}{\linewidth}
+\begin{minipage}{0.66\linewidth}
+\begin{lstlisting}[style=smaller]
+var obs = loadData('data.json');
+var nComps = 3;
+var guideNet = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: nComps-1}], 'guideNet');
+var model = function() {
+   var theta_x = simplex(paramVector(nComps-1, 'theta_x'));
+   var params_y = [
+      {mu: paramScalar('mu_y_1'), sigma: softplus(paramScalar('sigma_y_1'))},
+      {mu: paramScalar('mu_y_2'), sigma: softplus(paramScalar('sigma_y_2'))},
+      {mu: paramScalar('mu_y_3'), sigma: softplus(paramScalar('sigma_y_3'))}
+   ];
+   var latents = mapData({data: obs}, function(y) {
+      var nnInput = Vector([y]);
+      var nnOutput = nnEval(guideNet, nnInput);
+      var x = sample(Discrete({ps: theta_x}), {
+         guide: Discrete(simplex(nnOutput))
+      });
+      observe(Gaussian(params_y[x]), y);
+      return {x: x};
+   });
+   return latents;
+};
+\end{lstlisting}
+\end{minipage}
+%
+\begin{minipage}{0.33\linewidth}
+\begin{flushright}
+\begin{tikzpicture}[scale=1, transform shape]
+\node[obs] (y1) {$\mathbf{y}$};
+\node[latent, above=of y1] (x1) {$\mathbf{x}$};
+\node[const, left=of x1] (phi1) {$\phi$};
+\node[const, right=of x1] (theta_x) {$\theta_{\mathbf{x}}$};
+\node[const, above right=of y1] (mu_y) {$\mu^{1\colon3}_{\mathbf{y}}$};
+\node[const, right=of y1] (sigma_y) {$\sigma^{1\colon3}_{\mathbf{y}}$};
+\edge [dashed] {phi1} {x1};
+\edge {theta_x} {x1};
+\edge {mu_y} {y1};
+\edge {sigma_y} {y1};
+\draw (y1) edge[out=135,in=225,->,dashed] (x1);
+\edge {x1} {y1};
+\plate [xscale=1.5] {} {(y1)(x1)} {$N$} ;
+\end{tikzpicture}
+\end{flushright}
+\end{minipage}
+\end{minipage}
+
+\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with one latent variable per observation. \emph{Top:} Continuous latent variable. \emph{Bottom:} Discrete latent variable with 3 discrete values (i.e. a Gaussian mixture model with 3 mixture components).}
+\label{fig:bn_oneLatent}
+
+\end{figure}
+
+
+\begin{figure}
+
+% Two continuous; independent
+\begin{minipage}{\linewidth}
+\begin{minipage}{0.66\linewidth}
+\begin{lstlisting}[style=smaller]
+var obs = loadData('data.json');
+var guideNet1 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet1');
+var guideNet2 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet2');
+var model = function() {
+   var mu_x1 = paramScalar('mu_x1');
+   var sigma_x1 = softplus(paramScalar('sigma_x1'));
+   var mu_x2 = paramScalar('mu_x2');
+   var sigma_x2 = softplus(paramScalar('sigma_x2'));
+   var sigma_y = softplus(paramScalar('sigma_y'));
+   var latents = mapData({data: obs}, function(y) {
+      var nnInput1 = Vector([y]);
+      var nnOutput1 = nnEval(guideNet1, nnInput1);
+      var x1 = sample(Gaussian({mu: mu_x1, sigma: sigma_x1}), {
+         guide: Gaussian({mu: T.get(nnOutput1, 0),
+                          sigma: softplus(T.get(nnOutput1, 1))})
+      });
+      var nnInput2 = Vector([y]);
+      var nnOutput2 = nnEval(guideNet2, nnInput2);
+      var x2 = sample(Gaussian({mu: mu_x2, sigma: sigma_x2}), {
+         guide: Gaussian({mu: T.get(nnOutput2, 0),
+                          sigma: softplus(T.get(nnOutput2, 1))})
+      });
+      observe(Gaussian({mu: x1 + x2, sigma: sigma_y}), y);
+      return {x1: x1, x2: x2};
+   });
+   return latents;
+};
+\end{lstlisting}
+\end{minipage}
+%
+\begin{minipage}{0.33\linewidth}
+\begin{flushright}
+\begin{tikzpicture}[scale=1, transform shape]
+\node[obs] (y1) {$\mathbf{y}$};
+\node[latent, above left=of y1] (x1) {$\mathbf{x_1}$};
+\node[latent, above right=of y1] (x2) {$\mathbf{x_2}$};
+\node[const, above right=of x1] (phi1) {$\phi$};
+\node[const, above left=of x1] (mu_x1) {$\mu_{\mathbf{x_1}}$};
+\node[const, above=of x1] (sigma_x1) {$\sigma_{\mathbf{x_1}}$};
+\node[const, above=of x2] (mu_x2) {$\mu_{\mathbf{x_2}}$};
+\node[const, above right=of x2] (sigma_x2) {$\sigma_{\mathbf{x_2}}$};
+\node[const, right=of y1] (sigma_y) {$\sigma_{\mathbf{y}}$};
+\edge [dashed] {phi1} {x1};
+\edge [dashed] {phi1} {x2};
+\edge {mu_x1} {x1};
+\edge {sigma_x1} {x1};
+\edge {mu_x2} {x2};
+\edge {sigma_x2} {x2};
+\edge {sigma_y} {y1};
+\draw (y1) edge[out=150,in=270,->,dashed] (x1);
+\draw (y1) edge[out=30,in=270,->,dashed] (x2);
+\edge {x1} {y1};
+\edge {x2} {y1};
+\plate [xscale=1.5] {} {(y1)(x1)(x2)} {$N$} ;
+\end{tikzpicture}
+\end{flushright}
+\end{minipage}
+\end{minipage}
+
+% Two continuous; dependent
+\begin{minipage}{\linewidth}
+\begin{minipage}{0.66\linewidth}
+\begin{lstlisting}[style=smaller]
+var obs = loadData('data.json');
+var guideNet1 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet1');
+var guideNet2 = nn.mlp(<@\hilite{2}@>, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet2');
+var model = function() {
+   var mu_x1 = paramScalar('mu_x1');
+   var sigma_x1 = softplus(paramScalar('sigma_x1'));
+   var mu_x2 = paramScalar('mu_x2');
+   var sigma_x2 = softplus(paramScalar('sigma_x2'));
+   var sigma_y = softplus(paramScalar('sigma_y'));
+   var latents = mapData({data: obs}, function(y) {
+      var nnInput1 = Vector([y]);
+      var nnOutput1 = nnEval(guideNet1, nnInput1);
+      var x1 = sample(Gaussian({mu: mu_x1, sigma: sigma_x1}), {
+         guide: Gaussian({mu: T.get(nnOutput1, 0),
+                          sigma: softplus(T.get(nnOutput1, 1))})
+      });
+      var nnInput2 = <@\hilite{Vector([y, x1]);}@>
+      var nnOutput2 = nnEval(guideNet2, nnInput2);
+      var x2 = sample(Gaussian({mu: mu_x2, sigma: sigma_x2}), {
+         guide: Gaussian({mu: T.get(nnOutput2, 0),
+                          sigma: softplus(T.get(nnOutput2, 1))})
+      });
+      observe(Gaussian({mu: x1 + x2, sigma: sigma_y}), y);
+      return {x1: x1, x2: x2};
+   });
+   return latents;
+};
+\end{lstlisting}
+\end{minipage}
+%
+\begin{minipage}{0.33\linewidth}
+\begin{flushright}
+\begin{tikzpicture}[scale=1, transform shape]
+\node[obs] (y1) {$\mathbf{y}$};
+\node[latent, above left=of y1] (x1) {$\mathbf{x_1}$};
+\node[latent, above right=of y1] (x2) {$\mathbf{x_2}$};
+\node[const, above right=of x1] (phi1) {$\phi$};
+\node[const, above left=of x1] (mu_x1) {$\mu_{\mathbf{x_1}}$};
+\node[const, above=of x1] (sigma_x1) {$\sigma_{\mathbf{x_1}}$};
+\node[const, above=of x2] (mu_x2) {$\mu_{\mathbf{x_2}}$};
+\node[const, above right=of x2] (sigma_x2) {$\sigma_{\mathbf{x_2}}$};
+\node[const, right=of y1] (sigma_y) {$\sigma_{\mathbf{y}}$};
+\edge [dashed] {phi1} {x1};
+\edge [dashed] {phi1} {x2};
+\edge {mu_x1} {x1};
+\edge {sigma_x1} {x1};
+\edge {mu_x2} {x2};
+\edge {sigma_x2} {x2};
+\edge {sigma_y} {y1};
+\draw (y1) edge[out=150,in=270,->,dashed] (x1);
+\draw (y1) edge[out=30,in=270,->,dashed] (x2);
+\edge [dashed] {x1} {x2};
+\edge {x1} {y1};
+\edge {x2} {y1};
+\plate [xscale=1.5] {} {(y1)(x1)(x2)} {$N$} ;
+\end{tikzpicture}
+\end{flushright}
+\end{minipage}
+\end{minipage}
+
+\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with two latent variables per observation. \emph{Top:} Guide program predicts the two latents independently. \emph{Bottom:} Changing the guide program to treat the second latent variable as conditional on the first (green highlights show changes to the code).}
+\label{fig:bn_twoLatent}
+\end{figure}
 

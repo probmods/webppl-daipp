@@ -27,3 +27,7 @@
 
 %% Inline code listings
 \newcommand{\ic}[1]{\lstinline[basicstyle=\fontsize{8pt}{8.25pt}\selectfont\ttfamily]{#1}}
+
+%% Changing text color inside of code listings
+\lstset{escapeinside={<@}{@>}}
+\newcommand{\hilite}[1]{\textcolor{SeaGreen}{\mbox{#1}}}
