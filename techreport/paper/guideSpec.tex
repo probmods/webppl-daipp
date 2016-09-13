@@ -2,7 +2,7 @@
 \section{Specifying Guide Programs}
 \label{sec:guideSpec}
 
-In this section, we describe the user-facing side of our system: the language extensions to WebPPL that allow for the specification of guide programs.
+In this section, we describe the language extensions to WebPPL that allow for the specification of guide programs.
 Here, we focus on manually-specified guide programs. Later, we'll introduce a layer on top of this which can (semi) automatically derive guide programs.
 
 \subsection{Sampling with Guide Distributions}
@@ -183,9 +183,6 @@ The example code we have been building up in this second describes a Bayesian ne
 
 Figure~\ref{fig:bn_oneLatent} Bottom shows how to modify this code to instead have one discrete latent variable per observation; this is equivalent to a Gaussian mixture model. In this example, the \ic{simplex} function maps a vector in $\Reals^{n-1}$ to the $n$-dimensional simplex (i.e. a vector whose entries sum to one). This process produces a vector of weights suitable for use as the component probabilities of a discrete random variable.
 
-Figure~\ref{fig:bn_twoLatent} Top shows a slightly more complex Bayesian network with two latent continuous variables. Note that the guide program in this example predicts the two latent variables independently given the observation $y$. In Figure~\ref{fig:bn_twoLatent} Bottom, we make some small changes to the code (lines 3 and 17, highlighted in green) to instead have the guide program predict the second latent variable $\vecstyle{x}_2$ as a function of the first latent variable $\vecstyle{x}_1$. This small change allows the guide to capture a posterior dependency that was ingored by the first version.
-\remark{We'll show later how this gives better results?}
-
 \lstdefinestyle{smaller}{basicstyle=\fontsize{7pt}{7.5pt}\selectfont\ttfamily}
 
 \begin{figure}
@@ -289,6 +286,10 @@ var model = function() {
 \label{fig:bn_oneLatent}
 
 \end{figure}
+
+
+Figure~\ref{fig:bn_twoLatent} Top shows a slightly more complex Bayesian network with two latent continuous variables. Note that the guide program in this example predicts the two latent variables independently given the observation $\vecstyle{y}$. In Figure~\ref{fig:bn_twoLatent} Bottom, we make some small changes to the code (lines 3 and 17, highlighted in green) to instead have the guide program predict the second latent variable $\vecstyle{x}_2$ as a function of the first latent variable $\vecstyle{x}_1$. This small change allows the guide to capture a posterior dependency that was ingored by the first version.
+\remark{We'll show later how this gives better results?}
 
 
 \begin{figure}

@@ -29,12 +29,6 @@ In the rest of this paper, we will build on this language to add guide programs 
 Instead of approximating the posterior $p(\vecstyle{x} | \vecstyle{y})$ with a collection of samples, could instead try to approximate it via a parameterized distribution $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ which is itself easy to sample from.
 This is what variational inference is all about~\cite{VariationalInference}.
 The goal is to find parameters $\phi$ such that $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ is as close as possible to $p(\vecstyle{x} | \vecstyle{y})$, where closeness is typically measured via KL-divergence.
-% KL-divergence is the most commonly-used measure of `closeness', leading to the following optimization objective:
-% %%%
-% \begin{equation*}
-% \min_{\phi} \KLD(\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi) || p(\vecstyle{x} | \vecstyle{y}))
-% \end{equation*}
-% %%%
 
 Need to pick a parametrized family $\guide$ to do this; one common choice is the \emph{mean-field family}:
 %%%
@@ -78,8 +72,8 @@ where $\vecstyle{x}_{<i}$ are the random choices made before choice $i$ is sampl
 \subsection{Variational Model Learning}
 
 This same amortized variational inference setup can also be used to learn the parameters of generative models. If the generative model $p$ is also parameterized, i.e. $p(\vecstyle{x} | \vecstyle{y} ; \theta)$, then its parameters $\theta$ can be optimized along with the parameters $\phi$ of the guide program.
-The `neural variational inference' methods mentioned above can all do this, though their formulations of the optimization problem are all slightly different~\cite{NVIL,DLGM,AEVB}.
+The `neural variational inference' methods mentioned above can all do this~\cite{NVIL,DLGM,AEVB}.
 
-In our system, $\theta$ and $\phi$ are treated the same, and we use the same optimization objective and algorithm whether $p$ has any learnable parameters or not.
+Our system also supports learning generative model parameters in addition to guide parameters.
 We will show examples of how our system makes it easy to use either (regularized) maximum-likelihood learning or full variational Bayesian learning, or to switch between them.
 

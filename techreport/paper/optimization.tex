@@ -2,13 +2,65 @@
 \section{Optimizing Parameters}
 \label{sec:optimization}
 
-The interface to \ic{Optimize}.
+Now that we have seen how to author learnable guide programs, in this section, we will describe how to optimize the parameters of those programs. 
 
-Background: The ELBo objective, the PW and LR estimators and when they are each applicable.
+\subsection{Optimization Interface}
+
+In Section~\ref{sec:pplbasics}, we showed how WebPPL programs use the \ic{Infer} function to perform non-amortized inference on a \ic{model} function. To optimize parameters for amortized inference, WebPPL provides an \ic{Optimize} function with a similar interface:
+%%%
+\begin{lstlisting}
+var model = function() {
+   // Use sample, guide, mapData, etc.
+};
+
+var params = Optimize(model, {
+   steps: 100,
+   optMethod: 'adam'
+});
+\end{lstlisting}
+%%%
+The code above performs 100 gradient update steps on \ic{model} using the Adam stochastic optimization method~\cite{Adam}.
+The return value \ic{params} of this function is a map from parameter names to optimized parameter values. Section~\ref{sec:usingLearnedGuides} describes how to use these optimized parameters for inference tasks.
+
+The remainder of this section focuses on the theory and implementation of our gradient-based optimization system. 
+
+\subsection{ELBo: The Variational Objective}
+
+In Section~\ref{sec:background:variational}, we mentioned that the goal of variational inference is to find values of the parameters $\phi$ for our guide program $\guide(\vecstyle{x} | \vecstyle{y} ; \phi)$ such that it is as close as possible to the true posterior $p(\vecstyle{x} | \vecstyle{y})$, where closeness is measured via KL-divergence. The KL-divergence between two general distributions is intractable to compute; however, some straightforward algebra produces an objective that is tractable:
+%%%
+\begin{align}
+\begin{split}
+\KLD(\guide(\vecstyle{x} | \vecstyle{y} ; \phi) || p(\vecstyle{x} | \vecstyle{y}))
+&= \int_{\vecstyle{x}} \guide(\vecstyle{x} | \vecstyle{y} ; \phi) \log \frac{\guide(\vecstyle{x} | \vecstyle{y} ; \phi)}{p(\vecstyle{x} | \vecstyle{y})}\\
+&= \int_{\vecstyle{x}} \guide(\vecstyle{x} | \vecstyle{y} ; \phi) \log \frac{\guide(\vecstyle{x} | \vecstyle{y} ; \phi)}{p(\vecstyle{x}, \vecstyle{y})} + \log p(\vecstyle{y})\\
+&= \expect_{\guide}[ \log(\guide(\vecstyle{x} | \vecstyle{y} ; \phi) -  p(\vecstyle{x} | \vecstyle{y}) ) ] + \log p(\vecstyle{y})\\
+&= \log p(\vecstyle{y}) - \expect_{\guide}[ \log( p(\vecstyle{x} | \vecstyle{y}) - \guide(\vecstyle{x} | \vecstyle{y} ; \phi) ) ]\\
+&= \log p(\vecstyle{y}) - \mathcal{L}(\vecstyle{x}, \phi) \geq 0
+\end{split}
+\label{eq:elbo}
+\end{align}
+%%%
+where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\mathcal{L}(\vecstyle{x}, \phi)$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log p(\vecstyle{y})$. Accordingly, $\mathcal{L}(\vecstyle{x}, \phi)$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
+
+When learning a generative model $p(\vecstyle{x}, \vecstyle{y}; \theta)$, the objective is usually to maximize the log marginal likelihood of the training data $\log p(\vecstyle{y}; \theta)$. Rewriting the result from Equation~\ref{eq:elbo}:
+%%%
+\begin{equation*}
+\mathcal{L}(\vecstyle{x}, \phi, \theta) = \log p(\vecstyle{y} ; \theta) - \KLD(\guide(\vecstyle{x} | \vecstyle{y} ; \phi) || p(\vecstyle{x} | \vecstyle{y} ; \theta))
+\end{equation*}
+%%%
+we can see that, again, because KL-divergence is non-negative, maximizing the ELBo also corresponds to maximizing the log marginal likelihood of the data. Thus, whether we are doing amortized infernence only or amortized inference plus model learning, we can use the same optimization objective: the ELBo.
+
+For an alternative derivation of the ELBo using Jensen's inequality, see Mnih and Gregor~\cite{NVIL} and Jordan et al.~\cite{VariationalInference}.
+
+\subsection{ELBo Gradient Estimators}
+
+The PW and LR estimators and when they are each applicable.
+
+\subsection{Hybrid Gradient Estimator}
 
 Hybrid PW/LR estimator. Each term drops out in certain conditions (refer to appendix for proofs). How our AD implementation handles this dropping out implicitly.
 
 Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depend on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.
 
-Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but referto appendix for its own proof?) Neural baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
+Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but refer to appendix for its own proof?) Neural baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
 
