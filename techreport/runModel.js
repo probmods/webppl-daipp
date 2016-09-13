@@ -72,7 +72,7 @@ function compileModel(opts) {
 
 		// Turn model learning on/off
 		doModelLearning: true,
-		// Can be 'ML', 'ML_reg', 'MeanField',
+		// Can be 'ML', 'ML_reg', 'VB',
 		modelLearnType: 'ML_reg',
 		// Can be 'MeanField', 'Recognition' (TODO: also auto recognition guide, eventually)
 		localGuideType: 'Recognition'		

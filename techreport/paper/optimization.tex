@@ -41,6 +41,7 @@ In Section~\ref{sec:background:variational}, we mentioned that the goal of varia
 \end{align}
 %%%
 where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\mathcal{L}(\vecstyle{x}, \phi)$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log p(\vecstyle{y})$. Accordingly, $\mathcal{L}(\vecstyle{x}, \phi)$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
+\remark{More generally (when logp(y) is an arbitrary partition function) this is the `variational free energy'.}
 
 When learning a generative model $p(\vecstyle{x}, \vecstyle{y}; \theta)$, the objective is usually to maximize the log marginal likelihood of the training data $\log p(\vecstyle{y}; \theta)$. Rewriting the result from Equation~\ref{eq:elbo}:
 %%%
@@ -62,5 +63,5 @@ Hybrid PW/LR estimator. Each term drops out in certain conditions (refer to appe
 
 Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depend on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.
 
-Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but refer to appendix for its own proof?) Neural baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
+Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but refer to appendix for its own proof?) Baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
 

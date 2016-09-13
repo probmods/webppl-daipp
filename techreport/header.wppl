@@ -27,6 +27,8 @@ var perceptronParams = function(spec, name) {
 	};
 };
 
+// TODO: I think the 'VB' option is not implemented correctly...
+
 // Creating parameters for generative models under different conditions
 var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma) {
 	var prm = function() { return paramScalar(paramMu, paramSigma) };
@@ -38,7 +40,7 @@ var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma)
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
 				guide: Delta({v: prm()})
 			}) :
-		opts.modelLearnType === 'MeanField' ?
+		opts.modelLearnType === 'VB' ?
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
 				guide: Gaussian({mu: prm(), sigma: softplus(prm())})
 			}) :
@@ -54,7 +56,7 @@ var makeSigmaGenerative = function(value, priorShape, priorScale, paramMu, param
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
 				guide: Delta({v: softplus(prm())})
 			}) :
-		opts.modelLearnType === 'MeanField' ?
+		opts.modelLearnType === 'VB' ?
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
 				guide: Gamma({shape: softplus(prm()), scale: softplus(prm())})
 			}) :
@@ -74,7 +76,7 @@ var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma) {
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
 			guide: Delta({v: simplex(prm())})
 		}) :
-	opts.modelLearnType === 'MeanField' ?
+	opts.modelLearnType === 'VB' ?
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
 			guide: LogisticNormal({mu: prm(), sigma: softplus(prm())})
 		}) :
@@ -89,7 +91,7 @@ var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSi
     sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
       guide: Delta({v: prm()})
     }) :
-  opts.modelLearnType === 'MeanField' ?
+  opts.modelLearnType === 'VB' ?
     sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
       guide: TensorGaussian({mu: prm(), sigma: softplus(prm()), dims: [n, m]})
     }) :

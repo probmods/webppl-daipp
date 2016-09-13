@@ -37,6 +37,7 @@ var model = function() {
 
 			if (count > 0) {
 				if (!enumOut) {
+					// TODO: Have a neural guide for this (i.e. predict topic given word)
 					var topic = sample(topicDistForDoc, {
 						guide: Discrete({ps: discreteMeanFieldParams(numTopics)})
 					});
