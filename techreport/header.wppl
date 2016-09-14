@@ -27,8 +27,6 @@ var perceptronParams = function(spec, name) {
 	};
 };
 
-// TODO: I think the 'VB' option is not implemented correctly...
-
 // Creating parameters for generative models under different conditions
 var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma) {
 	var prm = function() { return paramScalar(paramMu, paramSigma) };

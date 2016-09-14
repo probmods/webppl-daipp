@@ -155,7 +155,7 @@ var mu_x = sample(
    Gaussian({mu: 0, sigma: 1}),
    { guide:
       Delta({v: paramScalar('mu_x')})
-   })
+   });
 \end{lstlisting}
 \end{minipage}
 %
@@ -165,16 +165,19 @@ var mu_x = sample(
 \begin{lstlisting}[style=learnableModels]
 // Variational Bayes
 var mu_x = sample(
-   Gaussian({
-   	mu: paramScalar('mu_x_m'),
-   	sigma: softplus(paramScalar('mu_x_s'))
-   }))
+   Gaussian({mu: 0, sigma: 1}),
+   { guide:
+      Gaussian({
+        mu: paramScalar('mu_x_m'),
+        sigma: softplus(paramScalar('mu_x_s'))
+      })
+   });
 \end{lstlisting}
 \end{minipage}
 
 The code in the left block results in maximum likelihood estimation: the inference engine will optimize for the single best parameter value.
-The middle code block shows how to achieve regularized maximum likelihood. Here, \ic{mu_x} is treated as a random choice with a Gaussian prior. However, the guide distribution is simply a Delta distribution whose center is given by an optimizable parameter. Thus, \ic{mu_x} is still a point estimate (i.e. maximum likelihood), but the Gaussian prior results in L2 regularization.
-Finally, the right block shows full variational Bayesian learning---\ic{mu_x} is no longer a point estimate, but is drawn from a Gaussian prior with optimizable parameters.~\remark{I think this is how VB is supposed to work? Make sure the code is also doing it this way...}
+The middle code block shows how to achieve regularized maximum likelihood. Here, \ic{mu_x} is given a Gaussian prior. However, the guide distribution is a Delta whose center is given by an optimizable parameter. Thus, the inference engine will still predict a point estiamte for \ic{mu_x}, but the Gaussian prior results in L2 regularization.
+Finally, the right block shows a variational Bayesian model: \ic{mu_x} has a Gaussian prior distribution, and the guide samples \ic{mu_x} from an approximate variational Gaussian posterior with optimizable parameters.
 
 
 \subsection{Examples: Simple Bayesian Networks}
