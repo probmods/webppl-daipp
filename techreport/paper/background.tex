@@ -5,6 +5,18 @@
 \subsection{Probabilistic Programming Basics}
 \label{sec:pplbasics}
 
+For our purposes, a probabilistic program defines a generative model $\trueJoint$ of latent variables $\latentVars$ and data $\observedVars$. The model factors as:
+%%%
+\begin{equation}
+\trueJoint = p(\observedVars | \latentVars) \prod_i p_i(\latentVar_i | \latentVars_{<i})
+\label{eq:probProgDef}
+\end{equation}
+%%%
+\remark{Is this ok, or does the variance reduction stuff later require likelihood to be factored, too?}
+The prior probability distribution $p(\latentVars)$ decomposes as a product of conditionals $p_i(\latentVar_i | \latentVars_{<i})$, one for each random choice $\latentVar_i$ in the program. The use of $\latentVars_{<i}$ indicates that a random choice can potentially depend on any or all previous choices made by the program.
+$p(\observedVars | \latentVars)$ is the likelihood of the data and need not be a proper probability distribution (i.e. unnormalized factors are acceptable).
+Note that $\latentVars$ can vary in length across executions: a probabilistic program can sample a variable number of random variables.
+
 Our system is implemented in the probabilistic programming language WebPPL, which we'll use for examples throughout this paper~\cite{WebPPL}.
 WebPPL is a PPL embedded in Javascript.
 That is, it adds sampling, condition, and inference operators to a purely-functional subset of JS.

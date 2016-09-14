@@ -115,15 +115,35 @@ Using this `reparameterization trick'~\cite{AEVB} allows the ELBo gradient to be
 This estimator is called the `pathwise derivative estimator'~\cite{PathwiseEstimator}.
 It transforms both the guide and target distributions into distributions over independent random `noise' variables $\reparamVars$, followed by complex, parameterized, deterministic transformations. Given a fixed assignment to the noise variables, derivatives can propagate from the final log probabilities back to the input parameters, leading to much more stable gradient estimates than with the LR estimator.
 
-\subsection{Hybrid Gradient Estimator for Guide Programs}
+\subsection{Unified Gradient Estimator for Probabilistic Programs}
 
-To make things as simple as possible, going to roll everything into one esimator. Use just $\phi$ for both generative and guide params, b/c it simplifies notation and reflects the fact that our system makes no distinction under the hood.
+A general probabilistic program makes many random choices, some of which are amenable to the reparameterization trick (i.e. continuous choices) and others of which are not (i.e. discrete choices). Thus, to optimize the ELBo for a probabilistic program $p$ and an associated guide program $\guide$, we seek a single, unified gradient estimator that handles both discrete and continuous choices and supports model learning as well as amortized inference.
 
-Hybrid PW/LR estimator. Each term drops out in certain conditions (refer to appendix for proofs). How our AD implementation handles this dropping out implicitly.
+As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters. We drop this parameterization from all derivations that follow (to simplifiy notation).
 
-Cite stochastic computation graphs paper.
+Second, to provide a common foundation for analysis, we assume that all random choices made by the program are first drawn from a distribution $\reparamDist$ and then transformed by a deterministic function $\reparamXform$. Under this assumption, the distributions defined by the program (Equation~\ref{eq:probProgDef}) and the guide program become:
+%%%
+\begin{align*}
+\trueJoint &= p(\observedVars | \latentVars) \prod_i p_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i})) &\reparamVar_i \sim \reparamDist_i(\cdot)
+\\
+\guidePostNoPhi &= \prod_i \guide_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) &\reparamVar_i \sim \reparamDist_i(\cdot)
+\end{align*}
+%%%
+The distributions $\reparamDist_i$ and functions $\reparamXform_i$ have different meanings depending on whether the variable $\reparamVar_i$ is continuous or discrete:
+%%%
+\begin{itemize}
+\item{Continuous $\reparamVar_i$:}
+\item{Discrete $\reparamVar_i$:}
+\end{itemize}
+%%%
 
-Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depend on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.
+% To make things as simple as possible, going to roll everything into one esimator. Use just $\phi$ for both generative and guide params, b/c it simplifies notation and reflects the fact that our system makes no distinction under the hood.
 
-Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but refer to appendix for its own proof?) Baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
+% Hybrid PW/LR estimator. Each term drops out in certain conditions (refer to appendix for proofs). How our AD implementation handles this dropping out implicitly.
+
+% Cite stochastic computation graphs paper.
+
+% Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depend on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.
+
+% Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but refer to appendix for its own proof?) Baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
 
