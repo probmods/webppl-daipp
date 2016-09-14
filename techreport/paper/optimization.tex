@@ -26,40 +26,102 @@ The remainder of this section focuses on the theory and implementation of our gr
 
 \subsection{ELBo: The Variational Objective}
 
-In Section~\ref{sec:background:variational}, we mentioned that the goal of variational inference is to find values of the parameters $\phi$ for our guide program $\guide(\vecstyle{x} | \vecstyle{y} ; \phi)$ such that it is as close as possible to the true posterior $p(\vecstyle{x} | \vecstyle{y})$, where closeness is measured via KL-divergence. The KL-divergence between two general distributions is intractable to compute; however, some straightforward algebra produces an objective that is tractable:
+In Section~\ref{sec:background:variational}, we mentioned that the goal of variational inference is to find values of the parameters $\phi$ for our guide program $\guidePosterior$ such that it is as close as possible to the true posterior $\truePosterior$, where closeness is measured via KL-divergence. The KL-divergence between two general distributions is intractable to compute; however, some straightforward algebra produces an objective that is tractable:
 %%%
 \begin{align}
 \begin{split}
-\KLD(\guide(\vecstyle{x} | \vecstyle{y} ; \phi) || p(\vecstyle{x} | \vecstyle{y}))
-&= \int_{\vecstyle{x}} \guide(\vecstyle{x} | \vecstyle{y} ; \phi) \log \frac{\guide(\vecstyle{x} | \vecstyle{y} ; \phi)}{p(\vecstyle{x} | \vecstyle{y})}\\
-&= \int_{\vecstyle{x}} \guide(\vecstyle{x} | \vecstyle{y} ; \phi) \log \frac{\guide(\vecstyle{x} | \vecstyle{y} ; \phi)}{p(\vecstyle{x}, \vecstyle{y})} + \log p(\vecstyle{y})\\
-&= \expect_{\guide}[ \log(\guide(\vecstyle{x} | \vecstyle{y} ; \phi) -  p(\vecstyle{x} | \vecstyle{y}) ) ] + \log p(\vecstyle{y})\\
-&= \log p(\vecstyle{y}) - \expect_{\guide}[ \log( p(\vecstyle{x} | \vecstyle{y}) - \guide(\vecstyle{x} | \vecstyle{y} ; \phi) ) ]\\
-&= \log p(\vecstyle{y}) - \mathcal{L}(\vecstyle{x}, \phi) \geq 0
+\KLD(\guidePosterior || \truePosterior)
+&= \int_{\latentVars} \guidePosterior \log \frac{\guide(\guidePosterior}{\truePosterior}\\
+&= \int_{\latentVars} \guidePosterior \log \frac{\guidePosterior}{\trueJoint} + \log \dataMarginal\\
+&= \expect_{\guide}[ \log(\guidePosterior -  \trueJoint ) ] + \log \dataMarginal\\
+&= \log \dataMarginal - \elboDef\\
+&= \log \dataMarginal - \elbo \geq 0
 \end{split}
 \label{eq:elbo}
 \end{align}
 %%%
-where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\mathcal{L}(\vecstyle{x}, \phi)$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log p(\vecstyle{y})$. Accordingly, $\mathcal{L}(\vecstyle{x}, \phi)$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
+where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\elbo$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log \dataMarginal$. Accordingly, $\elbo$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
 \remark{More generally (when logp(y) is an arbitrary partition function) this is the `variational free energy'.}
 
-When learning a generative model $p(\vecstyle{x}, \vecstyle{y}; \theta)$, the objective is usually to maximize the log marginal likelihood of the training data $\log p(\vecstyle{y}; \theta)$. Rewriting the result from Equation~\ref{eq:elbo}:
+When learning a generative model $\trueJointTheta$, the objective is usually to maximize the log marginal likelihood of the training data $\log \dataMarginalTheta$. Rewriting the result from Equation~\ref{eq:elbo}:
 %%%
 \begin{equation*}
-\mathcal{L}(\vecstyle{x}, \phi, \theta) = \log p(\vecstyle{y} ; \theta) - \KLD(\guide(\vecstyle{x} | \vecstyle{y} ; \phi) || p(\vecstyle{x} | \vecstyle{y} ; \theta))
+\elboWithTheta = \log \dataMarginalTheta - \KLD(\guidePosterior || \truePosteriorTheta)
 \end{equation*}
 %%%
 we can see that, again, because KL-divergence is non-negative, maximizing the ELBo also corresponds to maximizing the log marginal likelihood of the data. Thus, whether we are doing amortized infernence only or amortized inference plus model learning, we can use the same optimization objective: the ELBo.
 
-For an alternative derivation of the ELBo using Jensen's inequality, see Mnih and Gregor~\cite{NVIL} and Jordan et al.~\cite{VariationalInference}.
+For an alternative derivation of the ELBo using Jensen's inequality, see Mnih and Gregor~\cite{NVIL} and Jordan et al.~\cite[p. 213]{VariationalInference}.
 
 \subsection{ELBo Gradient Estimators}
 
-The PW and LR estimators and when they are each applicable.
+Maximizing the ELBo requires estimating its gradient with respect to the parameters. For model learning, computing the gradient with respect to the model parameters $\theta$ is straightforward:
+%%%
+\begin{align}
+\begin{split}
+\gradparamsTheta \elboWithTheta
+&= \gradparamsTheta \elboDefGenTheta\\
+&= \expect_\guide [ \gradparamsTheta \log \trueJointTheta ] 
+\end{split}
+\label{eq:modelParamGrad}
+\end{align}
+%%%
+where the expectation with respect to $\guide$ is approximated by samples drawn from $\guide$. This requires that $\trueJointTheta$ be differentiable with respect to $\theta$; many generative models with differentiable likelihoods have this property.
 
-\subsection{Hybrid Gradient Estimator}
+Estimating the gradient with respect to the guide parameters $\phi$ is more complex.
+There are two well-known approaches to performing this estimation:
+
+\paragraph{Likelihood Ratio (LR) Estimator:}
+In the general case, the gradient of the ELBo with respect to $\phi$ can be estimated by:
+%%%
+\begin{align}
+\begin{split}
+\gradparams \elboWithTheta
+&= \gradparams \elboDefGenTheta\\
+&= \expect_\guide[ \gradparams \log \guidePosterior ( \log \trueJointTheta - \log \guidePosterior ) ]
+\end{split}
+\label{eq:lr}
+\end{align}
+%%%
+This estimator goes by the names `likelihood ratio estimator'~\cite{LikelihoodRatioEstimator} and `score function estimator'~\cite{ScoreFunctionEstimator}, and it is also equivalent to the REINFORCE policy gradient algorithm in the reinforcement learning literature~\cite{REINFORCE}. The derivations of this estimator most relevant to our setting can be found in Wingate and Weber~\cite{AVIPP} and Mnih and Gregor~\cite{NVIL}.
+Intuitively, each gradient update step using the LR estimator pushes the parameters $\phi$ in the direction $( \log \trueJoint - \log \guidePosterior )$---that is, the direction that will bring the guide closer to the true posterior. The magnitude of this update is controlled by $\gradparams \log \guidePosterior$.
+
+The LR estimator is straightforward to compute, requiring only that $\log \guidePosterior$ be differentiable with respect to $\phi$ (the mean field and neural guide families presented in Section~\ref{sec:background} satisfy this property). However, it is known to exhibit high variance. This problem is amenable to several variance reduction techniques, some of which we will employ later in this section.
+
+\paragraph{Pathwise (PW) Estimator:}
+
+Equation~\ref{eq:lr} is more complicated (and less well-behaved) than Equation~\ref{eq:modelParamGrad} because the gradient can no longer be pushed inside the expectation: the expectation is with respect to $\guide$, and $\guide$ depends on the parameters $\phi$ with respect to which we are differentiating.
+However, in certain cases, it is possible to re-write the ELBo such that the expectation distribution does not depend on $\phi$.
+This situation occurs whenever the latent variables $\latentVars$ can be expressed as samples from an un-parameterized distribution, followed by a parameterized deterministic transformation:
+%%%
+\begin{equation*}
+\latentVars = \xformedVarsPhi \hspace{2em} \reparamVars \sim \reparamDist(\cdot)
+\end{equation*}
+%%%
+For example, sampling from a (multivariate) Gaussian distribution $\normdist(\mu, \Sigma)$ can be expressed as $\mu + \Sigma \cdot \reparamVars$, where $\reparamVars \sim \normdist(0, I)$. Continuous random variables which are parameterized by a location and a scale parameter naturally support this type of transformation, and other types of continuous variables can be well-approximated by deterministic transformations of uniform or unit normal variables~\cite{ADVI}.
+
+Using this `reparameterization trick'~\cite{AEVB} allows the ELBo gradient to be rewritten as:
+%%%
+\begin{align}
+\begin{split}
+\gradparams \elboWithTheta
+&= \gradparams \elboDefGenTheta\\
+&= \gradparams \expect_\reparamDist [ \log p(\xformedVarsPhi, \observedVars ; \theta) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ]\\
+&= \expect_\reparamDist [\gradparams ( \log p(\xformedVarsPhi, \observedVars ; \theta) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ) ]
+\end{split}
+\label{eq:pw}
+\end{align}
+%%%
+This estimator is called the `pathwise derivative estimator'~\cite{PathwiseEstimator}.
+It transforms both the guide and target distributions into distributions over independent random `noise' variables $\reparamVars$, followed by complex, parameterized, deterministic transformations. Given a fixed assignment to the noise variables, derivatives can propagate from the final log probabilities back to the input parameters, leading to much more stable gradient estimates than with the LR estimator.
+
+\subsection{Hybrid Gradient Estimator for Guide Programs}
+
+To make things as simple as possible, going to roll everything into one esimator. Use just $\phi$ for both generative and guide params, b/c it simplifies notation and reflects the fact that our system makes no distinction under the hood.
 
 Hybrid PW/LR estimator. Each term drops out in certain conditions (refer to appendix for proofs). How our AD implementation handles this dropping out implicitly.
+
+Cite stochastic computation graphs paper.
 
 Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depend on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.
 

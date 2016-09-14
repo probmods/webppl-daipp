@@ -26,20 +26,20 @@ In the rest of this paper, we will build on this language to add guide programs 
 \subsection{Inference as Optimization: Variational Inference}
 \label{sec:background:variational}
 
-Instead of approximating the posterior $p(\vecstyle{x} | \vecstyle{y})$ with a collection of samples, could instead try to approximate it via a parameterized distribution $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ which is itself easy to sample from.
+Instead of approximating the posterior $\truePosterior$ with a collection of samples, could instead try to approximate it via a parameterized distribution $\guide_{\observedVars}(\latentVars ; \phi)$ which is itself easy to sample from.
 This is what variational inference is all about~\cite{VariationalInference}.
-The goal is to find parameters $\phi$ such that $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ is as close as possible to $p(\vecstyle{x} | \vecstyle{y})$, where closeness is typically measured via KL-divergence.
+The goal is to find parameters $\phi$ such that $\guide_{\observedVars}(\latentVars ; \phi)$ is as close as possible to $\truePosterior$, where closeness is typically measured via KL-divergence.
 
 Need to pick a parametrized family $\guide$ to do this; one common choice is the \emph{mean-field family}:
 %%%
 \begin{equation*}
-\guide^{\textbf{MF}}_{\vecstyle{y}}(\vecstyle{x} ; \phi) = \prod_i g_i(x_i ; \phi_i)
+\guide^{\textbf{MF}}_{\observedVars}(\latentVars ; \phi) = \prod_i g_i(\latentVar_i ; \phi_i)
 \end{equation*}
 %%%
 This is a fully-factored distribution: it approximates the posterior as an independent product of parameterized marginals $\guide_i$, one for each random variable.
 Several existing general-purpose variational inference systems use this scheme~\cite{AVIPP,BBVI}.
 This is easy to work with, but it does not capture any of the correlations/dependencies in the true posterior.
-This limitation is often acceptable b/c $\guide_{\vecstyle{y}}$ is defined to be specific to a particular $\vecstyle{y}$, and thus the parameters are re-optimized for each new $\vecstyle{y}$.
+This limitation is often acceptable b/c $\guide_{\observedVars}$ is defined to be specific to a particular $\observedVars$, and thus the parameters are re-optimized for each new $\observedVars$.
 So this gives us an alternative to Monte Carlo methods (e.g. MCMC) that can be faster and more reliable, but it is still solving inference problems from scratch each time.
 
 \subsection{Amortized (Variational) Inference}
@@ -49,29 +49,29 @@ Evidence that people do this~\cite{AmortizedInference}.
 Some previous work tries to implement this principle for Bayesian networks, by inverting the network topology and learning approximations to the local inverse conditional distributions~\cite{StochasticInverses,NeuralStochasticInverses}.
 
 We can also view amortized inference as an extention to the variational inference idea.
-Instead of defining a parametric family $\guide_{\vecstyle{y}}(\vecstyle{x} ; \phi)$ which is specific to a given $\vecstyle{y}$, we instead define a general family $\guide(\vecstyle{x} | \vecstyle{y} ; \phi)$ which is conditional on $\vecstyle{y}$; that is, it takes $\vecstyle{y}$ as input.
-In this setting, mean field no longer applies, as whatever components are used to make up $\guide$ must now be functions of $\vecstyle{y}$.
+Instead of defining a parametric family $\guide_{\observedVars}(\latentVars ; \phi)$ which is specific to a given $\observedVars$, we instead define a general family $\guidePosterior$ which is conditional on $\observedVars$; that is, it takes $\observedVars$ as input.
+In this setting, mean field no longer applies, as whatever components are used to make up $\guide$ must now be functions of $\observedVars$.
 Can extend mean-field to deal with input data by using neural networks:
 %%%
 \begin{equation*}
-\guide(\vecstyle{x} | \vecstyle{y} ; \phi) = \prod_i \guide_i(x_i ; \text{NN}_i(\vecstyle{y} ; \phi))
+\guidePosterior = \prod_i \guide_i(\latentVar_i ; \text{NN}_i(\observedVars ; \phi))
 \end{equation*}
 %%%
-That is, the parameters of each local conditional in the guide are computed via a neural network function of $\vecstyle{y}$.
-This is amortized inference b/c you can invest time up-front optimizing the weights of these neural networks such that $\guide(\vecstyle{x} | \vecstyle{y} ; \phi)$ is close to $p(\vecstyle{x} | \vecstyle{y})$, and the trained nets can then be used on never-before-seen $\vecstyle{y}$'s.
+That is, the parameters of each local conditional in the guide are computed via a neural network function of $\observedVars$.
+This is amortized inference b/c you can invest time up-front optimizing the weights of these neural networks such that $\guidePosterior$ is close to $\truePosterior$, and the trained nets can then be used on never-before-seen $\observedVars$'s.
 Several recent approaches to `neural variational inference' use some instantiation of this design pattern~\cite{NVIL,DLGM,AEVB}.
 
 Our system also takes this general approach using neural nets but is more general; it allows neural nets also to receive as input any random choices already made:
 %%%
 \begin{equation*}
-\guide(\vecstyle{x} | \vecstyle{y} ; \phi) = \prod_i \guide_i(x_i ; \text{NN}_i(\vecstyle{y}, \vecstyle{x}_{<i} ; \phi))
+\guidePosterior = \prod_i \guide_i(x_i ; \text{NN}_i(\observedVars, \latentVars_{<i} ; \phi))
 \end{equation*}
 %%%
-where $\vecstyle{x}_{<i}$ are the random choices made before choice $i$ is sampled. This allows the networks to capture posterior dependencies between latent variables (which we will demonstrate later in the paper).
+where $\latentVars_{<i}$ are the random choices made before choice $i$ is sampled. This allows the networks to capture posterior dependencies between latent variables (which we will demonstrate later in the paper).
 
 \subsection{Variational Model Learning}
 
-This same amortized variational inference setup can also be used to learn the parameters of generative models. If the generative model $p$ is also parameterized, i.e. $p(\vecstyle{x} | \vecstyle{y} ; \theta)$, then its parameters $\theta$ can be optimized along with the parameters $\phi$ of the guide program.
+This same amortized variational inference setup can also be used to learn the parameters of generative models. If the generative model $p$ is also parameterized, i.e. $\truePosteriorTheta$, then its parameters $\theta$ can be optimized along with the parameters $\phi$ of the guide program.
 The `neural variational inference' methods mentioned above can all do this~\cite{NVIL,DLGM,AEVB}.
 
 Our system also supports learning generative model parameters in addition to guide parameters.

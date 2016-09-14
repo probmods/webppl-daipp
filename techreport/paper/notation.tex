@@ -1,4 +1,49 @@
 %auto-ignore
 
-\newcommand{\guide}{\ensuremath{g}}
-% \newcommand{\guide}{\ensuremath{q}}
+\newcommand{\latentVar}{\ensuremath{x}}
+\newcommand{\observedVar}{\ensuremath{y}}
+\newcommand{\latentVars}{\ensuremath{\vecstyle{\latentVar}}}
+\newcommand{\observedVars}{\ensuremath{\vecstyle{\observedVar}}}
+
+% -------------------------------------------------------------------
+
+\newcommand{\trueJoint}{\ensuremath{p(\latentVars, \observedVars)}}
+\newcommand{\trueJointPhi}{\ensuremath{p(\latentVars, \observedVars ; \phi)}}
+\newcommand{\trueJointTheta}{\ensuremath{p(\latentVars, \observedVars; \theta)}}
+
+\newcommand{\truePosterior}{\ensuremath{p(\latentVars | \observedVars)}}
+\newcommand{\truePosteriorPhi}{\ensuremath{p(\latentVars | \observedVars ; \phi)}}
+\newcommand{\truePosteriorTheta}{\ensuremath{p(\latentVars | \observedVars ; \theta)}}
+
+\newcommand{\dataMarginal}{\ensuremath{p(\observedVars)}}
+\newcommand{\dataMarginalPhi}{\ensuremath{p(\observedVars ; \phi)}}
+\newcommand{\dataMarginalTheta}{\ensuremath{p(\observedVars ; \theta)}}
+
+% -------------------------------------------------------------------
+
+% \newcommand{\guide}{\ensuremath{g}}
+\newcommand{\guide}{\ensuremath{q}}
+
+\newcommand{\guidePosterior}{\ensuremath{\guide(\latentVars | \observedVars ; \phi)}}
+
+\newcommand{\elbo}{\ensuremath{\mathcal{L}(\latentVars, \phi)}}
+\newcommand{\elboWithTheta}{\ensuremath{\mathcal{L}(\latentVars, \phi, \theta)}}
+\newcommand{\elboDef}{\ensuremath{\expect_{\guide}[ \log \trueJoint - \log \guidePosterior ]}}
+\newcommand{\elboDefGenPhi}{\ensuremath{\expect_{\guide}[ \log \trueJointPhi - \log \guidePosterior ]}}
+\newcommand{\elboDefGenTheta}{\ensuremath{\expect_{\guide}[ \log \trueJointTheta - \log \guidePosterior ]}}
+
+\newcommand{\gradparams}{\ensuremath{\nabla_\phi}}
+\newcommand{\gradparamsTheta}{\ensuremath{\nabla_\phi}}
+
+% -------------------------------------------------------------------
+
+\newcommand{\reparamVar}{\ensuremath{\epsilon}}
+\newcommand{\reparamVars}{\ensuremath{\bm{\epsilon}}}
+\newcommand{\reparamDist}{\ensuremath{r}}
+\newcommand{\reparamXform}{\ensuremath{g}}
+\newcommand{\xformedVar}{\ensuremath{\reparamXform(\reparamVar)}}
+\newcommand{\xformedVarPhi}{\ensuremath{\reparamXform(\reparamVar ; \phi)}}
+\newcommand{\xformedVars}{\ensuremath{\reparamXform(\reparamVars)}}
+\newcommand{\xformedVarsPhi}{\ensuremath{\reparamXform(\reparamVars ; \phi)}}
+
+
