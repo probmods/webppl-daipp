@@ -1,0 +1,462 @@
+// Run with:
+// webppl --require . --require webppl-fs examples/ldaWithGuide.wppl
+
+var forEach = function(xs, f) {
+  map(function(i) {
+    return f(xs[i], i);
+  }, _.range(xs.length));
+  return;
+};
+
+var softplus = function(x) {
+  return T.log(T.add(T.exp(x), 1));
+};
+
+var oneOfK = cache(function(i, k) {
+  assert.ok(i >= 0 && i < k);
+  var t = zeros([k, 1]);
+  t.data.set([1], i);
+  return t;
+});
+
+var tensorToVector = function(t) {
+  // Turn a rank 1 tensor into a WebPPL vector representation.
+  var _t = ad.value(t);
+  assert.ok(_t.dims.length === 1);
+  return T.reshape(t, [_t.dims[0], 1]);
+};
+
+var mlp = function(x, params) {
+  var h = T.tanh(T.add(T.dot(params.W1, x), params.b1));
+  return T.add(T.dot(params.W2, h), params.b2);
+};
+
+// This was useful when passing `Vector(doc)` into the context net.
+var normalize = function(x) {
+  return T.div(x, T.sumreduce(x));
+};
+
+var countsToIndices = function(counts) {
+  var out = _.flatten(mapIndexed(function(i, count) { repeat(count, constF(i)); }, counts));
+  return out;
+};
+
+// *****************************************************************************
+
+// Straight-forward implementation.
+
+var lda0 = function(corpus, vocabSize, numTopics, alpha, eta) {
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}));
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// Rather than doing mean-field for z (which creates numDocs *
+// numWords parameters) have a guide net that attempts to map directly
+// from word => parameters of z.
+
+var lda1 = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  // Parameters for the guide net.
+  var numHid = 50;
+  var netParams = {
+    W1: paramMatrix(numHid, vocabSize, 0, 0.1),
+    W2: paramMatrix(numTopics, numHid, 0, 0.1),
+    b1: paramVector(numHid, 0, 0),
+    b2: paramVector(numTopics, 0, 0)
+  };
+
+  var wordToParams = function(word) {
+    // Use one-of-k encoding for the word. Note that the parameter
+    // vector of Discrete is not required to be normalized.
+    return {ps: softplus(mlp(oneOfK(word, vocabSize), netParams))};
+  };
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete(wordToParams(word))
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// Same as previous model, but have the guide net also take topicDist
+// as input. i.e. attempt to map from from (word, topicDist) =>
+// parameters of z.
+
+var lda2 = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  // Parameters for the guide net.
+  var numHid = 50;
+  var netParams = {
+    W1: paramMatrix(numHid, vocabSize + numTopics, 0, 0.1),
+    W2: paramMatrix(numTopics, numHid, 0, 0.1),
+    b1: paramVector(numHid, 0, 0),
+    b2: paramVector(numTopics, 0, 0)
+  };
+
+  var wordAndTopicDistToParams = function(word, topicDist) {
+    // Use one-of-k encoding for the word. Note that the parameter
+    // vector of Discrete is not required to be normalized.
+    var x = tensorToVector(T.concat(oneOfK(word, vocabSize), topicDist));
+    return {ps: softplus(mlp(x, netParams))};
+  };
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete(wordAndTopicDistToParams(word, topicDist))
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// Learn an RNN that chomps along the document generating the
+// parameters of all the zs. Initialize the net with the topic dist.
+
+var lda3 = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  // Parameters for the guide net.
+  var numHid = 10;
+  var embedSize = 10;
+  var ru = daipp.makeRU('rnn', numHid, embedSize, 'nameofrnn', true);
+
+  var params = {
+    init: {
+      W: paramMatrix(numHid, numTopics, 0, 0.1),
+      b: paramVector(numHid, 0, 0)
+    },
+    embed: {
+      W: paramMatrix(embedSize, vocabSize, 0, 0.1),
+      b: paramVector(embedSize, 0, 0)
+    },
+    predict: {
+      W: paramMatrix(numTopics, numHid, 0, 0.1),
+      b: paramVector(numTopics, 0, 0)
+    }
+  };
+
+  // TODO: Clean-up. These are all just a single nn layer.
+  var init = function(topicDist) {
+    return T.tanh(T.add(T.dot(params.init.W, topicDist), params.init.b));
+  };
+
+  var embed = function(word) {
+    return T.tanh(T.add(T.dot(params.embed.W, oneOfK(word, vocabSize)), params.embed.b));
+  };
+
+  var predict = function(state) {
+    return softplus(T.add(T.dot(params.predict.W, tensorToVector(state)), params.predict.b));
+  };
+
+  // Model *********************************************************************
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    reduce(function(word, prevState) {
+      // Merge word into state.
+      var state = daipp.nneval(ru, [prevState, embed(word)]);
+      // TODO: Can we still sum out here rather than sampling?
+      // TODO: If not summing out, feed sampled value back into net a
+      // la daipp?
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete({ps: predict(state)})
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+      return state;
+    }, init(topicDist), doc);
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// Have a guide net map from topics + counts => params for topicDist.
+// Requires docs as counts.
+
+// NOTE: I ran the experiment for this using Xavier init. from daipp.
+
+var lda4 = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  // TODO: This net has a very wide input. Have net that squishes
+  // topics/counts down to a more reasonable size first?
+
+  var numHid = 100;
+  var net1 = nn.mlp(vocabSize * (numTopics + 1), [
+    {nOut: numHid, activation: nn.tanh},
+  ], 'net1');
+
+  var netMu = nn.mlp(numHid, [
+    {nOut: numTopics - 1},
+  ], 'netMu');
+
+  var netSigma = nn.mlp(numHid, [
+    {nOut: numTopics - 1},
+  ], 'netSigma');
+
+
+  var guideParams = function(topics, doc) {
+    //console.log(doc);
+    var h = daipp.nneval(net1, T.concat(topics.concat(normalize(Vector(doc)))));
+    var mu = tensorToVector(daipp.nneval(netMu, h));
+    var sigma = tensorToVector(softplus(daipp.nneval(netSigma, h)));
+    var params = {mu: mu, sigma: sigma};
+    //console.log(ad.value(mu));
+    //console.log(ad.value(sigma));
+    return params;
+  };
+
+  // Model *********************************************************************
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}), {
+      guide: LogisticNormal(guideParams(topics, doc))
+    });
+
+    mapData({data: countsToIndices(doc)}, function(word) {
+      var z = sample(Discrete({ps: topicDist}));
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// The intention here is that this is similar to lda2, but differs by
+// having a bigger guide net.
+
+// Instead of combining the topicDist with the one-of-k representation
+// of the word, we combine it with a learned word embedding.
+
+var lda5 = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  var numHid = 50;
+  var embedSize = 50;
+
+  var embedNet = nn.mlp(vocabSize, [{nOut: embedSize, activation: nn.tanh}], 'embedNet');
+
+  var net = nn.mlp(embedSize + numTopics, [
+    {nOut: numHid, activation: nn.tanh},
+    {nOut: numTopics}
+  ], 'net');
+
+  var wordAndTopicDistToParams = function(word, topicDist) {
+    var embedding = daipp.nneval(embedNet, oneOfK(word, vocabSize));
+    var out = daipp.nneval(net, T.concat(embedding, T.sub(topicDist, 1)));
+    return {ps: softplus(tensorToVector(out))};
+  };
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete(wordAndTopicDistToParams(word, topicDist))
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// Version that sums out z, i.e. topic assignments.
+
+// Unlike the other examples, this expects each document to be an
+// array of counts, rather than indices.
+
+var lda100 = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    forEach(doc, function(count, word) {
+
+      // Naive summing out.
+      // if (count > 0) {
+      //   var marginal = Enumerate(function() {
+      //     var z = sample(Discrete({ps: topicDist}));
+      //     var topic = topics[z];
+      //     return sample(Discrete({ps: topic}));
+      //   });
+
+      //   factor(count * marginal.score(word));
+      // }
+
+      // More efficient summing out of z by not "sampling" w.
+
+      // What I think we might want here is something which like
+      // Enumerate that explores all paths (through a thunk), but
+      // rather than building a histogram it just returns the (log of)
+      // sum of the probability of each path?
+
+      if (count > 0) {
+        // Sum over topic assignments/z.
+        var prob = sum(mapN(function(z) {
+          // In this particular model we could just index into
+          // topicDist/topics[z] to get at the log probability.
+          var zScore = Discrete({ps: topicDist}).score(z);
+          var wgivenzScore = Discrete({ps: topics[z]}).score(word);
+          return Math.exp(zScore + wgivenzScore);
+        }, numTopics));
+
+        factor(Math.log(prob) * count);
+      }
+
+    });
+
+  });
+
+  return topics;
+
+};
+
+// *****************************************************************************
+
+// TODO: Guide net to predict topic dist from topics and/or doc? (Use
+// docs as counts?) Could use this in combination with any of the
+// above?
+
+// TODO: Versions of some of the above that feed the topics into the
+// guide.
+
+// TODO: Delta's on topics, since folk often don't care about the
+// uncertainty here?
+
+// *****************************************************************************
+
+// Each document is represented by an array of word counts. Therefore
+// doc.length == vocabSize, and sum(doc) = no. of words in doc.
+
+var data = JSON.parse(fs.read('examples/data/cocolabAbstractCorpus.json'));
+//var corpus = data.documentsAsCounts; // Use with version that sums out z.
+var corpus = data.documents;
+var vocabSize = data.numWords; // V
+
+// var corpus = JSON.parse(fs.read('examples/data/bars2.json'));
+// var vocabSize = 4; // V
+
+var numTopics = 4; // K
+
+// Parameter for prior on topic proportions.
+var alpha = T.add(zeros([numTopics, 1]), 0.1);
+// Parameter for prior on topics.
+var eta = T.add(zeros([vocabSize, 1]), 0.1);
+
+var model = function() {
+  return lda0(corpus, vocabSize, numTopics, alpha, eta);
+};
+
+var name = 'lda0_0';
+var path = 'path/to/dir';
+
+var params = {
+  steps: 2500,
+  optMethod: {adam: {stepSize: 0.1}},
+  // TODO: More than one sample upsets avg. baselines?
+  estimator: {ELBO2: {samples: 1, avgBaselines: true}}
+};
+fs.write(path + name + '_params.txt', JSON.stringify(_.defaults({numTopics: numTopics}, params)));
+
+var optParams = Optimize(model, _.defaults({
+  onFinish: function(data) {
+    fs.write(path + name + '.json', JSON.stringify(data.history));
+  }
+}, params));
+
+var topWordsInTopics = function(params) {
+  var N = 10;
+  var topics = sample(SampleGuide(model, {params: params}));
+  var topWordsPerTopic = map(function(topic) {
+    // topic is a prob vector here.
+    var indicesWithProbs = mapIndexed(function(i, p) {
+      return {i: i, p: p};
+    }, ad.value(topic).toFlatArray());
+    var topN = sort(indicesWithProbs, gt, function(ip) { return ip.p; }).slice(0, N);
+    return map(function(ip) {
+      return {word: data.indexToWordDict[ip.i], prob: ip.p};
+    }, topN);
+  }, topics);
+  return topWordsPerTopic;
+};
+
+var topWords = topWordsInTopics(optParams);
+fs.write(path + name + '_top_words.txt', JSON.stringify(topWords));
+topWords;
