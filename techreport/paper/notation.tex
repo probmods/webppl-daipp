@@ -27,8 +27,10 @@
 \newcommand{\guidePosterior}{\ensuremath{\guide(\latentVars | \observedVars ; \phi)}}
 \newcommand{\guidePostNoPhi}{\ensuremath{\guide(\latentVars | \observedVars)}}
 
-\newcommand{\elbo}{\ensuremath{\mathcal{L}(\latentVars, \phi)}}
-\newcommand{\elboWithTheta}{\ensuremath{\mathcal{L}(\latentVars, \phi, \theta)}}
+\newcommand{\elbo}{\ensuremath{\mathcal{L}(\observedVars)}}
+\newcommand{\elboPhi}{\ensuremath{\mathcal{L}(\observedVars, \phi)}}
+\newcommand{\elboPhiTheta}{\ensuremath{\mathcal{L}(\observedVars, \phi, \theta)}}
+
 \newcommand{\elboDef}{\ensuremath{\expect_{\guide}[ \log \trueJoint - \log \guidePosterior ]}}
 \newcommand{\elboDefGenPhi}{\ensuremath{\expect_{\guide}[ \log \trueJointPhi - \log \guidePosterior ]}}
 \newcommand{\elboDefGenTheta}{\ensuremath{\expect_{\guide}[ \log \trueJointTheta - \log \guidePosterior ]}}

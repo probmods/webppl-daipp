@@ -26,7 +26,7 @@ The remainder of this section focuses on the theory and implementation of our gr
 
 \subsection{ELBo: The Variational Objective}
 
-In Section~\ref{sec:background:variational}, we mentioned that the goal of variational inference is to find values of the parameters $\phi$ for our guide program $\guidePosterior$ such that it is as close as possible to the true posterior $\truePosterior$, where closeness is measured via KL-divergence. The KL-divergence between two general distributions is intractable to compute; however, some straightforward algebra produces an objective that is tractable:
+In Section~\ref{sec:background:variational}, we mentioned that the goal of variational inference is to find values of the parameters $\phi$ for our guide program $\guidePosterior$ such that it is as close as possible to the true posterior $\truePosterior$, where closeness is measured via KL-divergence. The KL-divergence between two general distributions is intractable to compute; however, some straightforward algebra produces an objective that is tractable (following the derivation of Wingate and Weber~\cite{AVIPP}):
 %%%
 \begin{align}
 \begin{split}
@@ -35,18 +35,18 @@ In Section~\ref{sec:background:variational}, we mentioned that the goal of varia
 &= \int_{\latentVars} \guidePosterior \log \frac{\guidePosterior}{\trueJoint} + \log \dataMarginal\\
 &= \expect_{\guide}[ \log(\guidePosterior -  \trueJoint ) ] + \log \dataMarginal\\
 &= \log \dataMarginal - \elboDef\\
-&= \log \dataMarginal - \elbo \geq 0
+&= \log \dataMarginal - \elboPhi \geq 0
 \end{split}
 \label{eq:elbo}
 \end{align}
 %%%
-where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\elbo$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log \dataMarginal$. Accordingly, $\elbo$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
+where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\elboPhi$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log \dataMarginal$. Accordingly, $\elboPhi$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
 \remark{More generally (when logp(y) is an arbitrary partition function) this is the `variational free energy'.}
 
 When learning a generative model $\trueJointTheta$, the objective is usually to maximize the log marginal likelihood of the training data $\log \dataMarginalTheta$. Rewriting the result from Equation~\ref{eq:elbo}:
 %%%
 \begin{equation*}
-\elboWithTheta = \log \dataMarginalTheta - \KLD(\guidePosterior || \truePosteriorTheta)
+\elboPhiTheta = \log \dataMarginalTheta - \KLD(\guidePosterior || \truePosteriorTheta)
 \end{equation*}
 %%%
 we can see that, again, because KL-divergence is non-negative, maximizing the ELBo also corresponds to maximizing the log marginal likelihood of the data. Thus, whether we are doing amortized infernence only or amortized inference plus model learning, we can use the same optimization objective: the ELBo.
@@ -59,7 +59,7 @@ Maximizing the ELBo requires estimating its gradient with respect to the paramet
 %%%
 \begin{align}
 \begin{split}
-\gradparamsTheta \elboWithTheta
+\gradparamsTheta \elboPhiTheta
 &= \gradparamsTheta \elboDefGenTheta\\
 &= \expect_\guide [ \gradparamsTheta \log \trueJointTheta ] 
 \end{split}
@@ -76,7 +76,7 @@ In the general case, the gradient of the ELBo with respect to $\phi$ can be esti
 %%%
 \begin{align}
 \begin{split}
-\gradparams \elboWithTheta
+\gradparams \elboPhiTheta
 &= \gradparams \elboDefGenTheta\\
 &= \expect_\guide[ \gradparams \log \guidePosterior ( \log \trueJointTheta - \log \guidePosterior ) ]
 \end{split}
@@ -104,7 +104,7 @@ Using this `reparameterization trick'~\cite{AEVB} allows the ELBo gradient to be
 %%%
 \begin{align}
 \begin{split}
-\gradparams \elboWithTheta
+\gradparams \elboPhiTheta
 &= \gradparams \elboDefGenTheta\\
 &= \gradparams \expect_\reparamDist [ \log p(\xformedVarsPhi, \observedVars ; \theta) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ]\\
 &= \expect_\reparamDist [\gradparams ( \log p(\xformedVarsPhi, \observedVars ; \theta) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ) ]
@@ -119,31 +119,64 @@ It transforms both the guide and target distributions into distributions over in
 
 A general probabilistic program makes many random choices, some of which are amenable to the reparameterization trick (i.e. continuous choices) and others of which are not (i.e. discrete choices). Thus, to optimize the ELBo for a probabilistic program $p$ and an associated guide program $\guide$, we seek a single, unified gradient estimator that handles both discrete and continuous choices and supports model learning as well as amortized inference.
 
-As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters. We drop this parameterization from all derivations that follow (to simplifiy notation).
+As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters. To simplify notation, we drop $\phi$ from all derivations that follow. This is equivalent to making the parameters globally available, which is also true of our system (i.e. \ic{paramScalar} and its ilk can be called anywhere).
 
-Second, to provide a common foundation for analysis, we assume that all random choices made by the program are first drawn from a distribution $\reparamDist$ and then transformed by a deterministic function $\reparamXform$. Under this assumption, the distributions defined by the program (Equation~\ref{eq:probProgDef}) and the guide program become:
+Second, we assume that all random choices made by the guide program are first drawn from a distribution $\reparamDist$ and then transformed by a deterministic function $\reparamXform$. Under this assumption, the distributions defined by a guide program becomes:
 %%%
-\begin{align*}
-\trueJoint &= p(\observedVars | \latentVars) \prod_i p_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i})) &\reparamVar_i \sim \reparamDist_i(\cdot)
-\\
-\guidePostNoPhi &= \prod_i \guide_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) &\reparamVar_i \sim \reparamDist_i(\cdot)
-\end{align*}
+\begin{equation*}
+\guidePostNoPhi = \prod_i \guide_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \hspace{2em} \reparamVar_i \sim \reparamDist_i(\cdot)
+\end{equation*}
 %%%
+As mentioned in Section~\ref{sec:pplbasics}, the length of $\reparamVars$ can vary across executions. However, since the guide program $\guide$ by construction samples the same random choices in the same order as the target program $p$, $\guide$ factors the same way as $p$ (Equation~\ref{eq:probProgDef}) for any given execution. 
+
 The distributions $\reparamDist_i$ and functions $\reparamXform_i$ have different meanings depending on whether the variable $\reparamVar_i$ is continuous or discrete:
 %%%
 \begin{itemize}
-\item{Continuous $\reparamVar_i$:}
-\item{Discrete $\reparamVar_i$:}
+\item{Continuous $\reparamVar_i$: $\reparamDist_i$ is a unit normal or uniform distribution, and $\reparamXform_i$ is a parameterized transform. This is a direct application of the reparameterization trick. In this case, each local transformation $\reparamXform_i$ may also depend on the previous noise variables $\reparamVars_{<i}$, as choices occuring later in the program may be compound transformations of earlier choices.~\remark{Should we have an Appendix detailing all of the reparameterizable choices and what their $\reparamDist$ and $\reparamXform$ are?}}
+\item{Discrete $\reparamVar_i$: $\reparamDist_i$ = $\guide_i$, and $\reparamXform_i$ is the identity function. This allows discrete choices to be represented in the reparameterization trick framework.}
 \end{itemize}
 %%%
+Given these assumptions, we can derive an estimator for the ELBo gradient:
+%%%
+\begin{align}
+\label{eq:hybridEstimator}
+\gradparams \elbo
+&= \gradparams \expect_\reparamDist [ \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ]\\
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber\\
+&= \expect_\reparamDist [ \underbrace{\gradparams \log \reparamDist(\reparamVars) W(\reparamVars, \observedVars)}_{\text{LR term}} + \underbrace{\gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars)}_{\text{PW term}} ]\nonumber
+\end{align}
+%%%
+See Appendix~\ref{sec:appendix_proofs} for the derivation. 
 
-% To make things as simple as possible, going to roll everything into one esimator. Use just $\phi$ for both generative and guide params, b/c it simplifies notation and reflects the fact that our system makes no distinction under the hood.
+This estimator includes the LR and PW estimators as special cases. If all random choices are reparameterized (i.e. they are all continuous), then $\reparamDist(\reparamVars)$ does not depend on $\phi$, thus $\gradparams \log \reparamDist(\reparamVars)$ is zero and the LR term drops out, leaving only the PW term. If no random choices are reparameterized (i.e. they are all discrete), then the $\gradparams \log \guide(\xformedVars | \observedVars)$ term drops out, using the identity $\expect_\guide[\nabla \log \guide(x)] = 0$~\remark{Refer to appropriate section of Appendix for proof?}. If $p$ has no parameters, then the $\gradparams \log p(\xformedVars, \observedVars)$ term is also zero, leaving only the LR term. If $p$ has parameters, then the resulting estimator is the LR estimator plus the model parameter estimator (Equation~\ref{eq:modelParamGrad}).
 
-% Hybrid PW/LR estimator. Each term drops out in certain conditions (refer to appendix for proofs). How our AD implementation handles this dropping out implicitly.
+While Equation~\ref{eq:hybridEstimator} is a correct estimator for the ELBo gradient, like the LR estimator, the presence of discrete (i.e. non-reparameterized) random choices can lead to high variance. Thus we modify this estimator through three variance reduction techniques:
+%%%
+\begin{enumerate}
+\item{Replace $W(\reparamVars, \observedVars)$ with a separate $w_i(\reparamVars, \observedVars)$ for each factor $\reparamDist(\reparamVar_i | \reparamVars_{<i})$ of $\reparamDist(\reparamVars)$, as there exist independencies that can be exploited to reveal zero-expectation terms in $W(\reparamVars, \observedVars)$ for each $i$.}
+\item{Subtract a constant `baseline' term $b_i$ from each $w_i(\reparamVars, \observedVars$). This does not change the expectation, but it can reduce its variance, if designed carefully.}
+\item{Factor $\gradparams \log \guide(\xformedVars | \observedVars)$ and remove terms corresponding to discrete (i.e. non-reparameterized) choices, since, as noted above, they have zero expectation}
+\end{enumerate}
+%%%
+Further details and correctness proofs for these three steps can be found in Appendix~\ref{sec:appendix_proofs}. Applying them leads to the following estimator, which is the estimator actually used by our system:
+%%%
+\begin{align}
+\begin{split}
+\gradparams \elbo =
+\expect_\reparamDist [ \hspace{0.5em} &\sum_{i \in \mathcal{D}} \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}) ( w_i(\reparamVars, \observedVars) - b_i ) \\
++ &\sum_{i \in \mathcal{C}} \gradparams \log \guide_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \\
++ &\gradparams \log p(\xformedVars, \observedVars) \hspace{0.5em} ]
+\end{split}
+\label{eq:finalEstimator}
+\end{align}
+%%%
+where $\mathcal{C}$ and $\mathcal{D}$ are the sets of indices for all continous and discrete random choices in the program execution, respectively.
+The estimator naturally factors into a term for discrete choices, a term for continuous choices, and a term for the generative model parameters.
 
-% Cite stochastic computation graphs paper.
+Equation~\ref{eq:finalEstimator} is similar to the `surrogate loss function' gradient estimator of Schulman et al.~\cite{StochasticComputationGraphs}, as an execution of a probabilistic program corresponds to one of their stochastic computation graphs. Their analysis is concerned with general stochastic objectives, however, while we focus particularly on the ELBo.
 
-% Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depend on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.
+\remark{(Noah) Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depends on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.}
 
-% Variance reduction for LR part of estimator. Dependence graph to eliminate weight contributions from RVs which are upstream in the dataflow graph (refer to appendix for proof) (cite inspiration from Rao-Blackwellization in other papers). mapData as a special case of this (but refer to appendix for its own proof?) Baselines (cite original papers that used it)---proof of correctness is short enough that we can just have it inline?
+\subsection{Implementation}
 
+\remark{(Daniel) I feel like we need to bring this section home by making it concrete, describing (in text and/or pseudocode) how we actually calculate the gradient as the program runs. It's easy to describe a simple version of this process (i.e. AD, accumulating into logr, logq, and logp), but the \emph{real} version (using variance reduction + mapData) is more complex: it requires the `dependency' graph, the mapData node stack, and mapData mini-batch multipliers. So I'm conflicted: I want to give the reader something, but a simple version may be misleadingly simple while the full truth may be too complicated to describe. Thoughts? Maybe this section belongs in the Appendix, if it belongs anywhere?}

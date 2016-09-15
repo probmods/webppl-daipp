@@ -37,9 +37,11 @@ Rather than attempt to solve a general program induction problem (as in~\cite{Gu
 That is, g samples the same random variables as p does and in the same order, but the choices in g are parameterized by the output of a different computation.
 We represent this computation with neural networks.
 This reduces the search for g to the much simpler continuous problem of optimizing the weights of these networks.
-Can be done via stochastic gradient descent.
+Can be done via stochastic gradient descent, with gradients computed using AD.
 The gradients are often high-variance, esp. for programs with discrete choices.
 To combat this, our system implements several general-purpose variance-reduction strategies.
 
 The guide neural net architectures can be defined manually, and we will show that the interface for doing so is flexible enough to subsume several popular recent approaches to variational inference, including approaches that perform joint variational inference and model learning.
-We also provide options for automatically-defined guide architectures: either mean-field, or a family of architectures that attempts to capture posterior dependencies using recurrent neural networks.
+We also provide options for automatically-defined guide architectures: either mean-field, or a family of architectures that attempts to capture posterior dependencies using recurrent neural networks.~\remark{Statement about what experiments/evaluations we do.}
+
+Our system is implemented as a language extension package for the WebPPL probabilistic programming language~\cite{WebPPL}. Its source code, as well as the source for this paper and all experiments contained therein, can be found at \url{https://github.com/probmods/webppl-daipp}.
