@@ -1,8 +1,102 @@
 \section{Appendix: Gradient Estimator Derivations \& Correctness Proofs}
 \label{sec:appendix_proofs}
 
-Derivation of Equation~\ref{eq:hybridEstimator}
+\newtheorem{lemma}{Lemma}
 
-Variance reduction proofs 1-3.
-w_i technique: Related to Rao-blackwellization and NVIL-equivalent technique.
-Baselines: cite places where this has been used before.
+\subsection{Derivation of Unified Gradient Estimator (Equation~\ref{eq:hybridEstimator})}
+\label{sec:appendix:estDerivation}
+
+\begin{align}
+\gradparams \elbo
+%
+&= \gradparams \expect_\reparamDist [ \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ]\nonumber\\
+%
+&= \gradparams \int_\reparamVars \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )\nonumber\\
+%
+&= \int_\reparamVars \gradparams \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \reparamDist(\reparamVars) \gradparams ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )\nonumber \\
+%
+\label{eq:estDerivation_trick}
+&= \int_\reparamVars \reparamDist(\reparamVars) \gradparams \log \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \reparamDist(\reparamVars) \gradparams ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) \\
+%
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber\\
+%
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars) W(\reparamVars, \observedVars) + \gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars) ]\nonumber
+\end{align}
+Line~\ref{eq:estDerivation_trick} makes use of the identity $\nabla f(x) = f(x) \nabla \log f(x)$.
+
+\subsection{Zero Expectation Identities}
+\label{sec:appendix:zeroexp}
+
+In what follows, we will make frequent use of the following:
+%%%
+\begin{lemma}
+If $f(x)$ is a probability distribution, then:
+
+\begin{equation*}
+\expect_f[\nabla \log f(x)] = 0
+\end{equation*}
+\label{lem:zeroexp}
+\end{lemma}
+%%%
+\begin{proof}
+\begin{equation*}
+\expect_f[\nabla \log f(x)]
+%
+= \int_x f(x) \nabla \log f(x)
+%
+= \int_x \nabla f(x)
+%
+= \nabla \int_x f(x)
+%
+= \nabla 1
+%
+= 0
+\end{equation*}
+\end{proof}
+
+\begin{lemma}
+For a factor $\reparamDist_i(\reparamVar_i | \reparamVars_{<i})$ of $\reparamDist(\reparamVars)$ and a function $f$:
+
+\begin{equation*}
+\expect_\reparamDist [ \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) f(\reparamVars_{<i}) ] = 0
+\end{equation*}
+\label{lem:zeroexp2}
+\end{lemma}
+%%%
+\begin{proof}
+\begin{align*}
+\expect_\reparamDist [ \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) f(\reparamVars_{<i}) ]
+%
+&= \int_\reparamVars \reparamDist_i(\reparamVars) \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) f(\reparamVars_{<i})\\
+%
+&= \int_{\reparamVars_{<i}} \reparamDist_i(\reparamVars) f(\reparamVars_{<i}) \int_{\reparamVar_i} \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) \int_{\reparamVars_{>i}} \reparamDist(\reparamVars_{>i} | \reparamVars_{\leq i})\\
+%
+&= \int_{\reparamVars_{<i}} \reparamDist_i(\reparamVars) f(\reparamVars_{<i}) \cdot \expect_{\reparamDist_i} [ \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) ] \cdot 1\\
+%
+&= \int_{\reparamVars_{<i}} \reparamDist_i(\reparamVars) f(\reparamVars_{<i}) \cdot 0 = 0
+\end{align*}
+where the last line makes use of Lemma~\ref{lem:zeroexp}.
+\end{proof}
+
+\subsection{Variance Reduction Step 1: Zero Expectation $W$ Terms}
+
+Related to BBVI Rao-blackwellization and NVIL-equivalent technique, etc.
+
+\subsection{Variance Reduction Step 2: Baselines}
+
+Next, we prove that subtracting a constant baseline term $b_i$ from every $w_i$ does not change the expectation in Equation~\ref{eq:finalEstimator}:
+%%%
+\begin{align*}
+\expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}) (w_i(\reparamVars, \observedVars) - b_i) ]
+%
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}) w_i(\reparamVars, \observedVars) ] - \expect_\reparamDist[ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}) b_i ]\\
+%
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}) w_i(\reparamVars, \observedVars) ] 
+\end{align*}
+%%%
+Where the last step makes use of Lemma~\ref{lem:zeroexp2}.
+
+What baseline we actually use. How it's constant, but Lemma 2 means it could also be a function of e<i (e.g. neural baseline).
+Cite places where this has been used before.
+
+\subsection{Variance Reduction Step 3: Zero Expectation $q$ Factors}
