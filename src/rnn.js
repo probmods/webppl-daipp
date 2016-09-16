@@ -115,7 +115,7 @@ var makeUpdateNetWithSkip = function(type, dim, name, debug) {
     var address = args[2]; // Address vector.
     var newCtx = ru.eval([ctx, ad.tensor.concat(val, address)]);
     // Skip connections.
-    var c = ad.tensorEntry(nn.sigmoid.eval(cParam.eval()), 0);
+    var c = ad.tensor.get(nn.sigmoid.eval(cParam.eval()), 0);
     return nn.add.eval(nn.mul.eval(nn.sub.eval(ctx, val), c), nn.add.eval(val, newCtx));
   };
 

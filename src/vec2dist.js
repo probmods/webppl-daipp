@@ -60,7 +60,7 @@ module.exports = function(env, config) {
     var guideParams = _.mapObject(guideParamNets, function(net) {
       var out = nneval(net, vec);
       var _out = ad.value(out);
-      return (_out instanceof Tensor) && isSingleton(_out) ? ad.tensorEntry(out, 0) : out;
+      return (_out instanceof Tensor) && isSingleton(_out) ? ad.tensor.get(out, 0) : out;
     });
     var guide = new guideDistType(guideParams);
     return guide;

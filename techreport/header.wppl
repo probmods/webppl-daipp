@@ -133,7 +133,7 @@ var perceptron = function(x, params) {
 // Transform d dimensional vector onto (d+1)-dimensional simplex
 var simplex = function(x) {
 	var d = ad.value(x).dims[0];
-	var u = T.reshape(T.concat(x, ad.scalarsToTensor(0)), [d + 1, 1]);
+	var u = T.reshape(T.concat(x, ad.tensor.fromScalars(0)), [d + 1, 1]);
 	return T.softmax(u);
 };
 

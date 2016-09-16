@@ -25,7 +25,7 @@ module.exports = function(env, config) {
       //numbers are upgraded to tensor.
       //NOTE: integers currently treated as real, but could treat as Enum or one-hot.
       //NOTE: number may be lifted.
-      val = ad.scalarsToTensor(val);
+      val = ad.tensor.fromScalars(val);
     case 'tensor':
       //tensors are re-shaped and pushed through an MLP to get right dim
       //NOTE: tensor may be lifted.
