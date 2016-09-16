@@ -1,10 +1,68 @@
 %auto-ignore
-\section{Using Learned Guides}
+\section{Using Learned Parameters}
 \label{sec:usingLearnedGuides}
 
-Using forward sampling or SMC with params.
-Using globalStore.data to switch between train/test datasets.
+Given a set of learned parameters, our system can predict latent variables, generate synthetic data, or further refine parameters for a new dataset or a new model.
 
-Can run more optimization, passing params back in (e.g. for fine-tuning to a different dataset).
+\subsection{Predicting Latent Variables}
 
-Can also re-use params for a different model (e.g. calling Optimize on a different model that has some of the same named parameters). 
+A learned guide can be used to make inferences about new, never-before-seen observations. As an example, we'll use the Gaussian mixture model program in Figure~\ref{fig:bn_oneLatent} Bottom and show how to predict cluster assignments for new observations. Note that the observations used by the program are assigned to the \ic{obs} variable, which is then passed to \ic{mapData}. WebPPL is a purely functional language, so it does not support assigning a new dataset to \ic{obs}. However, it does provide a special \ic{globalStore} object whose fields can be re-assigned. With this in mind, we modify the Gaussian mixture model program as follows:
+%%%
+\begin{lstlisting}
+globalStore.data = loadData('data.json');
+// Set up guide neural net
+var model = function() {
+   // Set up generative parameters
+   var latents = mapData({data: globalStore.data}, function(y) {
+      // Guided sample latents, observe data points
+   });
+   return latents;
+};
+\end{lstlisting}
+%%%
+Now we can easily swap datasets using \ic{globalStore.data}. Given a set of learned parameters \ic{params} for this program, we can obtain a sample prediction for the latent variables for a new dataset:
+%%%
+\begin{lstlisting}
+globalStore.data = loadData('data_test.json');	// Load new test data set
+
+// Forward sample from the guide
+sample(Infer({method: 'forward', guide: true, params: params}, model));
+
+// Use the guide as a Sequential Monte Carlo importance sampler
+sample(Infer({method: 'SMC', particles: 100, params: params}));
+\end{lstlisting}
+%%%
+We can make predictions either by running the guide program forward, or if the true posterior is very complex and the learned guide only partially approximates it, we can use the guide program as an importance sampler within Sequential Monte Carlo.
+
+\subsection{Generating Synthetic Data}
+
+Forward sampling from the guide can also be used to generate synthetic data from the learned distribution. If we make a slightly modified version of the Gaussian mixture model (call it \ic{modelGen}) that samples data instead of observing it, we can used forward sampling with the optimized parameters \ic{params} to synthesize new data points:
+%%%
+\begin{lstlisting}
+var modelGen = function() {
+   var theta_x = simplex(paramVector(nComps-1, 'theta_x'));
+   var params_y = [
+      {mu: paramScalar('mu_y_1'), sigma: softplus(paramScalar('sigma_y_1'))},
+      {mu: paramScalar('mu_y_2'), sigma: softplus(paramScalar('sigma_y_2'))},
+      {mu: paramScalar('mu_y_3'), sigma: softplus(paramScalar('sigma_y_3'))}
+   ];
+   var x = sample(Discrete({ps: theta_x}));
+   return sample(Gaussian(params_y[x]));
+};
+
+sample(Infer({method: 'forward', guide: true, params: params}, modelGen));
+\end{lstlisting}
+
+\subsection{Further Optimization}
+
+A set of learned parameters \ic{params} can also be passed back into \ic{Optimize} for further optimization:
+%%%
+\begin{lstlisting}
+var newParams = Optimize(model, {
+   steps: 100,
+   optMethod: 'adam',
+   params: params
+});
+\end{lstlisting}
+%%%
+This can be useful for e.g. fine-tuning existing parameters for a new dataset. Also, \ic{model} does need need to be the same program that was originally used to learn \ic{params}; it just needs to declare some parameters (via \ic{paramScalar} etc.) with the same names as parameters in \ic{params}. This can be useful for e.g. making a modification to an existing model without having to re-train its guide program from scratch.

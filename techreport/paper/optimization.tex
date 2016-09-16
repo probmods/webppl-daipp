@@ -4,26 +4,6 @@
 
 Now that we have seen how to author learnable guide programs, in this section, we will describe how to optimize the parameters of those programs. 
 
-\subsection{Optimization Interface}
-
-In Section~\ref{sec:pplbasics}, we showed how WebPPL programs use the \ic{Infer} function to perform non-amortized inference on a \ic{model} function. To optimize parameters for amortized inference, WebPPL provides an \ic{Optimize} function with a similar interface:
-%%%
-\begin{lstlisting}
-var model = function() {
-   // Use sample, guide, mapData, etc.
-};
-
-var params = Optimize(model, {
-   steps: 100,
-   optMethod: 'adam'
-});
-\end{lstlisting}
-%%%
-The code above performs 100 gradient update steps on \ic{model} using the Adam stochastic optimization method~\cite{Adam}.
-The return value \ic{params} of this function is a map from parameter names to optimized parameter values. Section~\ref{sec:usingLearnedGuides} describes how to use these optimized parameters for inference tasks.
-
-The remainder of this section focuses on the theory and implementation of our gradient-based optimization system. 
-
 \subsection{ELBo: The Variational Objective}
 
 In Section~\ref{sec:background:variational}, we mentioned that the goal of variational inference is to find values of the parameters $\phi$ for our guide program $\guidePosterior$ such that it is as close as possible to the true posterior $\truePosterior$, where closeness is measured via KL-divergence. The KL-divergence between two general distributions is intractable to compute; however, some straightforward algebra produces an objective that is tractable (following the derivation of Wingate and Weber~\cite{AVIPP}):
@@ -185,3 +165,21 @@ Equation~\ref{eq:finalEstimator} is similar to the `surrogate loss function' gra
 \subsection{Implementation}
 
 \remark{(Daniel) I feel like we need to bring this section home by making it concrete, describing (in text and/or pseudocode) how we actually calculate the gradient as the program runs. It's easy to describe a simple version of this process (i.e. AD, accumulating into logr, logq, and logp), but the \emph{real} version (using variance reduction + mapData) is more complex: it requires the `dependency' graph, the mapData node stack, and mapData mini-batch multipliers. So I'm conflicted: I want to give the reader something, but a simple version may be misleadingly simple while the full truth may be too complicated to describe. Thoughts? Maybe this section belongs in the Appendix, if it belongs anywhere?}
+
+\subsection{Optimization Interface}
+
+In Section~\ref{sec:pplbasics}, we showed how WebPPL programs use the \ic{Infer} function to perform non-amortized inference on a \ic{model} function. To optimize parameters for amortized inference, WebPPL provides an \ic{Optimize} function with a similar interface:
+%%%
+\begin{lstlisting}
+var model = function() {
+   // Use sample, guide, mapData, etc.
+};
+
+var params = Optimize(model, {
+   steps: 100,
+   optMethod: 'adam'
+});
+\end{lstlisting}
+%%%
+The code above performs 100 gradient update steps on \ic{model} using the Adam stochastic optimization method~\cite{Adam}.
+The return value \ic{params} of this function is a map from parameter names to optimized parameter values.

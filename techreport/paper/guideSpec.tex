@@ -38,7 +38,6 @@ var x = sample(Gaussian({mu: 0, sigma: 1}), {
 Here, \ic{paramScalar(name)} declares an optimizable, real-valued parameter named \ic{name}; there are analogous functions \ic{paramVector}, \ic{paramMatrix}, and \ic{paramTensor} for declaring vector, matrix, and tensor-valued parameters.
 Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value $p$ returned by \ic{paramScalar} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
 Parameters must have unique names so they can be disambiguated by the optimization engine under the hood.
-\remark{Mention how names allow learned parameters to be re-used by other models, or wait until later section?}
 
 Using variational parameters directly as the guide distribution parameters results in a mean-field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
 We can also compute the guide parameters via a neural network:~\remark{Should we cut this out and only show the adnn version?}
