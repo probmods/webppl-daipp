@@ -11,16 +11,16 @@
 %
 &= \gradparams \expect_\reparamDist [ \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ]\nonumber\\
 %
-&= \gradparams \int_\reparamVars \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )\nonumber\\
+&= \gradparams \int_\reparamVars \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )\nonumber\\
 %
-&= \int_\reparamVars \gradparams \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \reparamDist(\reparamVars) \gradparams ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )\nonumber \\
+&= \int_\reparamVars \gradparams \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \reparamDist(\reparamVars | \observedVars) \gradparams ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )\nonumber \\
 %
 \label{eq:estDerivation_trick}
-&= \int_\reparamVars \reparamDist(\reparamVars) \gradparams \log \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \reparamDist(\reparamVars) \gradparams ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) \\
+&= \int_\reparamVars \reparamDist(\reparamVars | \observedVars) \gradparams \log \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \reparamDist(\reparamVars | \observedVars) \gradparams ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) \\
 %
-&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber\\
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber\\
 %
-&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars) W(\reparamVars, \observedVars) + \gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars) ]\nonumber
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars | \observedVars) W(\reparamVars, \observedVars) + \gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars) ]\nonumber
 \end{align}
 Line~\ref{eq:estDerivation_trick} makes use of the identity $\nabla f(x) = f(x) \nabla \log f(x)$.
 
@@ -55,25 +55,25 @@ If $f(x)$ is a probability distribution, then:
 \end{proof}
 
 \begin{lemma}
-For a factor $\reparamDist_i(\reparamVar_i | \reparamVars_{<i})$ of $\reparamDist(\reparamVars)$ and a function $f$:
+For a factor $\reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars)$ of $\reparamDist(\reparamVars | \observedVars)$ and a function $f(\reparamVars_{<i}, \observedVars)$:
 
 \begin{equation*}
-\expect_\reparamDist [ \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) f(\reparamVars_{<i}) ] = 0
+\expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) f(\reparamVars_{<i}, \observedVars) ] = 0
 \end{equation*}
 \label{lem:zeroexp2}
 \end{lemma}
 %%%
 \begin{proof}
 \begin{align*}
-\expect_\reparamDist [ \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) f(\reparamVars_{<i}) ]
+\expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) f(\reparamVars_{<i}, \observedVars) ]
 %
-&= \int_\reparamVars \reparamDist_i(\reparamVars) \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) f(\reparamVars_{<i})\\
+&= \int_\reparamVars \reparamDist(\reparamVars | \observedVars) \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) f(\reparamVars_{<i}, \observedVars)\\
 %
-&= \int_{\reparamVars_{<i}} \reparamDist_i(\reparamVars) f(\reparamVars_{<i}) \int_{\reparamVar_i} \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) \int_{\reparamVars_{>i}} \reparamDist(\reparamVars_{>i} | \reparamVars_{\leq i})\\
+&= \int_{\reparamVars_{<i}} \reparamDist(\reparamVars_{<i} | \observedVars) f(\reparamVars_{<i}, \observedVars) \int_{\reparamVar_i} \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) \int_{\reparamVars_{>i}} \reparamDist(\reparamVars_{>i} | \reparamVars_{\leq i}, \observedVars)\\
 %
-&= \int_{\reparamVars_{<i}} \reparamDist_i(\reparamVars) f(\reparamVars_{<i}) \cdot \expect_{\reparamDist_i} [ \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) ] \cdot 1\\
+&= \int_{\reparamVars_{<i}} \reparamDist(\reparamVars_{<i} | \observedVars) f(\reparamVars_{<i}, \observedVars) \cdot \expect_{\reparamDist} [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) ] \cdot 1\\
 %
-&= \int_{\reparamVars_{<i}} \reparamDist_i(\reparamVars) f(\reparamVars_{<i}) \cdot 0 = 0
+&= \int_{\reparamVars_{<i}} \reparamDist(\reparamVars_{<i} | \observedVars) f(\reparamVars_{<i}, \observedVars) \cdot 0 = 0
 \end{align*}
 where the last line makes use of Lemma~\ref{lem:zeroexp}.
 \end{proof}
@@ -96,7 +96,18 @@ Next, we prove that subtracting a constant baseline term $b_i$ from every $w_i$ 
 %%%
 Where the last step makes use of Lemma~\ref{lem:zeroexp2}.
 
-What baseline we actually use. How it's constant, but Lemma 2 means it could also be a function of e<i (e.g. neural baseline).
-Cite places where this has been used before.
+In our system, we use $b_i = \expect[ w_i ]$, which we estimate with of a moving average of the samples used to compute gradients. While this choice of $b_i$ is not guaranteed to reduce variance, it often does in practice, and previous systems for variational inference and reinforcement learning have exploited it~\cite{BBVI,StochasticComputationGraphs,VarianceReduction}. Another option is to \emph{learn} $b_i$, for example as a neural net function of $\observedVars$~\cite{NVIL}. The proof above also permits $b_i$ to be a function of $\reparamVars_{<i}$ (i.e. all previous random choices), which could reduce variance further by tracking posterior dependencies. This is a promising avenue for future work.
 
 \subsection{Variance Reduction Step 3: Zero Expectation $q$ Factors}
+
+Finally, we prove that we can remove any factors corresponding to discrete (i.e. non-reparameterized choices) from the $\gradparams \log \guide(\xformedVars | \observedVars)$ term in Equation~\ref{eq:hybridEstimator} without changing its expectation:
+%%%
+\begin{equation*}
+\expect_\reparamDist [ \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) ]
+%
+= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) ]
+%
+= 0
+\end{equation*}
+where we have used Lemma~\ref{lem:zeroexp2} and the fact that $\reparamDist = \guide$ and $\reparamXform$ is the identity for discrete random choices.
+%%%

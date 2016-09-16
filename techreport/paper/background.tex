@@ -8,7 +8,7 @@
 For our purposes, a probabilistic program defines a generative model $\trueJoint$ of latent variables $\latentVars$ and data $\observedVars$. The model factors as:
 %%%
 \begin{equation}
-\trueJoint = p(\observedVars | \latentVars) \prod_i p_i(\latentVar_i | \latentVars_{<i})
+\trueJoint = p(\observedVars | \latentVars) \prod_i p(\latentVar_i | \latentVars_{<i})
 \label{eq:probProgDef}
 \end{equation}
 %%%
@@ -45,7 +45,7 @@ The goal is to find parameters $\phi$ such that $\guide_{\observedVars}(\latentV
 Need to pick a parametrized family $\guide$ to do this; one common choice is the \emph{mean-field family}:
 %%%
 \begin{equation*}
-\guide^{\textbf{MF}}_{\observedVars}(\latentVars ; \phi) = \prod_i g_i(\latentVar_i ; \phi_i)
+\guide^{\textbf{MF}}_{\observedVars}(\latentVars ; \phi) = \prod_i \guide(\latentVar_i ; \phi_i)
 \end{equation*}
 %%%
 This is a fully-factored distribution: it approximates the posterior as an independent product of parameterized marginals $\guide_i$, one for each random variable.
@@ -66,7 +66,7 @@ In this setting, mean field no longer applies, as whatever components are used t
 Can extend mean-field to deal with input data by using neural networks:
 %%%
 \begin{equation*}
-\guidePosterior = \prod_i \guide_i(\latentVar_i ; \text{NN}_i(\observedVars ; \phi))
+\guidePosterior = \prod_i \guide(\latentVar_i ; \text{NN}_i(\observedVars ; \phi))
 \end{equation*}
 %%%
 That is, the parameters of each local conditional in the guide are computed via a neural network function of $\observedVars$.
@@ -76,7 +76,7 @@ Several recent approaches to `neural variational inference' use some instantiati
 Our system also takes this general approach using neural nets but is more general; it allows neural nets also to receive as input any random choices already made:
 %%%
 \begin{equation*}
-\guidePosterior = \prod_i \guide_i(x_i ; \text{NN}_i(\observedVars, \latentVars_{<i} ; \phi))
+\guidePosterior = \prod_i \guide(x_i ; \text{NN}_i(\observedVars, \latentVars_{<i} ; \phi))
 \end{equation*}
 %%%
 where $\latentVars_{<i}$ are the random choices made before choice $i$ is sampled. This allows the networks to capture posterior dependencies between latent variables (which we will demonstrate later in the paper).

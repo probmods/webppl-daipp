@@ -121,10 +121,10 @@ A general probabilistic program makes many random choices, some of which are ame
 
 As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters. To simplify notation, we drop $\phi$ from all derivations that follow. This is equivalent to making the parameters globally available, which is also true of our system (i.e. \ic{paramScalar} and its ilk can be called anywhere).
 
-Second, we assume that all random choices made by the guide program are first drawn from a distribution $\reparamDist$ and then transformed by a deterministic function $\reparamXform$. Under this assumption, the distributions defined by a guide program becomes:
+Second, we assume that all random choices made by the guide program are first drawn from a distribution $\reparamDist$ and then transformed by a deterministic function $\reparamXform$. Under this assumption, the distribution defined by a guide program factors as:
 %%%
 \begin{equation*}
-\guidePostNoPhi = \prod_i \guide_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \hspace{2em} \reparamVar_i \sim \reparamDist_i(\cdot)
+\guidePostNoPhi = \prod_i \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \hspace{2em} \reparamVar_i \sim \reparamDist_i(\cdot)
 \end{equation*}
 %%%
 As mentioned in Section~\ref{sec:pplbasics}, the length of $\reparamVars$ can vary across executions. However, since the guide program $\guide$ by construction samples the same random choices in the same order as the target program $p$, $\guide$ factors the same way as $p$ (Equation~\ref{eq:probProgDef}) for any given execution. 
@@ -141,19 +141,22 @@ Given these assumptions, we can derive an estimator for the ELBo gradient:
 \begin{align}
 \label{eq:hybridEstimator}
 \gradparams \elbo
+%
 &= \gradparams \expect_\reparamDist [ \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ]\\
-&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber\\
-&= \expect_\reparamDist [ \underbrace{\gradparams \log \reparamDist(\reparamVars) W(\reparamVars, \observedVars)}_{\text{LR term}} + \underbrace{\gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars)}_{\text{PW term}} ]\nonumber
+%
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber\\
+%
+&= \expect_\reparamDist [ \underbrace{\gradparams \log \reparamDist(\reparamVars | \observedVars) W(\reparamVars, \observedVars)}_{\text{LR term}} + \underbrace{\gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars)}_{\text{PW term}} ]\nonumber
 \end{align}
 %%%
 See Appendix~\ref{sec:appendix:estDerivation} for the derivation. 
 
-This estimator includes the LR and PW estimators as special cases. If all random choices are reparameterized (i.e. they are all continuous), then $\reparamDist(\reparamVars)$ does not depend on $\phi$, thus $\gradparams \log \reparamDist(\reparamVars)$ is zero and the LR term drops out, leaving only the PW term. If no random choices are reparameterized (i.e. they are all discrete), then the $\gradparams \log \guide(\xformedVars | \observedVars)$ term drops out, using the identity $\expect_f[\nabla \log f(x)] = 0$ (see Appendix~\ref{sec:appendix:zeroexp}). If $p$ has no parameters, then the $\gradparams \log p(\xformedVars, \observedVars)$ term is also zero, leaving only the LR term. If $p$ has parameters, then the resulting estimator is the LR estimator plus the model parameter estimator (Equation~\ref{eq:modelParamGrad}).
+This estimator includes the LR and PW estimators as special cases. If all random choices are reparameterized (i.e. they are all continuous), then $\reparamDist(\reparamVars | \observedVars)$ does not depend on $\phi$, thus $\gradparams \log \reparamDist(\reparamVars | \observedVars)$ is zero and the LR term drops out, leaving only the PW term. If no random choices are reparameterized (i.e. they are all discrete), then the $\gradparams \log \guide(\xformedVars | \observedVars)$ term drops out, using the identity $\expect_f[\nabla \log f(x)] = 0$ (see Appendix~\ref{sec:appendix:zeroexp}). If $p$ has no parameters, then the $\gradparams \log p(\xformedVars, \observedVars)$ term is also zero, leaving only the LR term. If $p$ has parameters, then the resulting estimator is the LR estimator plus the model parameter estimator (Equation~\ref{eq:modelParamGrad}).
 
 While Equation~\ref{eq:hybridEstimator} is a correct estimator for the ELBo gradient, like the LR estimator, the presence of discrete (i.e. non-reparameterized) random choices can lead to high variance. Thus we modify this estimator through three variance reduction techniques:
 %%%
 \begin{enumerate}
-\item{Replace $W(\reparamVars, \observedVars)$ with a separate $w_i(\reparamVars, \observedVars)$ for each factor $\reparamDist(\reparamVar_i | \reparamVars_{<i})$ of $\reparamDist(\reparamVars)$, as there exist independencies that can be exploited to reveal zero-expectation terms in $W(\reparamVars, \observedVars)$ for each $i$.}
+\item{Replace $W(\reparamVars, \observedVars)$ with a separate $w_i(\reparamVars, \observedVars)$ for each factor $\reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars)$ of $\reparamDist(\reparamVars | \observedVars)$, as there exist independencies that can be exploited to reveal zero-expectation terms in $W(\reparamVars, \observedVars)$ for each $i$.}
 \item{Subtract a constant `baseline' term $b_i$ from each $w_i(\reparamVars, \observedVars$). This does not change the expectation, but it can reduce its variance, if designed carefully.}
 \item{Factor $\gradparams \log \guide(\xformedVars | \observedVars)$ and remove factors corresponding to discrete (i.e. non-reparameterized) choices, since, as noted above, they have zero expectation}
 \end{enumerate}
@@ -162,15 +165,17 @@ Further details and correctness proofs for these three steps can be found in App
 %%%
 \begin{align}
 \begin{split}
-\gradparams \elbo =
-\expect_\reparamDist \Bigl[ \hspace{0.5em} &\sum_{i \in \mathcal{D}} \gradparams \log \reparamDist_i(\reparamVar_i | \reparamVars_{<i}) ( w_i(\reparamVars, \observedVars) - b_i ) \\
-+ &\sum_{i \in \mathcal{C}} \gradparams \log \guide_i(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \\
+\gradparams \elbo = \expect_\reparamDist \Bigl[ \hspace{0.5em}
+&\sum_{i \in \mathcal{D}} \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) ( w_i(\reparamVars, \observedVars) - b_i ) \\
+%
++ &\sum_{i \in \mathcal{C}} \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \\
+%
 + &\gradparams \log p(\xformedVars, \observedVars) \hspace{0.5em} \Bigr]
 \end{split}
 \label{eq:finalEstimator}
 \end{align}
 %%%
-where $\mathcal{C}$ and $\mathcal{D}$ are the sets of indices for all continous and discrete random choices in the program execution, respectively.
+where $\mathcal{C}$ and $\mathcal{D}$ are the sets of indices for all continuous and discrete random choices in the program execution, respectively.
 The estimator naturally factors into a term for discrete choices, a term for continuous choices, and a term for the generative model parameters.
 
 Equation~\ref{eq:finalEstimator} is similar to the `surrogate loss function' gradient estimator of Schulman et al.~\cite{StochasticComputationGraphs}, as an execution of a probabilistic program corresponds to one of their stochastic computation graphs. Their analysis is concerned with general stochastic objectives, however, while we focus particularly on the ELBo.
