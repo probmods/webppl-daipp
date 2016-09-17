@@ -2,9 +2,27 @@
 \section{Deriving Guides Automatically}
 \label{sec:autoGuide}
 
-Default mean-field guides, auto-named params (and their caveats, i.e. can't use with different model), and vec2dist.
+Thus far, we have shown how we can succesfully create and train guide programs for several types of generative models. However, writing guide programs can sometimes be tedious and repetitive; for example, note the large amount of shared structure between the guides shown in Figures~\ref{fig:bn_oneLatent} and \ref{fig:bn_twoLatent}. Furthermore, it is not always obvious how to write a good guide program. In Figure~\ref{fig:bn_twoLatent}, knowledge of the structure of this very simple generative model led us to add a direct dependency between the two latent variables in the guide. For general programs---especially large, complex ones---it will not always be clear what these dependencies are or how to capture them with a guide.
 
-Context nets and val2vec.
+In this section, we describe our early experiments with automatically deriving guide programs. We provide both sensible default behavior that makes writing guides less cumbersome, as well as methods based on recurrent neural networks to account for posterior dependencies without the programmer explicitly specifying them.
+
+\subsection{Mean Field by Default}
+
+If a call to \ic{sample} is not provided with an explicit guide distribution, our system automatically inserts a mean field guide. For example, the code \ic{sample(Gaussian(\{mu: 0, sigma: 1\}))} results in:
+%%%
+\begin{lstlisting}
+sample(Gaussian({mu: 0, sigma: 1}), {
+   guide: Gaussian({mu: paramScalar(<@\hilite{<auto_name>}@>), sigma: softplus(paramScalar(<@\hilite{<auto_name>}@>))})
+})
+\end{lstlisting}
+%%%
+where parameter bounding transforms such as \ic{softplus} are applied based on bounds metadata provided with each primitive distribution type. We use reparameterizable guides for continuous distributions (see Appendix~\ref{sec:appendix_reparam}).
+
+Since this process declares new optimizable parameters automatically, we must automatically generate names for these parameters. Our system names parameters according to where they are declared in the program execution trace, using the same naming technique as is used for random choices in probabilistic programming MCMC engines~\cite{Lightweight}. Since the names of these parameters are tied to the structure of the program, they cannot be re-used by other programs (as in the `Further Optimization' example of Section~\ref{sec:furtherOptim}).
+
+\subsection{Capturing Posterior Dependencies with Context Nets}
+
+Context nets, val2vec, and vec2dist.
 
 When to init context (e.g. incorporating datum in each mapData iteration vs. something more global).
 

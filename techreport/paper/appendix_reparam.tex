@@ -1,0 +1,32 @@
+\section{Appendix: Reparameterizations}
+\label{sec:appendix_reparam}
+
+Examples of primitive random choice distributions that can be reparameterized via a location-scale transform:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{c | c | c}
+\textbf{Distribution} & $\bm{\reparamVar \sim \reparamDist(\cdot)}$ & $\bm{\reparamXform(\reparamVar)}$ \\
+\hline
+Gaussian($\mu$, $\sigma$) & Gaussian($0$, $1$) & $\mu + \sigma \cdot \reparamVar$ \\
+LogitNormal($\mu$, $\sigma$) & Gaussian($0$, $1$) & $\text{sigmoid}(\mu + \sigma \cdot \reparamVar)$ \\
+LogisticNormal($\bm{\mu}$, $\bm{\sigma}$) & Gaussian($\bm{0}$, $\bm{1}$) & $\text{simplex}(\bm{\mu} + \bm{\sigma} \cdot \reparamVar)$ \\
+InverseSoftplusNormal($\mu$, $\sigma$) & Gaussian($0$, $1$) & $\text{softplus}(\mu + \sigma \cdot \reparamVar)$ \\
+Exponential($\lambda$) & Uniform($0$, $1$) & $-\log(\reparamVar) / \lambda$ \\
+Cauchy($x_0$, $\gamma$) & Uniform($0$, $1$) & $x_0 + \gamma \cdot \tan( \pi \cdot (\reparamVar - 0.5) )$
+\end{tabular}
+\end{center}
+
+Examples of primitive distributions that are not reparameterizable, but can be guided by a reparameterizable approximating distribution:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{c | c}
+\textbf{Distribution} & \textbf{Guide Distribution} \\
+\hline
+Uniform & LogitNormal \\
+Beta & LogitNorma \\
+Gamma & InverseSoftplusNormal \\
+Dirichlet & LogisticNormal
+\end{tabular}
+\end{center}

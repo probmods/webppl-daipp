@@ -78,7 +78,7 @@ This situation occurs whenever the latent variables $\latentVars$ can be express
 \latentVars = \xformedVarsPhi \hspace{2em} \reparamVars \sim \reparamDist(\cdot)
 \end{equation*}
 %%%
-For example, sampling from a (multivariate) Gaussian distribution $\normdist(\mu, \Sigma)$ can be expressed as $\mu + \Sigma \cdot \reparamVars$, where $\reparamVars \sim \normdist(0, I)$. Continuous random variables which are parameterized by a location and a scale parameter naturally support this type of transformation, and other types of continuous variables can be well-approximated by deterministic transformations of uniform or unit normal variables~\cite{ADVI}.
+For example, sampling from a Gaussian distribution $\normdist(\mu, \sigma)$ can be expressed as $\mu + \sigma \cdot \reparamVar$, where $\reparamVar \sim \normdist(0, 1)$. Continuous random variables which are parameterized by a location and a scale parameter naturally support this type of transformation, and other types of continuous variables can often be well-approximated by deterministic transformations of unit normal variables~\cite{ADVI}.
 
 Using this `reparameterization trick'~\cite{AEVB} allows the ELBo gradient to be rewritten as:
 %%%
@@ -112,7 +112,7 @@ As mentioned in Section~\ref{sec:pplbasics}, the length of $\reparamVars$ can va
 The distributions $\reparamDist_i$ and functions $\reparamXform_i$ have different meanings depending on whether the variable $\reparamVar_i$ is continuous or discrete:
 %%%
 \begin{itemize}
-\item{Continuous $\reparamVar_i$: $\reparamDist_i$ is a unit normal or uniform distribution, and $\reparamXform_i$ is a parameterized transform. This is a direct application of the reparameterization trick. In this case, each local transformation $\reparamXform_i$ may also depend on the previous noise variables $\reparamVars_{<i}$, as choices occuring later in the program may be compound transformations of earlier choices.~\remark{Should we have an Appendix detailing all of the reparameterizable choices and what their $\reparamDist$ and $\reparamXform$ are?}}
+\item{Continuous $\reparamVar_i$: $\reparamDist_i$ is a unit normal or uniform distribution, and $\reparamXform_i$ is a parameterized transform. This is a direct application of the reparameterization trick. In this case, each local transformation $\reparamXform_i$ may also depend on the previous noise variables $\reparamVars_{<i}$, as choices occuring later in the program may be compound transformations of earlier choices. Appendix~\ref{sec:appendix_reparam} lists some reparameterizable distributions used by our system.}
 \item{Discrete $\reparamVar_i$: $\reparamDist_i$ = $\guide_i$, and $\reparamXform_i$ is the identity function. This allows discrete choices to be represented in the reparameterization trick framework.}
 \end{itemize}
 %%%
