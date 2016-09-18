@@ -4,44 +4,31 @@
 
 %% What's our domain?
 
-Probabilistic programs are cool.
-What they are: deterministic programs + sampling + conditioning + inference.
-What inference means: sampling space of program executions that are consistent with constraints / observations.
-What they allow: modeling of any computable distribution, including stochastic recursion, open-world models, non-parametrics, etc.~\remark{Need citations}
+Probabilistic programs are a powerful tool for probabilistic modeling. A probabilistic programming language (PPL) is a programming language augmented with random sampling and Bayesian conditioning operators. Performing inference on these programs then involves reasoning about the space of executions which satisfy some constraints. A universal PPL is Turing-complete and thus can represent any computable probability distribution, including open-world models, Bayesian non-parameterics, and stochastic recursion~\cite{Church,Venture,Anglican}.
 
 %% What's the problem?
 
-\remark{Should we switch all math to deal with distributions with arbitrary (i.e. non-evidence-based) partition functions?}
-Prior sampling from p(x) (or joint sampling from p(x, y)) is super easy, just run the program forward (i.e. ancestral sampling).
-Posterior sampling from p(x | y) is super hard: requires solving an intractable integral.
-Typically approximated with Monte Carlo sampling-based methods (MCMC, SMC).
+If we consider a probabilistic program to define a distribution $p(\latentVars, \observedVars)$, where $\latentVars$ are (latent) intermediate variable and $\observedVars$ are (observed) output data, then sampling from this distribution is easy: just run the program forward. However, sampling from the posterior distribution $p(\latentVars | \observedVars)$ is hard, involving an intractable integral. Typically, PPLs provide means to approximately sample from the posterior using Monte Carlo methods (e.g. MCMC, SMC).
 
 %% What's the big insight?
 
-These inference algs are so expensive because they solve an intractable integral from scratch for every separate inference they do.
-But many inference problems (many observation sets) have shared structure: it's reasonable to expect that computing p(x | y1) should help us compute p(x | y2).
-In fact, there's reason to believe that this is how people are able to perform inferences such as visual recognition so quickly.
-We benefit from having solved specific previous inferences: parsing a scene more quickly once we've seen it from another viewpoint (cite amortized inference paper).
-We also get benefit from long-term accumulated experience of viewing the real world.
-This idea of using results of previous inferences---or precomputation in general---to make later inferences more efficient is called \emph{amortized inference}~\cite{AmortizedInference,StochasticInverses}.
+These inference methods are so expensive because they (approximately) solve an intractable integral from scratch on every separate invocation.
+But many inference problems have shared structure: it is reasonable to expect that computing $p(\latentVars | \observedVars_1)$ should give us some information about how to compute $p(\latentVars | \observedVars_2)$.
+In fact, there is reason to believe that this is how people are able to perform certain inferences, such as visual perception, so quickly---we have perceived the world many times before, and can leverage that accumulated knowledge when presented with a new perception task~\cite{AmortizedInference}.
+This idea of using the results of previous inferences, or precomputation in general, to make later inferences more efficient is called \emph{amortized inference}~\cite{AmortizedInference,StochasticInverses}.
 
 %% What's our approach?
 
-This paper proposes a system for amortized inference in PPLs.
-Instead of computing p(x | y) via Bayes rule for each y, our system attemps to construct (learn?) a program g(x | y) which takes y's as input and, when run forward, generates samples distributed approximately according to p(x | y).
-We call g a \emph{guide program} (terminology was introduced in~\cite{GuidePrograms}).
-The intention is to spend a lot of time up-front constructing/learning g, so that at inference time, sampling from g is extremely fast (just ancestral sampling).
+This paper proposes a system for amortized inference in PPLs. Instead of computing $p(\latentVars | \observedVars)$ from scratch for each $\observedVars$, our system instead constructs a program $\guide(\latentVars | \observedVars)$ which takes $\observedVars$ as input and, when run forward, produces samples distributed approximately according to the true posterior $p(\latentVars | \observedVars)$.
+We call $\guide$ a \emph{guide program}, following terminology introduced in previous work~\cite{GuidePrograms}.
+The system can spend time up-front constructing a good approximation $\guide$ so that at inference time, sampling from $\guide$ is both fast and accurate.
 
-There's a huge space of possible programs you might consider.
-Rather than attempt to solve a general program induction problem (as in~\cite{GuidePrograms}), we restrict g to have the same control flow as p, but different data flow.
-That is, g samples the same random variables as p does and in the same order, but the choices in g are parameterized by the output of a different computation.
-We represent this computation with neural networks.
-This reduces the search for g to the much simpler continuous problem of optimizing the weights of these networks.
-Can be done via stochastic gradient descent, with gradients computed using AD.
-The gradients are often high-variance, esp. for programs with discrete choices.
-To combat this, our system implements several general-purpose variance-reduction strategies.
+There is a huge space of possible programs $\guide$ one might consider for this task. Rather than posing the search for $\guide$ as a general program induction problem (as was done in previous work~\cite{GuidePrograms}), we restrict $\guide$ to have the same control flow as the original program $p$, but a different data flow.
+That is, $\guide$ samples the same random choices as $p$ and in the same order, but the data flowing into those choices comes from a different computation.
+In our system, we represent this computation using neural networks.
+This design choice reduces the search for $\guide$ to the much simpler continuous problem of optimizing the weights for these networks, which can be done using stochastic gradient descent.
+% The gradients are often high-variance, esp. for programs with discrete choices. To combat this, our system implements several general-purpose variance-reduction strategies.
 
-The guide neural net architectures can be defined manually, and we will show that the interface for doing so is flexible enough to subsume several popular recent approaches to variational inference, including approaches that perform joint variational inference and model learning.
-We also provide options for automatically-defined guide architectures: either mean-field, or a family of architectures that attempts to capture posterior dependencies using recurrent neural networks.~\remark{Statement about what experiments/evaluations we do.}
+Our system's interface for specifying guide programs is flexible enough to subsume several popular recent approaches to variational inference, including those that perform both inference and model learning. The system also provides experimental options for automatically deriving guide programs, using recurrent neural networks to capture posterior dependencies.~\remark{Broad statement about the experiments we do and what the results are.}
 
 Our system is implemented as a language extension package for the WebPPL probabilistic programming language~\cite{WebPPL}. Its source code, as well as the source for this paper and all experiments contained therein, can be found at \url{https://github.com/probmods/webppl-daipp}.

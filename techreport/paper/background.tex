@@ -12,7 +12,6 @@ For our purposes, a probabilistic program defines a generative model $\trueJoint
 \label{eq:probProgDef}
 \end{equation}
 %%%
-\remark{Is this ok, or does the variance reduction stuff later require likelihood to be factored, too?}
 The prior probability distribution $p(\latentVars)$ decomposes as a product of conditionals $p_i(\latentVar_i | \latentVars_{<i})$, one for each random choice $\latentVar_i$ in the program. The use of $\latentVars_{<i}$ indicates that a random choice can potentially depend on any or all previous choices made by the program.
 $p(\observedVars | \latentVars)$ is the likelihood of the data and need not be a proper probability distribution (i.e. unnormalized factors are acceptable).
 Note that $\latentVars$ can vary in length across executions: a probabilistic program can sample a variable number of random variables.
@@ -32,7 +31,6 @@ var model = function() {
 Infer({method: 'MCMC'}, model);
 \end{lstlisting}
 This program uses MCMC to compute an approximate posterior distribution over the return value of the function \ic{model}. \ic{model} is a simple generative model with one latent Bernoulli variable (\ic{x}) and one observed Gaussian variable, which in this example is observed to have the value \ic{0.5}. The mean of the observed Gaussian variable (\ic{mu}) is dependent on the value of \ic{x}. Since \ic{model} returns \ic{x}, the result of this program is the posterior marginal distribution over the variable \ic{x}.
-\remark{Note that \ic{observe} is built on the more general \ic{factor}?}
 In the rest of this paper, we will build on this language to add guide programs and amortized inference to it.
 
 \subsection{Inference as Optimization: Variational Inference}

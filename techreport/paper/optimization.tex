@@ -21,7 +21,6 @@ In Section~\ref{sec:background:variational}, we mentioned that the goal of varia
 \end{align}
 %%%
 where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\elboPhi$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log \dataMarginal$. Accordingly, $\elboPhi$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
-\remark{More generally (when logp(y) is an arbitrary partition function) this is the `variational free energy'.}
 
 When learning a generative model $\trueJointTheta$, the objective is usually to maximize the log marginal likelihood of the training data $\log \dataMarginalTheta$. Rewriting the result from Equation~\ref{eq:elbo}:
 %%%
