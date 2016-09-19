@@ -45,7 +45,9 @@ var countsToIndices = function(counts) {
 
 // Straight-forward implementation.
 
-var lda0 = function(corpus, vocabSize, numTopics, alpha, eta) {
+var lda0 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
+
   var topics = repeat(numTopics, function() {
     return sample(Dirichlet({alpha: eta}));
   });
@@ -71,7 +73,8 @@ var lda0 = function(corpus, vocabSize, numTopics, alpha, eta) {
 // numWords parameters) have a guide net that attempts to map directly
 // from word => parameters of z.
 
-var lda1 = function(corpus, vocabSize, numTopics, alpha, eta) {
+var lda1 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
 
   // Parameters for the guide net.
   var numHid = 50;
@@ -115,7 +118,8 @@ var lda1 = function(corpus, vocabSize, numTopics, alpha, eta) {
 // as input. i.e. attempt to map from from (word, topicDist) =>
 // parameters of z.
 
-var lda2 = function(corpus, vocabSize, numTopics, alpha, eta) {
+var lda2 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
 
   // Parameters for the guide net.
   var numHid = 50;
@@ -159,7 +163,8 @@ var lda2 = function(corpus, vocabSize, numTopics, alpha, eta) {
 // Learn an RNN that chomps along the document generating the
 // parameters of all the zs. Initialize the net with the topic dist.
 
-var lda3 = function(corpus, vocabSize, numTopics, alpha, eta) {
+var lda3 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
 
   // Parameters for the guide net.
   var numHid = 10;
@@ -230,7 +235,8 @@ var lda3 = function(corpus, vocabSize, numTopics, alpha, eta) {
 
 // NOTE: I ran the experiment for this using Xavier init. from daipp.
 
-var lda4 = function(corpus, vocabSize, numTopics, alpha, eta) {
+var lda4 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documentsAsCounts;
 
   // TODO: This net has a very wide input. Have net that squishes
   // topics/counts down to a more reasonable size first?
@@ -291,7 +297,8 @@ var lda4 = function(corpus, vocabSize, numTopics, alpha, eta) {
 // Instead of combining the topicDist with the one-of-k representation
 // of the word, we combine it with a learned word embedding.
 
-var lda5 = function(corpus, vocabSize, numTopics, alpha, eta) {
+var lda5 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
 
   var numHid = 50;
   var embedSize = 50;
@@ -334,10 +341,8 @@ var lda5 = function(corpus, vocabSize, numTopics, alpha, eta) {
 
 // Version that sums out z, i.e. topic assignments.
 
-// Unlike the other examples, this expects each document to be an
-// array of counts, rather than indices.
-
-var lda100 = function(corpus, vocabSize, numTopics, alpha, eta) {
+var lda100 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documentsAsCounts;
 
   var topics = repeat(numTopics, function() {
     return sample(Dirichlet({alpha: eta}));
@@ -388,60 +393,17 @@ var lda100 = function(corpus, vocabSize, numTopics, alpha, eta) {
 
 };
 
-// *****************************************************************************
-
-// TODO: Guide net to predict topic dist from topics and/or doc? (Use
-// docs as counts?) Could use this in combination with any of the
-// above?
-
-// TODO: Versions of some of the above that feed the topics into the
-// guide.
-
-// TODO: Delta's on topics, since folk often don't care about the
-// uncertainty here?
-
-// *****************************************************************************
-
-// Each document is represented by an array of word counts. Therefore
-// doc.length == vocabSize, and sum(doc) = no. of words in doc.
-
-var data = JSON.parse(fs.read('examples/data/cocolabAbstractCorpus.json'));
-//var corpus = data.documentsAsCounts; // Use with version that sums out z.
-var corpus = data.documents;
-var vocabSize = data.numWords; // V
-
-// var corpus = JSON.parse(fs.read('examples/data/bars2.json'));
-// var vocabSize = 4; // V
-
-var numTopics = 4; // K
-
-// Parameter for prior on topic proportions.
-var alpha = T.add(zeros([numTopics, 1]), 0.1);
-// Parameter for prior on topics.
-var eta = T.add(zeros([vocabSize, 1]), 0.1);
-
-var model = function() {
-  return lda0(corpus, vocabSize, numTopics, alpha, eta);
+var models = {
+  lda0: lda0,
+  lda1: lda1,
+  lda2: lda2,
+  lda3: lda3,
+  lda4: lda4,
+  lda5: lda5,
+  lda100: lda100
 };
 
-var name = 'lda0_0';
-var path = 'path/to/dir';
-
-var params = {
-  steps: 2500,
-  optMethod: {adam: {stepSize: 0.1}},
-  // TODO: More than one sample upsets avg. baselines?
-  estimator: {ELBO2: {samples: 1, avgBaselines: true}}
-};
-fs.write(path + name + '_params.txt', JSON.stringify(_.defaults({numTopics: numTopics}, params)));
-
-var optParams = Optimize(model, _.defaults({
-  onFinish: function(data) {
-    fs.write(path + name + '.json', JSON.stringify(data.history));
-  }
-}, params));
-
-var topWordsInTopics = function(params) {
+var topWordsInTopics = function(data, model, params) {
   var N = 10;
   var topics = sample(SampleGuide(model, {params: params}));
   var topWordsPerTopic = map(function(topic) {
@@ -457,6 +419,82 @@ var topWordsInTopics = function(params) {
   return topWordsPerTopic;
 };
 
-var topWords = topWordsInTopics(optParams);
-fs.write(path + name + '_top_words.txt', JSON.stringify(topWords));
-topWords;
+var serializeParams = function(params) {
+  return JSON.stringify(mapObject(function(k, arr) {
+    return map(function(p) {
+      return [ad.value(p).toFlatArray(), ad.value(p).dims];
+    }, arr);
+
+  }, params));
+};
+
+// *****************************************************************************
+
+// TODO: Guide net to predict topic dist from topics and/or doc? (Use
+// docs as counts?) Could use this in combination with any of the
+// above?
+
+// TODO: Versions of some of the above that feed the topics into the
+// guide.
+
+// TODO: Delta's on topics, since folk often don't care about the
+// uncertainty here?
+
+// *****************************************************************************
+
+_.extend(daipp.config, {useXavierInit: true});
+
+var modelName = process.env.MODEL;
+assert.ok(_.has(models, modelName), 'Model not found.');
+display('Model: ' + modelName);
+
+var path = './tmp/' + Date.now() + '/';
+fs.node.mkdirSync(path);
+display('Output will be written to ' + path);
+
+// Each document is represented by an array of word counts. Therefore
+// doc.length == vocabSize, and sum(doc) = no. of words in doc.
+
+var data = JSON.parse(fs.read('examples/data/cocolabAbstractCorpus.json'));
+
+var vocabSize = data.numWords; // V
+var numTopics = 5; // K
+
+// Parameter for prior on topic proportions.
+var alpha = T.add(zeros([numTopics, 1]), 0.1);
+// Parameter for prior on topics.
+var eta = T.add(zeros([vocabSize, 1]), 0.1);
+
+var model = function() {
+  var f = models[modelName];
+  return f(data, vocabSize, numTopics, alpha, eta);
+};
+
+var params = {
+  steps: 10000,
+  optMethod: {adam: {stepSize: 0.1}},
+  // TODO: More than one sample upsets avg. baselines?
+  estimator: {ELBO2: {samples: 1, avgBaselines: true}}
+};
+
+fs.write(
+  path + 'params.txt',
+  JSON.stringify(_.defaults({
+    modelName: modelName,
+    numTopics: numTopics
+  }, params)));
+
+var optParams = Optimize(model, _.defaults({
+  onFinish: function(data) {
+    fs.write(path + 'history.json', JSON.stringify(data.history));
+  }
+}, params));
+
+
+var topWords = topWordsInTopics(data, model, optParams);
+fs.write(path + 'top_words.txt', JSON.stringify(topWords));
+
+// Save variational parameters.
+fs.write(path + 'parameters.json', serializeParams(optParams));
+
+'done';
