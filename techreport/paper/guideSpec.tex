@@ -2,14 +2,14 @@
 \section{Specifying Guide Programs}
 \label{sec:guideSpec}
 
-In this section, we describe the language extensions to WebPPL that allow for the specification of guide programs.
-Here, we focus on manually-specified guide programs. Later, we'll introduce a layer on top of this which can (semi) automatically derive guide programs.
+In this section, we describe our language extensions to WebPPL that allow for the specification of guide programs.
+We focus for now on manually-specified guide programs. In Section~\ref{sec:autoGuide}, we build on this interface to automatically derive guide programs.
 
 \subsection{Sampling with Guide Distributions}
 
-Previously, we mentioned that our system restricts guide programs to have the same control flow as the original program, and this means that the guide program samples the same variables in the same order.
-Our implementation enforces this restriction by having the guide program defined inline with the regular program.
-That is, at each \ic{sample} statement which samples a random variable, in addition to the distribution that the program samples from, we also specify what distribution the guide program should sample from. For example, using the simple program from Section~\ref{sec:pplbasics}:
+Previously, we mentioned that our system restricts guide programs $\guide$ to have the same control flow as the original program $p$, meaning that the guide program samples the same variables in the same order.
+Our implementation enforces this restriction by defining the guide program inline with the regular program.
+At each \ic{sample} statement, in addition to the distribution that the program $p$ samples from, one can also specify what distribution the guide program $\guide$ should sample from. For example, using the simple program from Section~\ref{sec:pplbasics}:
 %%%
 \begin{lstlisting}
 var model = function() {
@@ -22,12 +22,12 @@ var model = function() {
 };
 \end{lstlisting}
 %%%
-Here, we say that the guide should sample from a Bernoulli with a different success probability \ic{p}. This particular value happpens to give the true posterior for this program, since this toy problem is simple enough to solve in closed form.
-We note that the guide distribution does not need to be of the same family as the prior distribution; later in the paper we will see how this property turns out to be useful.
+In this example, the guide samples from a Bernoulli with a different success probability \ic{p}. This particular value happpens to give the true posterior for this program, since this toy problem is simple enough to solve in closed form.
+We note that the guide distribution not need be of the same family as the prior distribution; we will see later how this property can be useful.
 
 \subsection{Declaring Optimizable Parameters}
 
-In real problems, we will not know what the right guides are and will instead want to learn them by specifying guide distributions with tunable parameters:
+In real problems, we will not know the optimal guides \emph{a prior} and will instead want to learn guides by specifying guide distributions with tunable parameters:
 %%%
 \begin{lstlisting}
 var x = sample(Gaussian({mu: 0, sigma: 1}), {
@@ -36,10 +36,10 @@ var x = sample(Gaussian({mu: 0, sigma: 1}), {
 \end{lstlisting}
 %%%
 Here, \ic{paramScalar(name)} declares an optimizable, real-valued parameter named \ic{name}; there are analogous functions \ic{paramVector}, \ic{paramMatrix}, and \ic{paramTensor} for declaring vector, matrix, and tensor-valued parameters.
-Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value $p$ returned by \ic{paramScalar} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
+Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value returned by \ic{paramScalar} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
 Parameters must have unique names so they can be disambiguated by the optimization engine under the hood.
 
-Using variational parameters directly as the guide distribution parameters results in a mean-field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
+Using variational parameters directly as the guide distribution parameters (as done above) results in a mean field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
 We can also compute the guide parameters via a neural network:~\remark{Should we cut this out and only show the adnn version?}
 %%%
 \begin{lstlisting}
@@ -99,8 +99,7 @@ In this case, the \ic{guideNet} object has its own parameters, which are registe
 
 \subsection{Iterating over Observed Data}
 
-The previous examples have thus far conditioned on a single observation. But in real problems we want to condition on multiple observations---a whole dataset of them.
-In our system, you use \ic{mapData} to do this:
+The previous examples have thus far conditioned on a single observation. But real models condition on multiple observations. Our system expresses this pattern with the \ic{mapData} function:
 %%%
 \begin{lstlisting}
 var obs = loadData('data.json');   // List of observations
@@ -125,8 +124,8 @@ var model = function() {
 };
 \end{lstlisting}
 %%%
-\ic{mapData} functions much like \ic{map} in a typical functional programming language, but it has two important features: (1) the optimization engine treats every execution of the mapped function as IID, and thus (2) the optimization engine can operate on stochastic mini-batches of the data, sized according to the \ic{batchSize} option.
-Property (2) is clearly important for efficient, scalable optimization, but we will see in Section~\ref{sec:optimization} how property (1) can also be leveraged directly to improve optimization.
+\ic{mapData} operates much like \ic{map} in a typical functional programming language, but it has two important features: (1) the optimization engine treats every execution of the mapped function as IID, and thus (2) the optimization engine can operate on stochastic mini-batches of the data, sized according to the \ic{batchSize} option.
+Property (2) is clearly important for efficient, scalable optimization; we will see in Section~\ref{sec:optimization} how property (1) can also be directly leveraged to improve optimization.
 
 
 \subsection{Defining Learnable Models}
@@ -181,7 +180,7 @@ Finally, the right block shows a variational Bayesian model: \ic{mu_x} has a Gau
 
 \subsection{Examples: Simple Bayesian Networks}
 
-The example code we have been building up in this second describes a Bayesian network with one continuous latent variable per continuous observation. Figure~\ref{fig:bn_oneLatent} Top shows the fully assembled code (using maximum likelihood estimation for the generative model parameters), along with a graphical model depiction using the notation of Kigma and Welling~\cite{AEVB}. In this diagram, solid arrows indicate dependencies in the generative model given by the main program, and dashed arrows indicate dependencies in the guide program. $\phi$ is shorthand for all the neural network parameters in the guide program.
+The example code we have built up in this section describes a Bayesian network with one continuous latent variable per continuous observation. Figure~\ref{fig:bn_oneLatent} Top shows the fully assembled code (using maximum likelihood estimation for the generative model parameters), along with a graphical model depiction using the notation of Kigma and Welling~\cite{AEVB}. In this diagram, solid arrows indicate dependencies in the generative model given by the main program, and dashed arrows indicate dependencies in the guide program. $\phi$ is shorthand for all the neural network parameters in the guide program.
 
 Figure~\ref{fig:bn_oneLatent} Bottom shows how to modify this code to instead have one discrete latent variable per observation; this is equivalent to a Gaussian mixture model. In this example, the \ic{simplex} function maps a vector in $\Reals^{n-1}$ to the $n$-dimensional simplex (i.e. a vector whose entries sum to one). This process produces a vector of weights suitable for use as the component probabilities of a discrete random variable.
 
