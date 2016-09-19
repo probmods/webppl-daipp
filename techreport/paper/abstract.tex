@@ -1,3 +1,17 @@
 %auto-ignore
-\remark{Write abstract}
+
+Probabilistic programming languages (PPLs) are a powerful modeling tool, able to represent any computable probability distribution.
+%
+Unfortunately, probabilistic program inference is often intractable, and existing PPLs mostly rely on expensive, approximate sampling-based methods.
+%
+To alleviate this problem, one could try to learn from past inferences, so that future inferences run faster.
+This strategy is known as \emph{amortized inference}; it has recently been applied to Bayesian networks~\cite{StochasticInverses,NeuralStochasticInverses} and deep generative models~\cite{NVIL,AEVB,DLGM}.
+%
+This paper proposes a system for amortized inference in PPLs.
+In our system, amortization comes in the form of a parameterized \emph{guide program}.
+Guide programs have similar structure to the original program but can also have neural network components.
+These networks can be optimized so that the guide approximately samples from the posterior distribution defined by the original program.
+We present a flexible interface for defining guide programs, a stochastic gradient-based scheme for optimizing guide parameters, and experimental methods for automatically deriving guide programs using recurrent neural networks.
+%
+\remark{Brief summary of some experimental evaluation.}
 
