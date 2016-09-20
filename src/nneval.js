@@ -45,6 +45,7 @@ module.exports = function(env, config) {
   function nneval(nn, arg) {
     if (nn.getParameters().length > 0) {
       assert.ok(nn.name && nn.name.length > 0, 'daipp: Parameterized net cannot be anonymous.');
+      assert.ok(nn.isTraining, 'daipp: Net "' + nn.name + '" is not in training mode.');
       util.registerParams(env, nn.name,
                           config.useXavierInit ? wrapGetParamsWithXavier(nn) : nn.getParameters.bind(nn),
                           nn.setParameters.bind(nn));
