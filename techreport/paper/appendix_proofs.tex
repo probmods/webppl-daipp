@@ -2,6 +2,7 @@
 \label{sec:appendix_proofs}
 
 \newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
 
 \subsection{Derivation of Unified Gradient Estimator (Equation~\ref{eq:hybridEstimator})}
 \label{sec:appendix:estDerivation}
@@ -80,9 +81,140 @@ where the last line makes use of Lemma~\ref{lem:zeroexp}.
 
 \subsection{Variance Reduction Step 1: Zero Expectation $W$ Terms}
 
-\remark{Need to figure this out / fill this in...}
+In this section, we show that for each random choice $i$, we can remove terms from $W(\reparamVars, \observedVars)$ to produce $w_i(\reparamVars, \observedVars)$. Specifically, we prove that while $w_i(\reparamVars, \observedVars) \neq W(\reparamVars, \observedVars)$, we still have $\expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) w_i(\reparamVars, \observedVars) ] = \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) W(\reparamVars, \observedVars) ]$.
 
-Related to BBVI Rao-blackwellization and NVIL-equivalent technique, etc.
+To enable the computation of each $w_i$, our system builds a directed acyclic dependency graph as the program executes. The graph is constructed as follows:
+%%%
+\begin{itemize}
+\item{\textbf{On program start:} Create a root node \ic{root}. Set \ic{prev = root}. This holds the previous node and will be used to assign node parents.}
+\item{\textbf{On \ic{sample} or \ic{observe}:} Create a new node \ic{node} representing this random choice/observation. Set \ic{node.parent = prev}. Update \ic{prev = node}.}
+\item{\textbf{On \ic{mapData} begin:} Create two new nodes \ic{split} and \ic{join}. These nodes will delimit the beginning and ending of the \ic{mapData} iteration. Push \ic{split, join} onto a stack \ic{mapDataStack}. This stack keeps track of \ic{split, join} nodes when there are nested calls to \ic{mapData}.}
+\item{\textbf{On \ic{mapData} iteration begin:} Retrieve \ic{split, join = top(mapDataStack)}. Update \ic{prev = split}. This step reflects the IID nature of \ic{mapData}: an iteration of \ic{mapData} does not depend on any previous iterations, so there are no such edges in the graph. Instead, each iteration of \ic{mapData} points back to the beginning of the \ic{mapData} call.}
+\item{\textbf{On \ic{mapData} iteration end:} Retrieve \ic{split, join = top(mapDataStack)}. Add \ic{prev} to \ic{join.parents}. This step connects the last random choice in each \ic{mapData} iteration to the \ic{join} node.}
+\item{\textbf{On \ic{mapData} end:} Retrieve \ic{split, join = top(mapDataStack)}. Update \ic{prev = join}. This step acknowledges that any subsequent computation may depend on the \ic{mapData} as a whole.}
+\end{itemize}
+%%%
+In this graph, all nodes correspond to random choices or observations, except for the special \ic{mapData} nodes \ic{split} and \ic{join}.
+When there are no calls to \ic{mapData}, the graph has a linear topology, where each node is connected via a parent edge to the previously-sampled/observed node.
+\ic{mapData} calls introduce fanout-fanin subgraphs: the \ic{split} node fans out into separate linear chains for each \ic{mapData} iteration, and the last nodes of these chains fan in to the \ic{join} node. Figure~\ref{fig:graphExample} shows the resulting graph for one execution of a simple example program.
+
+\begin{figure}[!ht]
+\begin{minipage}{0.65\linewidth}
+\begin{lstlisting}
+var data = loadData('data.json');
+var model = function() {
+   var a = sample(Bernoulli({p: 0.5}));
+   mapData({data: data}, function(y) {
+      var x = sample(Gaussian({mu: a ? 0 : 5, sigma: 1}));
+      observe(Gaussian({mu: x, sigma: 0.5}), y);
+   });
+   return a;
+}
+\end{lstlisting}
+\end{minipage}
+%
+\begin{minipage}{0.35\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figs/graphExample.pdf}
+\end{minipage}
+\caption{A conservative dependency graph \emph{(Right)} resulting from one execution through a simple program \emph{(Left)}.}
+\label{fig:graphExample}
+\end{figure}
+
+By construction, this graph is an overly-conservative dataflow dependency graph: if random choice $\reparamVar_a$ flows into random choice $\reparamVar_b$ (or observation $\observedVar_c$), then a path $\reparamVar_a \to \reparamVar_b$ (or $\reparamVar_a \to \observedVar_c$) exists in the graph. The converse is not necessarily true (i.e. there can exist edges between nodes that have no dataflow dependency). Note also that, by construction, the existence of a path $\reparamVar_a \to \reparamVar_b$ implies that $\reparamVar_b$ was sampled after $\reparamVar_a$ in the program execution order.
+
+From the perpective of a random choice node $\reparamVar_i$, the graph nodes can be partitioned into the following subsets:
+%%%
+\begin{itemize}
+\item{$\mathcal{D}_i$: the nodes ``downstream'' from $\reparamVar_i$ (i.e. the set of all nodes $d$ for which an edge $\reparamVar_i \to d$ exists.}
+\item{$\mathcal{U}_i$: the nodes ``upstream'' from $\reparamVar_i$ (i.e the set of all nodes $u$ for which an edge $u \to \reparamVar_i$ exists.}
+\item{$\mathcal{C}_i$: the set of nodes which are in neither $\mathcal{D}_i$ nor $\mathcal{U}_i$.}
+\end{itemize}
+%%%
+Figure~\ref{fig:graphPartitions} illustrates these partitions on an example graph. For convenience, we also define $\mathcal{B}_i \equiv \mathcal{U}_i \cup \mathcal{C}_i$.
+
+\begin{figure}[!ht]
+\centering
+\input{figs/graphPartitions.tex}
+\caption{Partitioning a dependency graph into multiple node subsets from the perspective of a random variable node $\reparamVar_i$.}
+\label{fig:graphPartitions}
+\end{figure}
+
+For any given random choice $\reparamVar_i$, these partitions allows us to factor $W(\reparamVars, \observedVars)$ into three terms:
+%%%
+\begin{align*}
+W_i(\reparamVars, \observedVars)
+%
+&= \log \frac{p(\xformedVars, \observedVars)}{\guide(\xformedVars | \observedVars)}\\
+%
+&= \log \frac{p(\mathcal{B}_i)}{\guide(\mathcal{B}_i)} + \log \frac{p( \reparamXform(\reparamVar_i) | \mathcal{B}_i)}{\guide(\reparamXform(\reparamVar_i) | \mathcal{B}_i)}	+ \log \frac{p(\mathcal{D}_i | \reparamVar_i, \mathcal{B}_i)}{\guide(\mathcal{D}_i | \reparamVar_i, \mathcal{B}_i)}\\
+%
+&= w_i(\mathcal{B}_i) + w_i(\reparamVar_i, \mathcal{B}_i) + w_i(\mathcal{D}_i, \reparamVar_i, \mathcal{B}_i)
+\end{align*}
+%%%
+In the remainder of this section, we prove that the $w_i(\mathcal{B}_i)$ term can be safely removed. Specifically, we prove the following:
+%%%
+\begin{theorem}
+\begin{equation*}
+\expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) w_i(\mathcal{B}_i) ] = 0
+\end{equation*}
+\label{thm:wterms}
+\end{theorem}
+%%%
+In proving this theorem, the following two lemmas will be useful:
+%%%
+\begin{lemma}
+\begin{equation*}
+\reparamVars_{<i} \cap \mathcal{D}_i = \varnothing
+\end{equation*}
+\label{lem:depsDisjoint}
+\end{lemma}
+%
+\begin{proof}
+By definition, $\reparamVars_{<i}$ are all random choices which occur before $\reparamVar_i$ in program execution order. Also by definition, for all $d \in \mathcal{D}_i$, there exists a path $\reparamVar_i \to d$. As noted above, by construction, this implies that $d$ was created after $\reparamVar_i$ in program execution order. Thus $d$ cannot be in $\reparamVars_{<i}$.
+\end{proof}
+%%%
+\begin{lemma}
+\begin{equation*}
+\guide(\reparamXform_i(\reparamVar_i) | \mathcal{B}_i) \equiv \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i \cup \mathcal{C}_i) = \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i)
+\end{equation*}
+\label{lem:bIndependentFromU}
+\end{lemma}
+%
+\begin{proof}
+\remark{Noah proves this. Is this pretty much just d-separation?}
+\end{proof}
+%
+A corollary of this lemma is that $\guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) = \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i)$, since $\reparamVars_{<i}$ must be a subset of $\mathcal{B}_i$.
+%%%
+We can now prove Theorem~\ref{thm:wterms}:
+%%%
+\begin{align}
+\expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) w_i(\mathcal{B}_i) ]
+%
+&= \int_\reparamVars \reparamDist(\reparamVars | \observedVars) \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) w_i(\mathcal{B}_i)\nonumber\\
+%
+\label{eq:wterms_varIsDiscrete}
+&= \int_\reparamVars \guide(\reparamXform(\reparamVars) | \observedVars) \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) w_i(\mathcal{B}_i)\\
+%
+&= \int_{\mathcal{B}_i} \guide(\mathcal{B}_i) w_i(\mathcal{B}_i) \int_{\reparamVar_i} \guide(\reparamXform_i(\reparamVar_i) | \mathcal{B}_i) \int_{\mathcal{D}_i} \guide(\mathcal{D}_i | \reparamVar_i, \mathcal{B}_i) \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars)\nonumber\\
+%
+\label{eq:wterms_depsDisjoint}
+&= \int_{\mathcal{B}_i} \guide(\mathcal{B}_i) w_i(\mathcal{B}_i) \int_{\reparamVar_i} \guide(\reparamXform_i(\reparamVar_i) | \mathcal{B}_i) \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \int_{\mathcal{D}_i} \guide(\mathcal{D}_i | \reparamVar_i, \mathcal{B}_i)\\
+%
+\label{eq:wterms_bIndependentFromU}
+&= \int_{\mathcal{B}_i} \guide(\mathcal{B}_i) w_i(\mathcal{B}_i) \int_{\reparamVar_i} \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i) \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i) \cdot 1\\
+%
+\label{eq:wterms_zeroexp}
+&= \int_{\mathcal{B}_i} \guide(\mathcal{B}_i) w_i(\mathcal{B}_i) \cdot 0 = 0
+\end{align}
+%%%
+Line~\ref{eq:wterms_varIsDiscrete} uses the fact that the variable $\reparamVar_i$ under consideration is discrete and thus $\reparamDist = \guide$ and $\reparamXform_i$ is the identity.
+Line~\ref{eq:wterms_depsDisjoint} uses Lemma~\ref{lem:depsDisjoint}.
+Line~\ref{eq:wterms_bIndependentFromU} uses Lemma~\ref{lem:bIndependentFromU} and its corollary.
+Finally, line~\ref{eq:wterms_zeroexp} uses Lemma~\ref{lem:zeroexp}. 
+
+We should note that similar methods to our removal of terms from $W$ have been used by prior work to reduce variance in LR gradient estimators. Rao-blackwellization, using the Markov blanket of a node in a graphical model, produces a similar estimator~\cite{BBVI}. In deep generative models, a similar technique allows the derivation of lower-variance estimators for each layer of the deep generative network~\cite{NVIL}. Finally, less conservative (i.e. exact) dependency graphs can be used to reduce gradient variance in stochastic computation graphs~\cite{StochasticComputationGraphs}.
 
 \subsection{Variance Reduction Step 2: Baselines}
 
