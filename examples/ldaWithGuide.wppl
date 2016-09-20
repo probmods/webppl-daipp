@@ -470,26 +470,32 @@ var model = function() {
   return f(data, vocabSize, numTopics, alpha, eta);
 };
 
+var steps = process.env.STEPS ? _top.parseInt(process.env.STEPS) : 10000;
+var stepSize = process.env.STEP_SIZE ? _top.parseFloat(process.env.STEP_SIZE) : 0.1;
+var optMethod = process.env.OPT_METHOD || 'adam';
+var estimator = process.env.ESTIMATOR || 'ELBO2';
+
 var params = {
-  steps: 10000,
-  optMethod: {adam: {stepSize: 0.1}},
+  steps: steps,
+  optMethod: _.object([[optMethod, {stepSize: stepSize}]]),
   // TODO: More than one sample upsets avg. baselines?
-  estimator: {ELBO2: {samples: 1, avgBaselines: true}}
+  estimator: _.object([[estimator, {samples: 1, avgBaselines: true}]])
 };
 
-fs.write(
-  path + 'params.txt',
-  JSON.stringify(_.defaults({
-    modelName: modelName,
-    numTopics: numTopics
-  }, params)));
+var allParams = _.defaults({
+  modelName: modelName,
+  numTopics: numTopics
+}, params);
+
+display(JSON.stringify(allParams));
+
+fs.write(path + 'params.txt', JSON.stringify(allParams));
 
 var optParams = Optimize(model, _.defaults({
   onFinish: function(data) {
     fs.write(path + 'history.json', JSON.stringify(data.history));
   }
 }, params));
-
 
 var topWords = topWordsInTopics(data, model, optParams);
 fs.write(path + 'top_words.txt', JSON.stringify(topWords));
