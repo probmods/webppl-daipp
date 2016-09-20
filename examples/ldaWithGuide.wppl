@@ -245,15 +245,17 @@ var lda4 = function(data, vocabSize, numTopics, alpha, eta) {
   var net1 = nn.mlp(vocabSize * (numTopics + 1), [
     {nOut: numHid, activation: nn.tanh},
   ], 'net1');
+  net1.setTraining(true);
 
   var netMu = nn.mlp(numHid, [
     {nOut: numTopics - 1},
   ], 'netMu');
+  netMu.setTraining(true);
 
   var netSigma = nn.mlp(numHid, [
     {nOut: numTopics - 1},
   ], 'netSigma');
-
+  netSigma.setTraining(true);
 
   var guideParams = function(topics, doc) {
     //console.log(doc);
@@ -304,11 +306,13 @@ var lda5 = function(data, vocabSize, numTopics, alpha, eta) {
   var embedSize = 50;
 
   var embedNet = nn.mlp(vocabSize, [{nOut: embedSize, activation: nn.tanh}], 'embedNet');
+  embedNet.setTraining(true);
 
   var net = nn.mlp(embedSize + numTopics, [
     {nOut: numHid, activation: nn.tanh},
     {nOut: numTopics}
   ], 'net');
+  net.setTraining(true);
 
   var wordAndTopicDistToParams = function(word, topicDist) {
     var embedding = daipp.nneval(embedNet, oneOfK(word, vocabSize));
