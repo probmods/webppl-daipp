@@ -87,7 +87,9 @@ var makeUpdateNetNoSkip = function(type, dim, name, debug) {
     var address = args[2]; // Address vector.
     return ru.eval([ctx, ad.tensor.concat(val, address)]);
   };
-  return nn.compound(fn, [ru], name);
+  var net = nn.compound(fn, [ru], name);
+  net.setTraining(true);
+  return net;
 };
 
 var makeUpdateNetWithSkip = function(type, dim, name, debug) {
@@ -120,7 +122,9 @@ var makeUpdateNetWithSkip = function(type, dim, name, debug) {
   };
 
   var subnets = [ru, cParam, nn.sigmoid, nn.add, nn.sub, nn.mul];
-  return nn.compound(fn, subnets, name);
+  var net = nn.compound(fn, subnets, name);
+  net.setTraining(true);
+  return net;
 };
 
 module.exports = {
