@@ -147,7 +147,7 @@ Further details and correctness proofs for these three steps can be found in App
 \gradparams \elbo = \expect_\reparamDist \Bigl[ \hspace{0.5em}
 &\sum_{i \in \mathcal{D}} \gradparams \log \reparamDist(\reparamVar_i | \reparamVars_{<i}, \observedVars) ( w_i(\reparamVars, \observedVars) - b_i ) \\
 %
-+ &\sum_{i \in \mathcal{C}} \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \\
+- &\sum_{i \in \mathcal{C}} \gradparams \log \guide(\reparamXform_i(\reparamVar_i) | \reparamXform_{<i}(\reparamVars_{<i}), \observedVars) \\
 %
 + &\gradparams \log p(\xformedVars, \observedVars) \hspace{0.5em} \Bigr]
 \end{split}
