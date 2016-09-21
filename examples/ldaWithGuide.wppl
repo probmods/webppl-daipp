@@ -41,6 +41,11 @@ var countsToIndices = function(counts) {
   return out;
 };
 
+var show = function(x) {
+  display(x);
+  return x;
+};
+
 // *****************************************************************************
 
 // Straight-forward implementation.
@@ -58,6 +63,64 @@ var lda0 = function(data, vocabSize, numTopics, alpha, eta) {
 
     mapData({data: doc}, function(word) {
       var z = sample(Discrete({ps: topicDist}));
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// Straight-forward implementation.
+// softplus squishing for parameters of q(z).
+
+var lda0sp = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete({ps: softplus(paramVector(numTopics, 0, 0))})
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
+// Straight-forward implementation.
+// Not over-parameterized.
+
+var lda0s = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete({ps: dists.squishToProbSimplex(paramVector(numTopics - 1, 0, 0))})
+      });
       var topic = topics[z];
       observe(Discrete({ps: topic}), word);
     });
@@ -157,6 +220,51 @@ var lda2 = function(data, vocabSize, numTopics, alpha, eta) {
 
   return topics;
 };
+
+// *****************************************************************************
+
+// Not over-parameterized.
+
+var lda2s = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documents;
+
+  // Parameters for the guide net.
+  var numHid = 50;
+  var netParams = {
+    W1: paramMatrix(numHid, vocabSize + numTopics, 0, 0.1),
+    W2: paramMatrix(numTopics - 1, numHid, 0, 0.1),
+    b1: paramVector(numHid, 0, 0),
+    b2: paramVector(numTopics - 1, 0, 0)
+  };
+
+  var wordAndTopicDistToParams = function(word, topicDist) {
+    // Use one-of-k encoding for the word. Note that the parameter
+    // vector of Discrete is not required to be normalized.
+    var x = tensorToVector(T.concat(oneOfK(word, vocabSize), topicDist));
+    return {ps: dists.squishToProbSimplex(mlp(x, netParams))};
+  };
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete(wordAndTopicDistToParams(word, topicDist))
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
 
 // *****************************************************************************
 
@@ -399,8 +507,11 @@ var lda100 = function(data, vocabSize, numTopics, alpha, eta) {
 
 var models = {
   lda0: lda0,
+  lda0sp: lda0sp,
+  lda0s: lda0s,
   lda1: lda1,
   lda2: lda2,
+  lda2s: lda2s,
   lda3: lda3,
   lda4: lda4,
   lda5: lda5,
