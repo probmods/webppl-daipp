@@ -15,7 +15,7 @@ var model = function() {
       {mu: paramScalar('mu_y_3'), sigma: softplus(paramScalar('sigma_y_3'))}
    ];
    mapData({data: obs}, function(y) {
-   	  // Explicitly sum out latent mixture component
+      // Explicitly sum out latent mixture component
       var scores = mapIndexed(function(i, muSigma) {
          var w = T.get(theta_x, i);
          return Gaussian(muSigma).score(y) + Math.log(w);
