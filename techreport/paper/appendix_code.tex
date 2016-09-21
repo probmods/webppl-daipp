@@ -1,0 +1,27 @@
+\section{Appendix: Example Programs}
+\label{sec:appendix_code}
+
+\subsection{Gaussian mixture model with discrete choices summed out}
+\label{sec:appendix_code:gmmSumOut}
+
+\begin{lstlisting}
+var obs = loadData('data.json');
+var nComps = 3;
+var model = function() {
+   var theta_x = simplex(paramVector(nComps-1, 'theta_x'));
+   var params_y = [
+      {mu: paramScalar('mu_y_1'), sigma: softplus(paramScalar('sigma_y_1'))},
+      {mu: paramScalar('mu_y_2'), sigma: softplus(paramScalar('sigma_y_2'))},
+      {mu: paramScalar('mu_y_3'), sigma: softplus(paramScalar('sigma_y_3'))}
+   ];
+   mapData({data: obs}, function(y) {
+   	  // Explicitly sum out latent mixture component
+      var scores = mapIndexed(function(i, muSigma) {
+         var w = T.get(theta_x, i);
+         return Gaussian(muSigma).score(y) + Math.log(w);
+      }, params_y);
+      // Summed-out likelihod
+      factor(logsumexp(scores));
+   });
+};
+\end{lstlisting}

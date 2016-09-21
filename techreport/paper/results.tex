@@ -2,17 +2,37 @@
 \section{Experiments}
 \label{sec:results}
 
-For each example give hand written guide and convergence results of various versions of the algorithm.
-
+Having detailed how to specify and optimize guide programs in our system, in this section, we experimentally evaluate how well programs written in our system can learn generative models and approximate posterior samplers. Unless stated otherwise, we use the following settings for the experiments in this section:
+%%%
+\begin{itemize}
+\item{The Adam optimization method~\cite{Adam} with $\alpha = 0.1$, $\beta_1 = 0.9$, and $\beta_2 = 0.99$.}
+\item{One sample from $\guide$ per optimization step to estimate the expectation in Equation~\ref{eq:finalEstimator}.}
+\end{itemize}
 
 \subsection{Simple Bayesian Networks}
 \label{sec:results_bn}
 
-i.e. the running examples from earlier, plus the one that's equivalent to a GMM(?)
+We first consider the simple Gaussian mixture model program from Figure~\ref{fig:bn_oneLatent} Bottom. This program samples discrete random choices, so its gradient estimator will include an LR term. Alternatively, we could re-write the program slightly to explicitly marginalize out the discrete random choices; see Appendix~\ref{sec:appendix_code:gmmSumOut}. This gradient estimator for this program reduces to the PW estimator, which will have lower variance.
 
-Amortized inference alone.
+Figure~\ref{fig:gmmResults} illustrates the performance of these programs after training for 200 steps on a synthetic datset of 100 points. We learn model parameters using regularized maximum likelihood estimation. On the left, we show how the ELBo changes during optimizaton. Even on a simple model such as this one, the ability to use the pure PW estimator leads to faster convergence and a better final objective score. This result is also evident on the right side plot, which shows the negative log likelihood of a separate synthetic test set. Here we also compare against the true model (i.e. the model used to synthesize the test/training data).
 
-Model learning plus inference.
+\begin{figure}[!ht]
+\begin{minipage}{0.5\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figs/results/gmm/elboProgress.pdf}
+\end{minipage}
+%
+\begin{minipage}{0.5\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figs/results/gmm/nll.pdf}
+\end{minipage}
+\caption{Performance of simple Gaussian mixture model program. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Negative log-likelihood of a held-out test set.}
+\label{fig:gmmResults}
+\end{figure}
+
+% Amortized inference alone.
+
+% Model learning plus inference.
 
 
 \subsection{Variational Autoencoder}

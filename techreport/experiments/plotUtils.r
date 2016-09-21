@@ -65,7 +65,7 @@ plotUtils.plot.tableauify <- function(plot) {
 
 tableau10 = tableau_color_pal('tableau10')(10)
 
-plotUtils.plot.lineSize = 1
+plotUtils.plot.lineSize = 0.5
 plotUtils.plot.ribbonAlpha = 0.5
 plotUtils.plot.barDodgeWidth = 0.9
 plotUtils.plot.errorBarWidth = 0.5
@@ -113,9 +113,12 @@ plotUtils.plot.linePlot <- function(data, groupbys, x, y, xlabel, ylabel,
   plot = plot + theme(legend.title=element_blank())
 
   # Hide fill legend if colorby is null or takes on only one value
-  if (is.null(colorby) || length(data %>% distinct_(as.symbol(colorby))) == 1) {
+  if (is.null(colorby) || nrow(data %>% distinct_(as.symbol(colorby))) == 1) {
     plot = plot + guides(fill=FALSE, color=FALSE)
   }
+
+  # Position legend in bottom-right of plot
+  plot = plot + theme(legend.justification=c(1,0), legend.position=c(1,0))
 
   plot
 }
@@ -160,7 +163,7 @@ plotUtils.plot.barPlot <- function(data, groupbys, x, y, xlabel, ylabel,
   plot = plot + theme(legend.title=element_blank())
 
   # Hide fill legend if colorby is null or takes on only one value
-  if (is.null(colorby) || length(data %>% distinct_(as.symbol(colorby))) == 1) {
+  if (is.null(colorby) || nrow(data %>% distinct_(as.symbol(colorby))) == 1) {
     plot = plot + guides(fill=FALSE)
   }
 

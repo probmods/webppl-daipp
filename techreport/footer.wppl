@@ -78,11 +78,11 @@ if (opts.saveParams) {
 // Compute & record evaluation metrics
 
 // (Only if model learning) probability of data under learned model
-var dataLogProb = !opts.doModelLearning || !opts.doDataLogProb ? undefined : (function() {
+var dataLogProb = !opts.doDataLogProb ? undefined : (function() {
 	globalStore.data = _testData;
 	return ForwardSample(model, {
-		guide: true,
-		params: params,
+		guide: opts.dataLogProb_useGuide,
+		params: opts.dataLogProb_useGuide ? params : undefined,
 		samples: opts.dataLogProb_nSamples
 	}).normalizationConstant;
 })();
@@ -107,11 +107,16 @@ var customReturns = (opts.doCustomReturns && typeof computeCustomReturns !== 'un
 	computeCustomReturns() : {};
 
 // Return
-var ret = _.extend({
+// var ret = _.extend({
+// 	dataLogProb: dataLogProb,
+// 	guideESS: guideESS,
+// 	elboProgress: !opts.doELBOProgress ? undefined : params.optimizeProgressLog
+// }, customReturns);
+var ret = _.extend(_.omit({
 	dataLogProb: dataLogProb,
 	guideESS: guideESS,
 	elboProgress: !opts.doELBOProgress ? undefined : params.optimizeProgressLog
-}, customReturns);
+}, _.isUndefined), customReturns);
 ret;
 
 

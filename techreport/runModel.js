@@ -62,10 +62,11 @@ function compileModel(opts) {
 
 		// Evaluation stuff
 		doCustomReturns: true,
-		doDataLogProb: true,
-		doGuideESS: true,
-		doELBOProgress: true,
+		doDataLogProb: false,
+		doGuideESS: false,
+		doELBOProgress: false,
 		dataLogProb_nSamples: 100,
+		dataLogProb_useGuide: true,
 		ess_nDataPoints: 100,
 		ess_nParticles: 100,
 		ess_requireGuides: true,
