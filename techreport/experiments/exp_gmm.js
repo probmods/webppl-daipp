@@ -19,6 +19,26 @@ var baseProgramOpts = {
 
 var conditions = [
 {
+	name: 'Mean field',
+	opts: {
+		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+		localGuideType: 'MeanField'
+	}
+},
+{
+	name: 'Amortized',
+	opts: {
+		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+	}
+},
+{
+	name: 'Marginalized',
+	opts: {
+		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+		sumOut: true
+	}
+},
+{
 	name: 'True model',
 	opts: {
 		optimize_logProgress: false,
@@ -27,26 +47,13 @@ var conditions = [
 		dataLogProb_useGuide: false,
 		sumOut: true
 	}
-},
-{
-	name: 'Sample discretes',
-	opts: {
-		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
-	}
-},
-{
-	name: 'Sum out discretes',
-	opts: {
-		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
-		sumOut: true
-	}
 }
 ];
 
 var data =
 exp.start(baseProgramOpts,
 	exp.condition('condition', conditions,
-		exp.repeat(1,
+		exp.repeat(10,
 			exp.run(function(opts) {
 				var ret = runModel(opts);
 				if (opts.optimize_logProgress) {
