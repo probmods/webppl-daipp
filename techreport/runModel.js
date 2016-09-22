@@ -57,14 +57,17 @@ function compileModel(opts) {
 		optimize_optMethod: { adam: { stepSize: 0.1 } },
 		optimize_estimator: { ELBO2: { samples: 1 } },
 		optimize_verbose: false,
-		optimize_logProgress: 200,
-		saveParams: false,	// Can be a filename where params should be saved
+		optimize_logProgress: false,
+		optimize_logProgressThrottle: undefined,
+		optimize_logProgressFilename: undefined,
+		optimize_checkpointParams: false,
+		optimize_checkpointParamsThrottle: undefined,
+		optimize_checkpointParamsFilename: undefined,
 
 		// Evaluation stuff
-		doCustomReturns: true,
+		doCustomReturns: false,
 		doDataLogProb: false,
 		doGuideESS: false,
-		doELBOProgress: false,
 		dataLogProb_nSamples: 100,
 		dataLogProb_useGuide: true,
 		ess_nDataPoints: 100,

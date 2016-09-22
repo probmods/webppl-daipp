@@ -29,6 +29,9 @@ var decode = function(z, W, b) {
   return T.sigmoid(T.add(T.dot(W[1], h), b[1]));
 };
 
+// Should the model observe or generate?
+globalStore.generate = false;
+
 var model = function() {
 
   // Define parameters.
@@ -47,23 +50,45 @@ var model = function() {
   var b3 = makeNNParamGenerative(hDecodeDim, 1);
   var b4 = makeNNParamGenerative(xDim, 1);
 
-  mapData({data: globalStore.data, batchSize: opts.batchSize || 100}, function(image) {
-
-    var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
-      guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
-    });
-
+  if (globalStore.generate) {
+    var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}));
     var probs = decode(z, [W3, W4], [b3, b4]);
+    return sample(MultivariateBernoulli({ps: probs}));
+  } else {
+    mapData({data: globalStore.data, batchSize: opts.batchSize || 100}, function(image) {
 
-    factor(MultivariateBernoulli({ps: probs}).score(image));
+      var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
+        guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
+      });
 
-  });
+      var probs = decode(z, [W3, W4], [b3, b4]);
 
-  return;
+      factor(MultivariateBernoulli({ps: probs}).score(image));
+
+    });
+  }
 };
 
 // Model-specific Optimize options
 var optimizeOpts = {
   steps: 500,
   optMethod: { adam: { stepSize: 0.001 } }
+};
+
+// Model-specific quantities to compute / return after optimization
+var computeCustomReturns = function(params) {
+  // Generate some samples from the trained model
+  globalStore.generate = true;
+  var n = opts.vae_numSampleImages || 20;
+  var samps = repeat(opts.vae_numSampleImages, function() {
+    return sample(ForwardSample(model, {
+      samples: 1,
+      guide: true,
+      params: params
+    }));
+  });
+  globalStore.generate = false;
+  return {
+    vaeSamples: samps
+  };
 };

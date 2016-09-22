@@ -79,6 +79,7 @@ DataFrame.prototype.normalizeArrayColumn = function(colname) {
 	return new DataFrame(_.flatten(rowGroups));
 };
 
+
 // Save data to CSV file
 DataFrame.prototype.saveCSV = function(filename) {
 	// Compute headers
@@ -113,6 +114,34 @@ DataFrame.loadCSV = function(filename) {
 		});
 		return _.object(header, toks);
 	}));
+};
+
+// Merge N frames, creating a new column 'colname'
+// Each frame in 'frames' will take on the corresponding value in 'colvals'
+//    for the column 'colname'
+DataFrame.merge = function(colname, frames, colvals) {
+	// Make sure they have the same header structure
+	var protoRow = frames[0].data[0];
+	for (var i = 1; i < frames.length; i++) {
+		var row = frames[i].data[0];
+		for (var prop in row) {
+			assert(protoRow.has(prop), 'Frames must all have the same structure.');
+		}
+		for (var prop in protoRow) {
+			assert(protoRow.has(prop), 'Frames must all have the same structure.');
+		}
+	}
+
+	// Smash frames together
+	var data = _.flatten(frames.map(function(frame, i) {
+		var newcol = {};
+		newcol[colname] = colvals[i];
+		return frame.map(function(row) {
+			return _.extend(_.clone(row), newcol);
+		});
+	}));
+
+	return new DataFrame(data);
 };
 
 // ----------------------------------------------------------------------------

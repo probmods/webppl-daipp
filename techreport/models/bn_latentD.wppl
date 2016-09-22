@@ -68,3 +68,41 @@ var model = function() {
 		latents: latents
 	};
 };
+
+
+// Model-specific quantities to compute / return after optimization
+var computeCustomReturns = function(params, testData) {
+	// Try to predict the cluster assignments for all points in the test set,
+	//    see how well it does.
+
+	// Can only do this if we aren't summing out latent discrete choices.
+	assert(!sumOut, 'sumOut must be disabled!');
+
+	var n = opts.gmm_numPredictionRuns || 20;
+	var accuracies = repeat(n, function() {
+		// Generate guided posterior samples
+		globalStore.data = testData;
+		var samp = sample(ForwardSample(model, {
+			samples: 1,
+			guide: true,
+			params: params
+		}));
+
+		// Compute accuracy
+		var matches = map(function(i) {
+			var trueIndex = testData[i].i;
+			var predictedIndex = samp.latents[i].i;
+			return trueIndex === predictedIndex ? 1 : 0;
+		}, _.range(testData.length));
+		var accuracy = sum(matches) / testData.length;
+
+		return accuracy;
+	});
+
+	var accuracy = sum(accuracies) / n;
+
+	return {
+		gmmAvgPredictAccuracy: accuracy
+	};
+};
+

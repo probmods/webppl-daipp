@@ -53,25 +53,34 @@ if (typeof preprocessData !== 'undefined') {
 
 // ----------------------------------------------------------------------------
 
-// Optimize parameters
+// Get optimized params
+var params = (function() {
+	// If we're told to load some saved parameters, do that
+	if (opts.loadParams) {
+		return readJSON(opts.loadParams);
+	} else {
+		// Otherwise, optimize parameters
+		globalStore.data = _trainingData;
+		var _optParams = {
+			steps: opts.optimize_nSteps,
+			optMethod: opts.optimize_optMethod,
+			estimator: opts.optimize_estimator,
+			verbose: opts.optimize_verbose,
+			logProgress: opts.optimize_logProgress,
+			logProgressThrottle: opts.optimize_logProgressThrottle,
+			logProgressFilename: opts.optimize_logProgressFilename,
+			checkpointParams: opts.optimize_checkpointParams,
+			checkpointParamsThrottle: opts.optimize_checkpointParamsThrottle,
+			checkpointParamsFilename: opts.optimize_checkpointParamsFilename
+		};
+		// Merge in any optimization options provided by the model itself (in optimizeOpts).
+		var optParams = typeof optimizeOpts !== 'undefined' ? _.extend(_optParams, optimizeOpts) : _optParams;
 
-globalStore.data = _trainingData;
+		var params = Optimize(model, optParams);
 
-var _optParams = {
-	steps: opts.optimize_nSteps,
-	optMethod: opts.optimize_optMethod,
-	estimator: opts.optimize_estimator,
-	verbose: opts.optimize_verbose,
-	logProgress: opts.optimize_logProgress
-};
-// Merge in any optimization options provided by the model itself (in optimizeOpts).
-var optParams = typeof optimizeOpts !== 'undefined' ? _.extend(_optParams, optimizeOpts) : _optParams;
-
-var params = Optimize(model, optParams);
-
-if (opts.saveParams) {
-	writeJSON(opts.saveParams, params);
-}
+		return params;
+	}
+})();
 
 // ----------------------------------------------------------------------------
 
@@ -102,16 +111,10 @@ var guideESS = !opts.doGuideESS ? undefined : (function() {
 	return sum(ess_estimates) / nDataPoints;
 })();
 
-// Anything requested by the model
-var customReturns = (opts.doCustomReturns && typeof computeCustomReturns !== 'undefined') ? 
-	computeCustomReturns() : {};
+var customReturns = (opts.doCustomReturns && (typeof computeCustomReturns !== 'undefined')) ? 
+	computeCustomReturns(params, _testData) : {};
 
 // Return
-// var ret = _.extend({
-// 	dataLogProb: dataLogProb,
-// 	guideESS: guideESS,
-// 	elboProgress: !opts.doELBOProgress ? undefined : params.optimizeProgressLog
-// }, customReturns);
 var ret = _.extend(_.omit({
 	dataLogProb: dataLogProb,
 	guideESS: guideESS,
@@ -119,7 +122,7 @@ var ret = _.extend(_.omit({
 }, _.isUndefined), customReturns);
 ret;
 
-
+// ----------------------------------------------------------------------------
 
 // // These were useful for debugging in the past, so I'm leaving them here for now
 

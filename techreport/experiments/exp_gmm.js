@@ -1,4 +1,3 @@
-
 var runModel = require('../runModel.js');
 var exp = require('./experiment.js');
 var DataFrame = require('./dataFrame.js');

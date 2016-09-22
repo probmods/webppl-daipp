@@ -9,10 +9,10 @@ Having detailed how to specify and optimize guide programs in our system, in thi
 \item{One sample from $\guide$ per optimization step to estimate the expectation in Equation~\ref{eq:finalEstimator}.}
 \end{itemize}
 
-\subsection{Simple Bayesian Networks}
-\label{sec:results_bn}
+\subsection{Gaussian Mixture Model}
+\label{sec:results_gmm}
 
-We first consider the simple Gaussian mixture model program from Figure~\ref{fig:bn_oneLatent} Bottom. This program samples discrete random choices, so its gradient estimator will include an LR term. Alternatively, we could re-write the program slightly to explicitly marginalize out the discrete random choices; see Appendix~\ref{sec:appendix_code:gmmSumOut}. This gradient estimator for this program reduces to the PW estimator, which will have lower variance.
+We first consider the simple Gaussian mixture model program from Figure~\ref{fig:bn_oneLatent} Bottom. This program samples discrete random choices, so its gradient estimator will include an LR term. Alternatively, we could re-write the program slightly to explicitly marginalize out the discrete random choices; see Appendix~\ref{sec:appendix_code:gmmSumOut}. The gradient estimator for this program then reduces to the PW estimator, which will have lower variance. Lower variance comes at the cost of amortized inference, however, as this version of the program does not have a guide which can predict the latent cluster assignment given an observed point.
 
 Figure~\ref{fig:gmmResults} illustrates the performance of these programs after training for 200 steps on a synthetic datset of 100 points. We learn model parameters using regularized maximum likelihood estimation. On the left, we show how the ELBo changes during optimizaton. Even on a simple model such as this one, the ability to use the pure PW estimator leads to faster convergence and a better final objective score. This result is also evident on the right side plot, which shows the negative log likelihood of a separate synthetic test set. Here we also compare against the true model (i.e. the model used to synthesize the test/training data).
 
@@ -30,9 +30,7 @@ Figure~\ref{fig:gmmResults} illustrates the performance of these programs after 
 \label{fig:gmmResults}
 \end{figure}
 
-% Amortized inference alone.
-
-% Model learning plus inference.
+% Other Bayes net examples??
 
 
 \subsection{Variational Autoencoder}

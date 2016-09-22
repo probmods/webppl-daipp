@@ -180,7 +180,7 @@ var computeVariableMoments = function(trainingData, testData) {
 // Misc.
 
 var assert = function(b, msg) {
-	if (!b) { util.fatal(msg); }
+	if (!b) { util.fatal(msg || '[techreport/header.wppl] assertion failed!'); }
 };
 
 
