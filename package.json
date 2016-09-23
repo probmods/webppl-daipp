@@ -12,6 +12,7 @@
     ]
   },
   "dependencies": {
+    "jimp": "^0.2.27",
     "lru-cache": "^4.0.1",
     "underscore": "^1.8.3"
   },

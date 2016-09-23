@@ -57,7 +57,8 @@ if (typeof preprocessData !== 'undefined') {
 var params = (function() {
 	// If we're told to load some saved parameters, do that
 	if (opts.loadParams) {
-		return readJSON(opts.loadParams);
+		var params = readParametersJSON(opts.loadParams);
+		return params;
 	} else {
 		// Otherwise, optimize parameters
 		globalStore.data = _trainingData;

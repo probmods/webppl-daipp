@@ -29,7 +29,14 @@ var decode = function(z, W, b) {
   return T.sigmoid(T.add(T.dot(W[1], h), b[1]));
 };
 
-// Should the model observe or generate?
+// To avoid having to type out a bunch of undefined's everywhere.
+var makeNNParamGenerativeNamed = function(n, m, name) {
+  return makeNNParamGenerative(n, m, undefined, undefined, undefined, undefined, name);
+};
+
+// Should the model be purely generative (i.e. no mapData)?
+globalStore.pureGenerative = false;
+// Within mapData, should the model observe or generate?
 globalStore.generate = false;
 
 var model = function() {
@@ -37,25 +44,27 @@ var model = function() {
   // Define parameters.
 
   // Variational.
-  var W0 = paramMatrix(hEncodeDim, xDim);
-  var W1 = paramMatrix(zDim, hEncodeDim);
-  var W2 = paramMatrix(zDim, hEncodeDim);
-  var b0 = paramMatrix(hEncodeDim, 1);
-  var b1 = paramMatrix(zDim, 1);
-  var b2 = paramMatrix(zDim, 1);
+  var W0 = paramMatrix(hEncodeDim, xDim, 'W0');
+  var W1 = paramMatrix(zDim, hEncodeDim, 'W1');
+  var W2 = paramMatrix(zDim, hEncodeDim, 'W2');
+  var b0 = paramMatrix(hEncodeDim, 1, 'b0');
+  var b1 = paramMatrix(zDim, 1, 'b1');
+  var b2 = paramMatrix(zDim, 1, 'b2');
 
   // Generative.
-  var W3 = makeNNParamGenerative(hDecodeDim, zDim);
-  var W4 = makeNNParamGenerative(xDim, hDecodeDim);
-  var b3 = makeNNParamGenerative(hDecodeDim, 1);
-  var b4 = makeNNParamGenerative(xDim, 1);
+  var W3 = makeNNParamGenerativeNamed(hDecodeDim, zDim, 'W3');
+  var W4 = makeNNParamGenerativeNamed(xDim, hDecodeDim, 'W4');
+  var b3 = makeNNParamGenerativeNamed(hDecodeDim, 1, 'b3');
+  var b4 = makeNNParamGenerativeNamed(xDim, 1, 'b4');
 
-  if (globalStore.generate) {
+  if (globalStore.pureGenerative) {
     var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}));
     var probs = decode(z, [W3, W4], [b3, b4]);
-    return sample(MultivariateBernoulli({ps: probs}));
+    return probs;
+    // return sample(MultivariateBernoulli({ps: probs}));
   } else {
-    mapData({data: globalStore.data, batchSize: opts.batchSize || 100}, function(image) {
+    var batchSize = Math.min(opts.batchSize || 100, globalStore.data.length);
+    return mapData({data: globalStore.data, batchSize: batchSize}, function(image) {
 
       var z = sample(TensorGaussian({mu: 0, sigma: 1, dims: [zDim, 1]}), {
         guide: DiagCovGaussian(encode(image, [W0, W1, W2], [b0, b1, b2]))
@@ -63,8 +72,13 @@ var model = function() {
 
       var probs = decode(z, [W3, W4], [b3, b4]);
 
-      factor(MultivariateBernoulli({ps: probs}).score(image));
-
+      if (globalStore.generate) {
+        return probs;
+        // return sample(MultivariateBernoulli({ps: probs}));
+      } else {
+        factor(MultivariateBernoulli({ps: probs}).score(image));
+        return z;
+      }
     });
   }
 };
@@ -73,22 +87,86 @@ var model = function() {
 var optimizeOpts = {
   steps: 500,
   optMethod: { adam: { stepSize: 0.001 } }
+  // steps: 1500,
+  // optMethod: { adam: { stepSize: 0.0001 } }
 };
 
 // Model-specific quantities to compute / return after optimization
-var computeCustomReturns = function(params) {
-  // Generate some samples from the trained model
-  globalStore.generate = true;
+
+// Generate some samples from the trained model
+var generateSamples = function(params){
+  globalStore.pureGenerative = true;
   var n = opts.vae_numSampleImages || 20;
-  var samps = repeat(opts.vae_numSampleImages, function() {
+  var samps = repeat(n, function() {
     return sample(ForwardSample(model, {
       samples: 1,
-      guide: true,
+      guide: false,
       params: params
     }));
   });
-  globalStore.generate = false;
+  globalStore.pureGenerative = false;
   return {
     vaeSamples: samps
   };
 };
+
+// Encode some test data, then decode it again to see how good
+//    the reconstruction is.
+var genEncodeDecodeSamples = function(params, testData) {
+  globalStore.generate = true;
+  var nTargets = opts.vae_numEncodeDecodeTargets || 5;
+  var targetReconstructions = repeat(nTargets, function() {
+    var target = testData[randomInteger(testData.length)];
+    globalStore.data = [target];
+    var nSamps = opts.vae_numEncodeDecodeSamplesPerTarget || 10;
+    var reconstructions =  repeat(nSamps, function() {
+      var imgs = sample(ForwardSample(model, {
+        samples: 1,
+        guide: true,
+        params: params
+      }));
+      return imgs[0]; // because mapData puts it in a list
+    });
+    return {
+      target: target,
+      reconstructions: reconstructions
+    };
+  });
+  globalStore.generate = false;
+  return {
+    vaeEncodeDecodeSamples: targetReconstructions
+  };
+};
+
+// Predict latent codes for test images, but don't reconstruct
+// Also spit out the digit identity for each one.
+var genLatentCodes = function(params, _testData) {
+  var testData = _.shuffle(_testData);
+  var testLabels = _.shuffle(readJSON('techreport/data/mnist_labels_test.json'));
+  var nToGenerate = opts.vae_numLatentCodes || 500;
+  var data = map(function(i) {
+    console.log(i);
+    var digitID = testLabels[i];
+    globalStore.data = [ testData[i] ];
+    var code = sample(ForwardSample(model, {
+      samples: 1,
+      guide: true,
+      params: params
+    }))[0];    // because mapData puts it in a list
+    return {
+      id: digitID,
+      code: code
+    };
+  }, _.range(nToGenerate));
+  return {
+    vaeLatentCodes: data
+  };
+};
+
+var computeCustomReturns = function(params, testData) {
+  // return generateSamples(params);
+  // return genEncodeDecodeSamples(params, testData);
+  return genLatentCodes(params, testData);
+};
+
+

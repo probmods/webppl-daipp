@@ -15,83 +15,84 @@ var isNumberOrScalarNode = function(x) {
 
 // Parameters
 
+var _extend = function(name, suffix) {
+	return name === undefined ? undefined : name + suffix;
+};
+
 var perceptronParams = function(spec, name) {
-	var extendname = function(suffix) {
-		return name === undefined ? undefined : name + suffix;
-	};
 	return {
-		W_hidden: paramMatrix(spec.nHidden, spec.nIn, extendname('_Whidden')),
-		b_hidden: paramVector(spec.nHidden, extendname('_bhidden')),
-		W_out: paramMatrix(spec.nOut, spec.nHidden, extendname('_Wout')),
-		b_out: paramVector(spec.nOut, extendname('_bout'))
+		W_hidden: paramMatrix(spec.nHidden, spec.nIn, _extend(name, '_Whidden')),
+		b_hidden: paramVector(spec.nHidden, _extend(name, '_bhidden')),
+		W_out: paramMatrix(spec.nOut, spec.nHidden, _extend(name, '_Wout')),
+		b_out: paramVector(spec.nOut, _extend(name, '_bout'))
 	};
 };
 
 // Creating parameters for generative models under different conditions
-var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma) {
-	var prm = function() { return paramScalar(paramMu, paramSigma) };
+var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma, name) {
+	var prm = function(nm) { return paramScalar(paramMu, paramSigma, nm) };
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			prm() :
+			prm(name) :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
-				guide: Delta({v: prm()})
+				guide: Delta({v: prm(name)})
 			}) :
 		opts.modelLearnType === 'VB' ?
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
-				guide: Gaussian({mu: prm(), sigma: softplus(prm())})
+				guide: Gaussian({mu: prm(_extend(name, '_mu')), sigma: softplus(prm(_extend(name, '_sigma')))})
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
-var makeSigmaGenerative = function(value, priorShape, priorScale, paramMu, paramSigma) {
-	var prm = function() { return paramScalar(paramMu, paramSigma) };
+var makeSigmaGenerative = function(value, priorShape, priorScale, paramMu, paramSigma, name) {
+	var prm = function(nm) { return paramScalar(paramMu, paramSigma, nm) };
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			softplus(prm()) :
+			softplus(prm(name)) :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
-				guide: Delta({v: softplus(prm())})
+				guide: Delta({v: softplus(prm(name))})
 			}) :
 		opts.modelLearnType === 'VB' ?
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
-				guide: Gamma({shape: softplus(prm()), scale: softplus(prm())})
+				guide: Gamma({shape: softplus(prm(_extend(name, '_shape'))), scale: softplus(prm(_extend(name, '_scale')))})
 			}) :
 		util.fatal('Unrecognized modelLearnType');
 };
-var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma) {
+var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma, name) {
 	var n = ws !== undefined ? ws.length : priorAlpha.length; 
 
-	var prm = function() { return paramVector(n-1, paramMu, paramSigma) };
+	var prm = function(nm) { return paramVector(n-1, paramMu, paramSigma, nm) };
 	var ones = function() { return Vector(repeat(n, function() { return 1; })); };
 
 	return !opts.doModelLearning ?
 		Vector(ws) :
 	opts.modelLearnType === 'ML' ?
-		simplex(prm()) :
+		simplex(prm(name)) :
 	opts.modelLearnType === 'ML_reg' ?
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
-			guide: Delta({v: simplex(prm())})
+			guide: Delta({v: simplex(prm(name))})
 		}) :
 	opts.modelLearnType === 'VB' ?
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
-			guide: LogisticNormal({mu: prm(), sigma: softplus(prm())})
+			guide: LogisticNormal({mu: prm(extend(name, '_mu')), sigma: softplus(prm(_extend(name, '_sigma')))})
 		}) :
 	util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
 };
-var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSigma) {
-  var prm = function() { return paramMatrix(n, m, paramMu, paramSigma); };
+var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSigma, name) {
+  var prm = function(nm) { return paramMatrix(n, m, paramMu, paramSigma, nm); };
   return
   opts.modelLearnType === 'ML' ?
-    prm() :
+    prm(name) :
   opts.modelLearnType === 'ML_reg' ?
     sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
-      guide: Delta({v: prm()})
+      guide: Delta({v: prm(name)})
     }) :
   opts.modelLearnType === 'VB' ?
     sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
-      guide: TensorGaussian({mu: prm(), sigma: softplus(prm()), dims: [n, m]})
+      guide: TensorGaussian({mu: prm(_extend(name, '_mu')), sigma: softplus(prm(_extend(name, 'sigma'))), dims: [n, m]})
     }) :
   util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
 };

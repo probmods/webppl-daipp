@@ -19,6 +19,19 @@ module.exports = function(env) {
     }));
   };
 
+  var readParametersJSON = function(s, k, a, fn) {
+    var paramMap = JSON.parse(fs.readFileSync(fn, 'utf-8'));
+    // Assume that tensor data has been seralized as regular array
+    //    and needs to be converted back to typed array.
+    // Paramters are stored as a map of list of Tensor
+    for (var name in paramMap) {
+      paramMap[name] = paramMap[name].map(function(tensor) {
+        return new Tensor(tensor.dims).fromFlatArray(tensor.data);
+      });
+    }
+    return k(s, paramMap);
+  };
+
   function writeJSON(s, k, a, fn, obj) {
     return k(s, fs.writeFileSync(fn, JSON.stringify(obj)));
   }
@@ -26,6 +39,7 @@ module.exports = function(env) {
   return {
     readJSON: readJSON,
     readDataSetJSON: readDataSetJSON,
+    readParametersJSON: readParametersJSON,
     writeJSON: writeJSON
   };
 

@@ -58,15 +58,20 @@ var preprocessData = function(trainingData, testData) {
 };
 var subtractMeanImage = function(image) { return T.sub(image, globalStore.meanImage); };
 
+// To avoid having to type out a bunch of undefined's everywhere.
+var makeNNParamGenerativeNamed = function(n, m, name) {
+  return makeNNParamGenerative(n, m, undefined, undefined, undefined, undefined, name);
+};
+
 var model = function() {
 
   // Variational guide params
-  var We = paramMatrix(numhid, numviz, 0, 0.001);
-  var be = paramMatrix(numhid, 1);
+  var We = paramMatrix(numhid, numviz, 0, 0.001, 'We');
+  var be = paramMatrix(numhid, 1, 'be');
 
   // Generative params
-  var Wd = makeNNParamGenerative(numviz, numhid, undefined, undefined, 0, 0.001);
-  var bd = makeNNParamGenerative(numviz, 1);
+  var Wd = makeNNParamGenerative(numviz, numhid, undefined, undefined, 0, 0.001, 'Wd');
+  var bd = makeNNParamGenerativeNamed(numviz, 1, 'bd');
 
   var encode = function(datum) {
     return T.sigmoid(T.add(T.dot(We, subtractMeanImage(datum)), be));
