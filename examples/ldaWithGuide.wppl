@@ -573,7 +573,7 @@ display('Output will be written to ' + path);
 var data = JSON.parse(fs.read('examples/data/cocolabAbstractCorpus.json'));
 
 var vocabSize = data.numWords; // V
-var numTopics = 5; // K
+var numTopics = process.env.NUM_TOPICS ? _top.parseInt(process.env.NUM_TOPICS) : 5; // K
 
 // Parameter for prior on topic proportions.
 var alpha = T.add(zeros([numTopics, 1]), 0.1);
