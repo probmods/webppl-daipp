@@ -82,19 +82,20 @@ var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma, name) 
 	util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
 };
 var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSigma, name) {
-  var prm = function(nm) { return paramMatrix(n, m, paramMu, paramSigma, nm); };
-  return
+  var prm = function(nm) { return paramVector(n*m, paramMu, paramSigma, nm); };
+  var x =
   opts.modelLearnType === 'ML' ?
     prm(name) :
   opts.modelLearnType === 'ML_reg' ?
-    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
+    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n*m, 1]}), {
       guide: Delta({v: prm(name)})
     }) :
   opts.modelLearnType === 'VB' ?
-    sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n, m]}), {
-      guide: TensorGaussian({mu: prm(_extend(name, '_mu')), sigma: softplus(prm(_extend(name, 'sigma'))), dims: [n, m]})
-    }) :
+	sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n*m, 1]}), {
+  	  guide: DiagCovGaussian({mu: prm(_extend(name, '_mu')), sigma: softplus(prm(_extend(name, 'sigma')))})
+	}) :
   util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
+  return T.reshape(x, [n, m]);
 };
 
 // Local mean field guides
