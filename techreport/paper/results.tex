@@ -36,12 +36,22 @@ Note that the amortized guide program slightly out-performs the mean field guide
 % Other Bayes net examples??
 
 
-\subsection{Variational Autoencoder}
+\subsection{Neural Generative Models: Variational Autoencoder \& Sigmoid Belief Network}
 \label{sec:results_vae}
 
-Cite AEVB paper.
+Our system naturally supports generative models which use neural network components. Two prominent examples of models in this class include the Variational Autoencoder (VAE) and Sigmoid Belief Networks (SBN). Both models samples latent variables from a multivariate distribution and then transform the result via a neural network to produce observed variables, often in the form of an image. The VAE uses a latent multivariate Gaussian distribution, whereas the SBN uses a latent multivariate Bernoulli.
 
-Note that their formulation of ELBo exploits the closed form of the KL divergence between two Gaussians to create an even lower-variance estimator than ours. But our system is still able to learn this model.
+Appendix~\ref{sec:appendix_code} shows implementations of these models in our system~\remark{Actually do this}. Our VAE implementation follows the original description of the model by Kingma and Welling~\cite{AEVB}, and our SBN implementation follows that of Mnih and Gregor~\cite{NVIL}.
+The VAE uses a 20-dimensional latent code, and the SBN uses a single layer of 200 hidden variables. Our system cannot express the two-layer SBN of Mnih and Gregor, because its guide model samples the latent variables in reverse order from the generative model.
+
+Figure~\ref{fig:vae_sbn_results} Left shows results of training these models on the MNIST dataset, using Adam with a step size of 0.001.
+While both models train quickly at first, the SBN's training slows more noticeably than the VAE's due to its discrete nature. It takes more than three times as many iterations to achieve the same ELBo.
+In Figure~\ref{fig:vae_sbn_results} Right, we qualitatively evaluate both models by using them to reconstruct images from the MNIST test set. We use the guide program to sample latent variables conditional on the images in the ``Target'' column (i.e. the `encoder' phase). We then transform these latent variables using the generative model's neural networks (i.e. the `decoder' phase) to produce the reconstructed images in the ``VAE'' and ``SBN'' columns.
+As suggested by their training behavior, the VAE is able to generate higher-quality reconstructions after less training.
+
+Our optimization exhibits some differences from the previous work.
+For the VAE, Kingma and Welling~\cite{AEVB} exploit the closed form solution of the KL divergence between two Gaussians to create an even lower-variance estimator of the ELBo gradient. We use a more general formulation, but our system can still successfully train the model.
+For the SBN, Mnih and Gregor~\cite{NVIL} use neural networks to compute the per-variable baselines $b_i$ in Equation~\ref{eq:finalEstimator}, whereas we use a simpler approach (see Appendix~\ref{sec:appendix_proofs}).
 
 \begin{figure}
 \begin{minipage}{0.5\linewidth}
@@ -98,26 +108,9 @@ Target & \multicolumn{3}{c}{VAE} & \multicolumn{3}{c}{SBN}
 & \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_003_sample_003.png}
 \end{tabular}
 \end{minipage}
-\caption{\remark{Fill in caption text here.}}
-\label{fig:vae_results}
+\caption{Evaluating the Variational Autoencoder (VAE) and Sigmoid Belief Network (SBN) programs on the MNIST dataset. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Reconstructing the images in the ``Target'' column using both models.}
+\label{fig:vae_sbn_results}
 \end{figure}
-
-
-Explore model uncertainty?
-
-Explore mixture guides?
-
-Consider factorial version (ie multiple latents)?
-
-
-\subsection{Sigmoid Belief Network}
-\label{sec:results_sbn}
-
-Describe similarities / differences to NVIL one.
-
-Note that we can't do the two layer model that they do, because that requires the guide to sample the hidden layers in reverse order.
-
-We use average baselines, not neural baselines (refer to Appendix).
 
 
 \subsection{Latent Dirichlet Allocation}
