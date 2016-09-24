@@ -41,10 +41,12 @@ Note that the amortized guide program slightly out-performs the mean field guide
 
 Cite AEVB paper.
 
+Note that their formulation of ELBo exploits the closed form of the KL divergence between two Gaussians to create an even lower-variance estimator than ours. But our system is still able to learn this model.
+
 \begin{figure}
 \begin{minipage}{0.5\linewidth}
 \centering
-\includegraphics[width=\linewidth]{figs/results/vae/elboProgress.pdf}
+\includegraphics[width=\linewidth]{figs/results/vae_sbn/elboProgress.pdf}
 \end{minipage}
 %
 \hspace{2em}
@@ -52,34 +54,54 @@ Cite AEVB paper.
 \begin{minipage}{0.5\linewidth}
 \setlength{\tabcolsep}{1pt}
 \centering
-\begin{tabular}{c  c c c c c}
-Target & \multicolumn{5}{c}{Sampled Reconstructions}
+\begin{tabular}{c  c c c c c c}
+Target & \multicolumn{3}{c}{VAE} & \multicolumn{3}{c}{SBN}
 \\
- \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_000.png}\hspace{4pt}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_000_sample_001.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_000_sample_002.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_000_sample_003.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_000_sample_004.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_000_sample_005.png}
+ \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_000.png}
+ \hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_000_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_000_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_000_sample_003.png}
+\hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_000_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_000_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_000_sample_003.png}
 \\
- \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_001.png}\hspace{4pt}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_001_sample_001.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_001_sample_002.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_001_sample_003.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_001_sample_004.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_001_sample_005.png}
+ \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_001.png}
+ \hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_001_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_001_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_001_sample_003.png}
+\hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_001_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_001_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_001_sample_003.png}
 \\
- \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_004.png}\hspace{4pt}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_004_sample_001.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_004_sample_002.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_004_sample_003.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_004_sample_004.png}
-& \includegraphics[width=0.16\linewidth]{figs/results/vae/vae_encodeDecode_target_004_sample_005.png}
+ \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_002.png}
+ \hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_002_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_002_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_002_sample_003.png}
+\hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_002_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_002_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_002_sample_003.png}
+\\
+ \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_003.png}
+ \hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_003_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_003_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/vae_encodeDecode_target_003_sample_003.png}
+\hspace{3pt}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_003_sample_001.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_003_sample_002.png}
+& \includegraphics[width=0.12\linewidth]{figs/results/vae_sbn/sbn_encodeDecode_target_003_sample_003.png}
 \end{tabular}
 \end{minipage}
 \caption{\remark{Fill in caption text here.}}
 \label{fig:vae_results}
 \end{figure}
+
 
 Explore model uncertainty?
 
@@ -91,7 +113,11 @@ Consider factorial version (ie multiple latents)?
 \subsection{Sigmoid Belief Network}
 \label{sec:results_sbn}
 
-Cite similarities between this model and the NVIL one.
+Describe similarities / differences to NVIL one.
+
+Note that we can't do the two layer model that they do, because that requires the guide to sample the hidden layers in reverse order.
+
+We use average baselines, not neural baselines (refer to Appendix).
 
 
 \subsection{Latent Dirichlet Allocation}

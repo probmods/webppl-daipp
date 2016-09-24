@@ -4,10 +4,10 @@ dir = plotUtils.dirOfThisFile()
 # Plot ELBo progress
 
 data = read.csv(paste0(dir, '/elboProgress.csv'))
-# data$condition <- factor(data$condition, as.character(data$condition))	# Sort as they appear in the file
-# plot = plotUtils.plot.elboProgress(data, 'condition', ribbon = TRUE)
+data$condition <- factor(data$condition, as.character(data$condition))	# Sort as they appear in the file
+plot = plotUtils.plot.elboProgress(data, 'condition', ribbon = TRUE)
 # plot = plot + coord_cartesian(ylim = c(-500, -175)) 		# Set axis limits
-plot = plotUtils.plot.elboProgress(data, NULL ribbon = TRUE)
+# plot = plotUtils.plot.elboProgress(data, NULL, ribbon = TRUE)
 plotUtils.plot.save(plot, paste0(dir, '/elboProgress.pdf'))
 
 # -----------------------------------------------------------------------------------------

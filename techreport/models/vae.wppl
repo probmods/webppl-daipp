@@ -114,11 +114,14 @@ var generateSamples = function(params){
 //    the reconstruction is.
 var genEncodeDecodeSamples = function(params, testData) {
   globalStore.generate = true;
-  var nTargets = opts.vae_numEncodeDecodeTargets || 5;
-  var targetReconstructions = repeat(nTargets, function() {
-    var target = testData[randomInteger(testData.length)];
+  var indices = opts.vae_encodeDecodeTargetIndices || 
+    repeat(opts.vae_numEncodeDecodeTargets || 4, function() {
+      return randomInteger(testData.length);
+    });
+  var targetReconstructions = map(function(idx) {
+    var target = testData[idx];
     globalStore.data = [target];
-    var nSamps = opts.vae_numEncodeDecodeSamplesPerTarget || 10;
+    var nSamps = opts.vae_numEncodeDecodeSamplesPerTarget || 3;
     var reconstructions =  repeat(nSamps, function() {
       var imgs = sample(ForwardSample(model, {
         samples: 1,
@@ -128,10 +131,11 @@ var genEncodeDecodeSamples = function(params, testData) {
       return imgs[0]; // because mapData puts it in a list
     });
     return {
+      index: idx,
       target: target,
       reconstructions: reconstructions
     };
-  });
+  }, indices);
   globalStore.generate = false;
   return {
     vaeEncodeDecodeSamples: targetReconstructions
@@ -165,8 +169,8 @@ var genLatentCodes = function(params, _testData) {
 
 var computeCustomReturns = function(params, testData) {
   // return generateSamples(params);
-  // return genEncodeDecodeSamples(params, testData);
-  return genLatentCodes(params, testData);
+  return genEncodeDecodeSamples(params, testData);
+  // return genLatentCodes(params, testData);
 };
 
 

@@ -35,6 +35,12 @@ var numhid = opts.numhid || 200;
 var numviz = 784;
 var priorProbs = T.div(ones([numhid, 1]), 2); // [.5, .5, ...]
 
+// NOTE: this is *not* the same as the multi-layer model in the NVIL paper.
+// That one actually has multiple layers of MultivariateBernoullis, and the
+//    guide samples them in reverse order.
+// Ours always just has one MultivariateBernoulli, but the encode/decode
+//    neural nets can have multiple layers
+
 var loadData = function(filename) {
   console.time('load data');
   var data = map(Vector, readJSON(filename));
@@ -70,19 +76,25 @@ globalStore.generate = false;
 var model = function() {
 
   // Variational guide params
-  var We = paramMatrix(numhid, numviz, 0, 0.001, 'We');
-  var be = paramMatrix(numhid, 1, 'be');
+  var We1 = paramMatrix(numhid, numviz, 0, 0.001, 'We1');
+  var be1 = paramMatrix(numhid, 1, 'be1');
+  var We2 = paramMatrix(numhid, numhid, 0, 0.001, 'We2');
+  var be2 = paramMatrix(numhid, 1, 'be2');
 
   // Generative params
-  var Wd = makeNNParamGenerative(numviz, numhid, undefined, undefined, 0, 0.001, 'Wd');
-  var bd = makeNNParamGenerativeNamed(numviz, 1, 'bd');
+  var Wd1 = makeNNParamGenerative(numhid, numhid, undefined, undefined, 0, 0.001, 'Wd1');
+  var bd1 = makeNNParamGenerativeNamed(numhid, 1, 'bd1');
+  var Wd2 = makeNNParamGenerative(numviz, numhid, undefined, undefined, 0, 0.001, 'Wd2');
+  var bd2 = makeNNParamGenerativeNamed(numviz, 1, 'bd2');
 
   var encode = function(datum) {
-    return T.sigmoid(T.add(T.dot(We, subtractMeanImage(datum)), be));
+    var l1 = T.sigmoid(T.add(T.dot(We1, subtractMeanImage(datum)), be1));
+    return T.sigmoid(T.add(T.dot(We2, l1), be2));
   };
 
   var decode = function(h) {
-    return T.sigmoid(T.add(T.dot(Wd, h), bd));
+    var l1 = T.sigmoid(T.add(T.dot(Wd1, h), bd1));
+    return T.sigmoid(T.add(T.dot(Wd2, l1), bd2));
   };
 
   var batchSize = Math.min(opts.batchSize || 100, globalStore.data.length);
@@ -118,14 +130,11 @@ var optimizeOpts = {
 //    the reconstruction is.
 var genEncodeDecodeSamples = function(params, testData) {
   globalStore.generate = true;
-  var indices = opts.sbn_encodeDecodeTargetIndices || 
-    repeat(opts.sbn_numEncodeDecodeTargets || 4, function() {
-      return randomInteger(testData.length);
-    });
-  var targetReconstructions = map(function(idx) {
-    var target = testData[idx];
+  var nTargets = opts.sbn_numEncodeDecodeTargets || 5;
+  var targetReconstructions = repeat(nTargets, function() {
+    var target = testData[randomInteger(testData.length)];
     globalStore.data = [target];
-    var nSamps = opts.sbn_numEncodeDecodeSamplesPerTarget || 3;
+    var nSamps = opts.sbn_numEncodeDecodeSamplesPerTarget || 10;
     var reconstructions =  repeat(nSamps, function() {
       var imgs = sample(ForwardSample(model, {
         samples: 1,
@@ -135,11 +144,10 @@ var genEncodeDecodeSamples = function(params, testData) {
       return imgs[0]; // because mapData puts it in a list
     });
     return {
-      index: idx,
       target: target,
       reconstructions: reconstructions
     };
-  }, indices);
+  });
   globalStore.generate = false;
   return {
     sbnEncodeDecodeSamples: targetReconstructions

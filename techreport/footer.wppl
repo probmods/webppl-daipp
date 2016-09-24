@@ -22,7 +22,8 @@ var _trainingData = (function() {
 	} else {
 		// (Optionally) Limit the amount of training data used
 		var n = opts.nTrainingData ? Math.min(opts.nTrainingData, trainingData.length) : trainingData.length;
-		return _.shuffle(trainingData).slice(0, n);
+		// return _.shuffle(trainingData).slice(0, n);
+		return trainingData.slice(0, n);
 	}
 })();
 
@@ -42,7 +43,8 @@ var _testData = (function() {
 	} else {
 		// (Optionally) limit the amount of test data used
 		var n = opts.nTestData ? Math.min(opts.nTestData, testData.length) : testData.length;
-		return _.shuffle(testData).slice(0, n);
+		// return _.shuffle(testData).slice(0, n);
+		return testData.slice(0, n);
 	}
 })();
 
