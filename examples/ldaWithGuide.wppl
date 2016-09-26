@@ -553,7 +553,9 @@ var serializeParams = function(params) {
 // guide.
 
 // TODO: Delta's on topics, since folk often don't care about the
-// uncertainty here?
+// uncertainty here? Requires each eta_i to be >= 1, otherwise the
+// "regularization" from log p of the topic dist will force each of
+// the topics out to one of the corners of the simplex.
 
 // *****************************************************************************
 
