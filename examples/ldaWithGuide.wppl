@@ -451,6 +451,81 @@ var lda5 = function(data, vocabSize, numTopics, alpha, eta) {
 
 // *****************************************************************************
 
+// A different way (compare lda4) of having a guide net map from
+// topics + counts => params for topicDist.
+
+var lda6Nets = cache(function(numHid, vocabSize, numTopics) {
+  var init = nn.constantparams([numHid]);
+  init.setTraining(true);
+
+  var ru = daipp.makeRU('rnn', numHid, vocabSize, 'lda6ru', true);
+
+  var outputHidden = nn.mlp(numHid, [
+    {nOut: numHid, activation: nn.tanh}
+  ], 'lda6outputHidden');
+  outputHidden.setTraining(true);
+
+  var outputMu = nn.mlp(numHid, [
+    {nOut: numTopics - 1}
+  ], 'lda6outputMu');
+  outputMu.setTraining(true);
+
+  var outputSigma = nn.mlp(numHid, [
+    {nOut: numTopics - 1}
+  ], 'lda6outputSigma');
+  outputSigma.setTraining(true);
+
+  return {
+    init: init,
+    ru: ru,
+    outputHidden: outputHidden,
+    outputMu: outputMu,
+    outputSigma: outputSigma
+  };
+});
+
+var lda6 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documentsAsCounts;
+  var numHid = 20;
+  var nets = lda6Nets(numHid, vocabSize, numTopics);
+
+  var guideParams = function(topics, doc) {
+    var initialState = daipp.nneval(nets.init);
+    var state = reduce(function(x, prevState) {
+      return daipp.nneval(nets.ru, [prevState, x]);
+    }, initialState, topics.concat(normalize(Vector(doc))));
+    var hidden = daipp.nneval(nets.outputHidden, state);
+    var mu = tensorToVector(daipp.nneval(nets.outputMu, hidden));
+    var sigma = tensorToVector(softplus(daipp.nneval(nets.outputSigma, hidden)));
+    var params = {mu: mu, sigma: sigma};
+    return params;
+  };
+
+  // Model *********************************************************************
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}), {
+      guide: LogisticNormal(guideParams(topics, doc))
+    });
+
+    mapData({data: countsToIndices(doc)}, function(word) {
+      var z = sample(Discrete({ps: topicDist}));
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
 // Version that sums out z, i.e. topic assignments.
 
 var lda100 = function(data, vocabSize, numTopics, alpha, eta) {
@@ -515,6 +590,7 @@ var models = {
   lda3: lda3,
   lda4: lda4,
   lda5: lda5,
+  lda6: lda6,
   lda100: lda100
 };
 
