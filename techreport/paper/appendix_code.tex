@@ -1,7 +1,7 @@
 \section{Appendix: Example Programs}
 \label{sec:appendix_code}
 
-\subsection{Gaussian mixture model with discrete choices summed out}
+\subsection{Gaussian mixture model with discrete choices maringalized out}
 \label{sec:appendix_code:gmmSumOut}
 
 \begin{lstlisting}
@@ -26,3 +26,91 @@ var model = function() {
 };
 \end{lstlisting}
 
+\subsection{Variational Autoencoder}
+\label{sec:appendix_code:vae}
+
+\begin{lstlisting}
+// Data
+var data = loadData('mnist.json');
+var dataDim = 28*28;
+var hiddenDim = 500;
+var latentDim = 20;
+
+// Encoder
+var encodeNet = nn.mlp(dataDim, [
+   {nOut: hiddenDim, activation: nn.tanh}
+], 'encodeNet');
+var muNet = nn.linear(hiddenDim, latentDim, 'muNet');
+var sigmaNet = nn.linear(hiddenDim, latentDim, 'sigmaNet');
+var encode = function(image) {
+   var h = nneval(encodeNet, image);
+   return {
+      mu: nneval(muNet, h),
+      sigma: softplus(nneval(sigmaNet, h))
+   };
+};
+
+// Decoder
+var decodeNet = nn.mlp(latentDim, [
+   {nOut: hiddenDim, activation: nn.tanh},
+   {nOut: dataDim, activation: nn.sigmoid}
+], 'decodeNet');
+var decode = function(latent) {
+   return nneval(decodeNet, latent);
+};
+
+// Training model
+var model = function() {
+   mapData({data: data, batchSize: 100}, function(image) {
+      // Sample latent code (guided by encoder)
+      var latent = sample(TensorGaussian({mu: 0, sigma: 1, dims: [latentDim, 1]}), {
+         guide: DiagCovGaussian(encode(image))
+      });
+
+      // Decode latent code, observe binary image
+      var probs = decode(latent);
+      observe(MultivariateBernoulli({ps: probs}), image);
+   });
+}
+\end{lstlisting}
+
+\subsection{Sigmoid Belief Network}
+\label{sec:appendix_code:sbn}
+
+\begin{lstlisting}
+// Data
+var data = loadData('mnist.json');
+var dataDim = 28*28;
+var latentDim = 200;
+
+// Encoder
+var encodeNet = nn.mlp(dataDim, [
+   {nOut: latentDim, activation: nn.sigmoid}
+], 'encodeNet');
+var encode = function(image) {
+   return nneval(encodeNet, image)
+};
+
+// Decoder
+var decodeNet = nn.mlp(latentDim, [
+   {nOut: dataDim, activation: nn.sigmoid}
+], 'decodeNet');
+var decode = function(latent) {
+   return nneval(decodeNet, latent);
+};
+
+// Training model
+var priorProbs = Vector(repeat(latentDim, function() { return 0.5; }));
+var model = function() {
+   mapData({data: data, batchSize: 100}, function(image) {
+      // Sample latent code (guided by encoder)
+      var latent = sample(MultivariateBernoulli({ps: priorProbs}), {
+         guide: MultivariateBernoulli({ps: encode(image)})
+      });
+
+      // Decode latent code, observe binary image
+      var probs = decode(latent);
+      observe(MultivariateBernoulli({ps: probs}), image);
+   });
+}
+\end{lstlisting}

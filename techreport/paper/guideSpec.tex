@@ -124,7 +124,7 @@ var model = function() {
 };
 \end{lstlisting}
 %%%
-\ic{mapData} operates much like \ic{map} in a typical functional programming language, but it has two important features: (1) the optimization engine treats every execution of the mapped function as IID, and thus (2) the optimization engine can operate on stochastic mini-batches of the data, sized according to the \ic{batchSize} option.
+\ic{mapData} operates much like \ic{map} in a typical functional programming language, but it has two important features: (1) the optimization engine treats every execution of the mapped function as independent, and thus (2) the optimization engine can operate on stochastic mini-batches of the data, sized according to the \ic{batchSize} option.
 Property (2) is clearly important for efficient, scalable optimization; we will see in Section~\ref{sec:optimization} how property (1) can also be directly leveraged to improve optimization.
 
 
