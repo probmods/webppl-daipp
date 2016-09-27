@@ -43,6 +43,9 @@ module.exports = function(env, config) {
   // nn.eval directly) we ensure that inference coroutines are aware
   // of the parameters of all neural network.
   function nneval(nn, arg) {
+    // TODO: If we accidentally use some net in more than one e.g.
+    // nn.sequence, will we register its parameters more than once?
+    // Does that cause the gradient step to be applied more than once?
     if (nn.getParameters().length > 0) {
       assert.ok(nn.name && nn.name.length > 0, 'daipp: Parameterized net cannot be anonymous.');
       assert.ok(nn.isTraining, 'daipp: Net "' + nn.name + '" is not in training mode.');
