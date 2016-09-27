@@ -130,7 +130,7 @@ sapply(1:10, function(k) { mean(d$label == clasify(k, knn.res)) %>% round(3) })
 
 plot distribution of predictions for each (true) class:
 ```{r}
-d$label.predicted = classify(k = 10)
+d$label.predicted = classify(k = 2, knn.res)
 ```
 
 ```{r}

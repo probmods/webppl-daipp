@@ -2,7 +2,7 @@
   (local-set-key (kbd "s-r") (lambda () (interactive) (save-buffer) (process-send-string "*shell daipp*" "echo '\n'; webppl examples/vae.wppl --require . --require webppl-fs --require webppl-csv \n")))
 */
 
-var zDim = 10;
+var zDim = 20;
 var hDecodeDim = 500;
 var hEncodeDim = 500;
 var xDim = 784;
@@ -49,28 +49,28 @@ var model = function() {
   var b1 = nnparam(zDim, 1);
   var b2 = nnparam(zDim, 1);
 
-  // Generative.
-  var W3 = nnparam(hDecodeDim, zDim);
-  var W4 = nnparam(xDim, hDecodeDim);
-  var b3 = nnparam(hDecodeDim, 1);
-  var b4 = nnparam(xDim, 1);
+  // // Generative.
+  // var W3 = nnparam(hDecodeDim, zDim);
+  // var W4 = nnparam(xDim, hDecodeDim);
+  // var b3 = nnparam(hDecodeDim, 1);
+  // var b4 = nnparam(xDim, 1);
 
   // Gaussian priors and a Delta distributions for the variational
   // family yields maximum likelihood estimation (with L2
   // regularization) of the parameters.
 
-  // var W3 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [hDecodeDim, zDim]}), {
-  //   guide: Delta({v: nnparam(hDecodeDim, zDim)})
-  // });
-  // var W4 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [xDim, hDecodeDim]}), {
-  //   guide: Delta({v: nnparam(xDim, hDecodeDim)})
-  // });
-  // var b3 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [hDecodeDim, 1]}), {
-  //   guide: Delta({v: nnparam(hDecodeDim, 1)})
-  // });
-  // var b4 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [xDim, 1]}), {
-  //   guide: Delta({v: nnparam(xDim, 1)})
-  // });
+  var W3 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [hDecodeDim, zDim]}), {
+    guide: Delta({v: nnparam(hDecodeDim, zDim)})
+  });
+  var W4 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [xDim, hDecodeDim]}), {
+    guide: Delta({v: nnparam(xDim, hDecodeDim)})
+  });
+  var b3 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [hDecodeDim, 1]}), {
+    guide: Delta({v: nnparam(hDecodeDim, 1)})
+  });
+  var b4 = sample(TensorGaussian({mu: 0, sigma: 1, dims: [xDim, 1]}), {
+    guide: Delta({v: nnparam(xDim, 1)})
+  });
 
   mapData({data: images, batchSize: 100}, function(image) {
 
@@ -93,15 +93,16 @@ var model = function() {
 var seed = process.env.RANDOM_SEED || 20;
 util.seedRNG(seed);
 
-var steps = 1700;
+var steps = 1500;
 // name the output file informatively, with info about all the run parameters
 var runParams = {
   model: 'vae',
-  query: 'mu',//_.without(_.keys(latents[0]), 'i', 'label'),
+  query: 'z',//_.without(_.keys(latents[0]), 'i', 'label'),
   zDim: zDim,
   M: M,
   steps: steps,
-  seed: seed
+  seed: seed,
+  decoder: 'ml'
 };
 var runString = map(function(pair) { pair.join('_') },
                     _.pairs(runParams)).join(',');
@@ -114,8 +115,9 @@ var inferOpts = {method: 'optimize',
 
 // serialize variational params
 var optimResult = Optimize(model, inferOpts);
-var encoderParams = _.object(['W0','W1','W2','b0','b1','b2'],
-                             _.first(_.values(optimResult),6));
+var encoderParams = _.object(['W0','W1','W2','b0','b1','b2',
+                              'W3','W4','b3','b4'],
+                             _.first(_.values(optimResult),10));
 var encoderFilename = 'encoder-' + runString  + '.msp';
 daipp.msgpackwrite(encoderParams, encoderFilename);
 console.log('Wrote guide params to ' + encoderFilename);
@@ -129,9 +131,14 @@ var marg = Infer({method: 'forward',
                  model);
 var latents = marg.support()[0];
 var latentsFilename = 'latents-'+runString + '.msp';
+var outputFileName = 'latents-'+runString + '.csv';
+
+// console.log(latents[0]);
+// return
+
 console.log('starting to write latents')
 daipp.msgpackwrite(latents, latentsFilename);
 console.log('Wrote guide params to ' + latentsFilename);
 
-// webpplCsv.writeCSV(latents, outputFileName);
-// 'Wrote to ' + outputFileName
+webpplCsv.writeCSV(latents, outputFileName);
+'Wrote to ' + outputFileName
