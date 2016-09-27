@@ -11,9 +11,9 @@ var fs = require('fs');
 // 	modelLearnType: 'ML_reg',
 // 	optimize_verbose: true,
 // 	optimize_logProgress: true,
-// 	optimize_logProgressFilename: __dirname + '/vae_elboProgress_z20.csv',
+// 	optimize_logProgressFilename: __dirname + '/output/vae_elboProgress_z20.csv',
 // 	optimize_checkpointParams: true,
-// 	optimize_checkpointParamsFilename: __dirname + '/vae_params_z20.json',
+// 	optimize_checkpointParamsFilename: __dirname + '/output/vae_params_z20.json',
 // 	optimize_checkpointParamsThrottle: 30000,
 // 	zDim: 20
 // });
@@ -25,7 +25,7 @@ var fs = require('fs');
 var ret = runModel({
 	model: 'vae',
 	modelLearnType: 'ML_reg',
-	loadParams: __dirname + '/vae_params_z20.json',
+	loadParams: __dirname + '/output/vae_params_z20.json',
 	doCustomReturns: true,
 	zDim: 20,
 
@@ -33,21 +33,21 @@ var ret = runModel({
 });
 
 if (ret.vaeSamples) {
-	misc.saveTensorsToGrayscaleImages(ret.vaeSamples, 28, 28, __dirname + '/vae_sample');
+	misc.saveTensorsToGrayscaleImages(ret.vaeSamples, 28, 28, __dirname + '/output/vae_sample');
 }
 
 if (ret.vaeEncodeDecodeSamples) {
 	ret.vaeEncodeDecodeSamples.forEach(function(targetGroup, i) {
 		misc.saveTensorToGrayscaleImage(targetGroup.target, 28, 28,
-			__dirname + '/vae_encodeDecode_target_' + misc.zeropad(i, 3) + '_(id=' + targetGroup.index + ').png', function() {
+			__dirname + '/output/vae_encodeDecode_target_' + misc.zeropad(i, 3) + '_(id=' + targetGroup.index + ').png', function() {
 				misc.saveTensorsToGrayscaleImages(targetGroup.reconstructions, 28, 28,
-					__dirname + '/vae_encodeDecode_target_' + misc.zeropad(i, 3) + '_sample');
+					__dirname + '/output/vae_encodeDecode_target_' + misc.zeropad(i, 3) + '_sample');
 			});
 	});
 }
 
 if (ret.vaeLatentCodes) {
-	var file = fs.openSync(__dirname + '/vae_latentCodes.csv', 'w');
+	var file = fs.openSync(__dirname + '/output/vae_latentCodes.csv', 'w');
 	var dummy = ret.vaeLatentCodes[0].code;
 	var header = ['id'].concat(Object.keys(dummy.data));
 	fs.writeSync(file, header.toString() + '\n');

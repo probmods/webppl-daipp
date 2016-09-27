@@ -106,6 +106,9 @@ var gaussianMeanFieldParams = function(paramMu, paramSigma) {
 var discreteMeanFieldParams = function(n, paramMu, paramSigma) {
 	return simplex(paramVector(n-1, paramMu, paramSigma));
 };
+var bernoulliMeanFieldParam = function(paramMu, paramSigma) {
+	return Math.sigmoid(paramScalar(paramMu, paramSigma));
+};
 
 // --------------------------------------------------------------------------------------
 

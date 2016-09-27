@@ -58,10 +58,51 @@ function fixSavedParams(filename, outFilename) {
 	fs.writeFileSync(outFilename, JSON.stringify(params));
 }
 
+function lerp(a, b, t) {
+	return (1-t)*a + t*b;
+}
+function random(a, b) {
+	return lerp(a, b, Math.random());
+}
+
+function makeRandomQMRGraph(opts) {
+	var diseases = [];
+	for (var i = 0; i < opts.numDiseases; i++) {
+		diseases.push({p: random(opts.minBaseProb, opts.maxBaseProb)});
+	}
+
+	var symptoms = [];
+	for (var i = 0; i < opts.numSymptoms; i++) {
+		var symp = {leakProb: random(opts.minLeakProb, opts.maxLeakProb)};
+		var numCauses = Math.floor(random(opts.minCauses, opts.maxCauses));
+		var diseaseIndices = diseases.map(function(_, i) { return i; });
+		var parentIndices = [];
+		for (var j = 0; j < numCauses; j++) {
+			var index = diseaseIndices[Math.floor(random(0, diseaseIndices.length))];
+			parentIndices.push(index);
+			diseaseIndices.splice(index, 1);
+		}
+		var parents = parentIndices.map(function(pi) {
+			return {
+				index: pi,
+				p: random(opts.minConditionalProb, opts.maxConditionalProb)
+			}
+		});
+		symp.parents = parents;
+		symptoms.push(symp);
+	}
+
+	return {
+		diseases: diseases,
+		symptoms: symptoms
+	};
+};
 
 module.exports = {
 	zeropad: zeropad,
 	saveTensorToGrayscaleImage: saveTensorToGrayscaleImage,
 	saveTensorsToGrayscaleImages: saveTensorsToGrayscaleImages,
-	fixSavedParams: fixSavedParams
-}
+	fixSavedParams: fixSavedParams,
+	makeRandomQMRGraph: makeRandomQMRGraph
+};
+

@@ -73,6 +73,7 @@ function compileModel(opts) {
 		ess_nDataPoints: 100,
 		ess_nParticles: 100,
 		ess_requireGuides: true,
+		ess_saveEstimates: false,
 
 		// Turn model learning on/off
 		doModelLearning: true,

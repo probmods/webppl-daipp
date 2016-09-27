@@ -101,26 +101,31 @@ var dataLogProb = !opts.doDataLogProb ? undefined : (function() {
 
 // ESS of guide as importance sampler
 var guideESS = !opts.doGuideESS ? undefined : (function() {
-	var nDataPoints = Math.min(_testData.length, opts.ess_nDataPoints);
-	var ess_estimates = map(function(datum) {
-		globalStore.data = [datum];
+	globalStore.data = opts.localGuideType === 'MeanField' ? _trainingData : _testData;
+	var nDataPoints = Math.min(globalStore.data.length, opts.ess_nDataPoints);
+	var ess_estimates = map(function(index) {
 		var ess = EvaluateGuide(model, {
+			datumIndices: [index],
 			samples: opts.ess_nParticles,
 			params: params,
 			requireGuides: opts.ess_requireGuides
 		});
 		return (ess / opts.ess_nParticles);
-	}, _testData.slice(0, nDataPoints));
-	return sum(ess_estimates) / nDataPoints;
+	}, _.range(nDataPoints));
+	return {
+		estimates: ess_estimates,
+		avg: sum(ess_estimates) / nDataPoints
+	};
 })();
 
 var customReturns = (opts.doCustomReturns && (typeof computeCustomReturns !== 'undefined')) ? 
-	computeCustomReturns(params, _testData) : {};
+	computeCustomReturns(params, _testData, _trainingData) : {};
 
 // Return
 var ret = _.extend(_.omit({
 	dataLogProb: dataLogProb,
-	guideESS: guideESS,
+	guideESS: !opts.doGuideESS ? undefined: guideESS.avg,
+	guideESSEstimates: (!opts.doGuideESS || !opts.ess_saveEstimates) ? undefined: guideESS.estimates,
 	elboProgress: !opts.doELBOProgress ? undefined : params.optimizeProgressLog
 }, _.isUndefined), customReturns);
 ret;

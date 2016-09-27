@@ -77,14 +77,21 @@ plotUtils.plot.linePlot <- function(data, groupbys, x, y, xlabel, ylabel,
                                  colorby = NULL, ribbon = TRUE) {
 
   # Arcane bullshittery: turn the groupbys character vector into a symbol vector
-  data.agg = data %>% group_by_(.dots = lapply(groupbys, as.symbol)) %>%
+  data.agg = data %>% group_by_(.dots = lapply(groupbys, as.symbol))
   # More arcane bullshittery: using lazyeval's interp to partially-evaluate a variable value into a quote
-    summarise_(
+  if (ribbon) {
+    data.agg = data.agg %>% summarise_(
       x = interp(~median(x), x = as.symbol(x)),
       y.mean = interp(~mean(y), y = as.symbol(y)),
       y.ci.l = interp(~plotUtils.ci.l(y), y = as.symbol(y)),
       y.ci.u = interp(~plotUtils.ci.u(y), y = as.symbol(y))
     )
+  } else {
+    data.agg = data.agg %>% summarise_(
+      x = interp(~median(x), x = as.symbol(x)),
+      y.mean = interp(~mean(y), y = as.symbol(y))
+    )
+  }
 
   # Init plot
   plot = plotUtils.plot.tableauify(

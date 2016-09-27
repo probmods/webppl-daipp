@@ -1,0 +1,100 @@
+
+var graph = readJSON('techreport/qmrGraph.json');
+var numSymptoms = graph.symptoms.length;
+var numDiseases = graph.diseases.length;
+
+var noisyOrProb = function(symptom, diseases) {
+	var cp = product(map(function(parent) {
+		return diseases[parent.index] ? (1 - parent.p) : 1;
+	}, symptom.parents));
+	return 1 - (1-symptom.leakProb)*cp;
+};
+
+var targetModel = function() {
+	var diseases = map(function(disease) {
+		return sample(Bernoulli({p: disease.p}));
+	}, graph.diseases);
+
+	var symptoms = map(function(symptom) {
+		return sample(Bernoulli({p: noisyOrProb(symptom, diseases)}));
+	}, graph.symptoms);
+
+	return symptoms;
+};
+
+// // Generate some persistent training and test data
+// var trainData = repeat(1000, targetModel);
+// var testData = repeat(100, targetModel);
+// writeJSON('techreport/qmr_trainData.json', trainData);
+// writeJSON('techreport/qmr_testData.json', testData);
+
+var trainingData = readJSON('techreport/qmr_trainData.json');
+var testData = readJSON('techreport/qmr_testData.json');
+
+// Hand-written guide: jointly predict all disease probs from all symptom vals
+var guideNet = nn.mlp(numSymptoms, [
+	{nOut: numDiseases, activation: nn.sigmoid}
+], 'guideNet');
+guideNet.setTraining(true);
+var predictDiseaseProbs = function(symptomVals) {
+	return daipp.nneval(guideNet, Vector(symptomVals));
+};
+
+var model = function() {
+	// var W = paramMatrix(numDiseases, numSymptoms, 'W');
+	// var b = paramVector(numDiseases, 'b');
+	// var predictDiseaseProbs = function(symptomVals) {
+	// 	return T.sigmoid(T.add(T.dot(W, Vector(symptomVals)), b));
+	// };
+
+	var batchSize = Math.min(globalStore.data.length, 20);
+	return mapData({data: globalStore.data, batchSize: batchSize}, function(symptomVals) {
+		var predictedProbs = opts.localGuideType === 'Recognition' ?
+			predictDiseaseProbs(symptomVals) : undefined;
+		var diseases = mapIndexed(function(i, disease) {
+			var guideP = opts.localGuideType === 'MeanField' ?
+				bernoulliMeanFieldParam() : T.get(predictedProbs, i);
+			return sample(Bernoulli({p: disease.p}), {
+				guide: Bernoulli({p: guideP})
+			});
+		}, graph.diseases);
+
+		var scores = mapData({data: symptomVals}, function(symptomVal, symptomIndex) {
+			var symptom = graph.symptoms[symptomIndex];
+			// observe(Bernoulli({p: noisyOrProb(symptom, diseases)}), symptomVal);
+			var score = Bernoulli({p: noisyOrProb(symptom, diseases)}).score(symptomVal);
+			factor(score);
+			return score;
+		});
+
+		return sum(scores);
+	});
+};
+
+
+// Model-specific Optimize options
+var optimizeOpts = {
+  steps: 3000,
+  // estimator: {ELBO2: {samples: 1, avgBaselines: true}},
+};
+
+// // Model-specific returns
+var computeCustomReturns = function(params, testData, trainData) {
+	// Encode/decode reconstruction results?
+	var nData = 100;
+	var data = _.shuffle(testData).slice(0, nData);
+	var scores = map(function(symptomVals) {
+		globalStore.data = [symptomVals];
+		var ret = sample(ForwardSample(model, {
+			samples: 1,
+			guide: true,
+			params: params
+		}));
+		return ret[0];
+	}, data);
+	var avgScore = sum(scores) / nData;
+	return {
+		qmrReconstructedDataLikelihood_avg: avgScore,
+		qmrReconstructedDataLikelihood_scores: scores
+	};
+};

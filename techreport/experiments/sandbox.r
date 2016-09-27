@@ -1,14 +1,16 @@
 source('techreport/experiments/plotUtils.r')	# Assume running from webppl-daipp root
 dir = plotUtils.dirOfThisFile()
 
-# Plot ELBo progress
+# # Plot ELBo progress
 
-data = read.csv(paste0(dir, '/elboProgress.csv'))
-data$condition <- factor(data$condition, as.character(data$condition))	# Sort as they appear in the file
-plot = plotUtils.plot.elboProgress(data, 'condition', ribbon = TRUE)
-# plot = plot + coord_cartesian(ylim = c(-500, -175)) 		# Set axis limits
-# plot = plotUtils.plot.elboProgress(data, NULL, ribbon = TRUE)
-plotUtils.plot.save(plot, paste0(dir, '/elboProgress.pdf'))
+# data = read.csv(paste0(dir, '/elboProgress.csv'))
+# data$condition <- factor(data$condition, as.character(data$condition))	# Sort as they appear in the file
+# plot = plotUtils.plot.elboProgress(data, 'condition', ribbon = FALSE)
+# # plot = plot + coord_cartesian(ylim = c(-500, -175)) 		# Set axis limits
+# # plot = plotUtils.plot.elboProgress(data, NULL, ribbon = FALSE)
+# # plotUtils.plot.save(plot, paste0(dir, '/elboProgress.pdf'))
+# plot = plot + theme(legend.position='right')
+# plotUtils.plot.save(plot, paste0(dir, '/elboProgress.pdf'), aspect = 1.8)
 
 # -----------------------------------------------------------------------------------------
 
@@ -20,6 +22,20 @@ plotUtils.plot.save(plot, paste0(dir, '/elboProgress.pdf'))
 # plotUtils.plot.save(plot, paste0(dir, '/nll.pdf'))
 # # plot = plotUtils.plot.ess(data, 'condition')
 # # plotUtils.plot.save(plot, paste0(dir, '/ess.pdf'))
+
+# -----------------------------------------------------------------------------------------
+
+# Plot reconstruction scores for QMR
+
+data = read.csv(paste0(dir, '/qmr_reconstructScores.csv'))
+data$condition <- factor(data$condition, as.character(data$condition)) # Sort as they appear in the file
+data = data %>% mutate(nll = -score)
+
+plot = plotUtils.plot.barPlot(data,
+    groupbys = c('condition'), x = 'condition', y = 'nll', xlabel = '', ylabel = 'Reconstruction NLL',
+    colorby = NULL)
+
+plotUtils.plot.save(plot, paste0(dir, '/qmr_reconstructScores.pdf'), aspect = 1.2)
 
 # -----------------------------------------------------------------------------------------
 

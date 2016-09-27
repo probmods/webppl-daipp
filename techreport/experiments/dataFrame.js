@@ -125,10 +125,10 @@ DataFrame.merge = function(colname, frames, colvals) {
 	for (var i = 1; i < frames.length; i++) {
 		var row = frames[i].data[0];
 		for (var prop in row) {
-			assert(protoRow.has(prop), 'Frames must all have the same structure.');
+			assert(_.has(protoRow, prop), 'Frames must all have the same structure.');
 		}
 		for (var prop in protoRow) {
-			assert(protoRow.has(prop), 'Frames must all have the same structure.');
+			assert(_.has(protoRow, prop), 'Frames must all have the same structure.');
 		}
 	}
 
@@ -136,7 +136,7 @@ DataFrame.merge = function(colname, frames, colvals) {
 	var data = _.flatten(frames.map(function(frame, i) {
 		var newcol = {};
 		newcol[colname] = colvals[i];
-		return frame.map(function(row) {
+		return frame.data.map(function(row) {
 			return _.extend(_.clone(row), newcol);
 		});
 	}));
