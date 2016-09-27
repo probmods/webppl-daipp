@@ -95,6 +95,7 @@ This estimator is called the `pathwise derivative estimator'~\cite{PathwiseEstim
 It transforms both the guide and target distributions into distributions over independent random `noise' variables $\reparamVars$, followed by complex, parameterized, deterministic transformations. Given a fixed assignment to the noise variables, derivatives can propagate from the final log probabilities back to the input parameters, leading to much more stable gradient estimates than with the LR estimator.
 
 \subsection{Unified Gradient Estimator for Probabilistic Programs}
+\label{sec:optimization:unifiedEstimator}
 
 A general probabilistic program makes many random choices, some of which are amenable to the reparameterization trick (i.e. continuous choices) and others of which are not (i.e. discrete choices). Thus, to optimize the ELBo for a probabilistic program $p$ and an associated guide program $\guide$, we seek a single, unified gradient estimator that handles both discrete and continuous choices and supports model learning as well as amortized inference.
 

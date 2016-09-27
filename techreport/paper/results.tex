@@ -38,7 +38,16 @@ Note that the amortized guide program slightly out-performs the mean field guide
 \subsection{QMR-DT}
 \label{sec:results_qmr}
 
-\remark{Describe QMR results here.}
+We next consider a more complicated Bayesian network model based on the QMR-DT medical diagnosis network~\cite{QMR}. QMR-DT is a bipartite graphical model with one layer of nodes corresponding to latent causes (e.g. diseases, in the medical setting) and a second layer of observed effects (e.g. symptoms). All nodes are binary (i.e. Bernoulli), and the cause nodes are connected to the effects via directed noisy-or links. Appendix~\ref{sec:appendix_code:qmr} shows our implementation.
+
+Our amortized guide program for this model uses a neural network to jointly predict the probabilities of all latent cause variables given a set of observed effects. Since the QMR-DT model contains a large number of discrete random variables, we expect the variance reduction strategies introduced in Section~\ref{sec:optimization:unifiedEstimator} to have significant effect.
+Thus, we consider training this guide program with no variance reduction (\emph{Amortized}), with per-choice likelihood ratio weights, (\emph{+ local weights}), and with both per-choice weights and baselines (\emph{+ baselines}). As a point of reference, we also include a mean field model which uses all variance reduction strategies.
+Data for our experiments is sampled from a randomly-generated graph with 200 causes and 100 effects. We sample 1000 observations for the training set and an additional 100 for a held-out test set.
+
+Figure~\ref{fig:qmrResults} shows the results of our experiments. The left plot shows optimization progress under each condition. Without any of the variance reduction strategies, gradients are extremely noisy and optimization makes almost no progress. Using local, per-variable likelihood ratio weights allows optimization to mke progress, and adding per-variable baselines further boosts performance. Though it uses all variance reduction strategies, the mean field model trains significantly more slowly than the variance-reduced amortized models. This happens because the mean field model has separate parameters for each training observation, rather than a single parameter set shared by a neural network, i.e. it has many more parameters that are each updated by very few gradient steps. Amortization thus both facilitates fast posterior prediction and exhibits faster training due to parameter sharing.
+
+To evaluate the guide program's posterior prediction ability, we use the guide to sample latent causes given an observed set of effects from the test set and then evaluate the negative log-likelihod of those same effects given the sampled latents. This process essentially uses the guide program to `reconstruct' the observations.
+Figure~\ref{fig:qmrResults} Right shows the results of this evaluation. Test set observations have around twice the log-likelihood under predictions from the fully variance-reduced program (\emph{+ baselines}) than the basic amortized guide program.
 
 \begin{figure}[!ht]
 \begin{minipage}{0.6\linewidth}
@@ -50,7 +59,7 @@ Note that the amortized guide program slightly out-performs the mean field guide
 \centering
 \includegraphics[width=\linewidth]{figs/results/qmr/reconstructScores.pdf}
 \end{minipage}
-\caption{Performance of a QMR-DT model. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Negative log-likelihood of reconstructions.~\remark{Improve this caption}}
+\caption{Performance of a QMR-DT model. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Negative log-likelihood of test set observations under latent variables sampled from the guide program.}
 \label{fig:qmrResults}
 \end{figure}
 
@@ -69,7 +78,7 @@ In Figure~\ref{fig:vae_sbn_results} Right, we qualitatively evaluate both models
 As suggested by their training behavior, the VAE is able to generate higher-quality reconstructions after less training.
 
 Our optimization exhibits some differences from the previous work.
-For the VAE, Kingma and Welling~\cite{AEVB} exploit the closed form solution of the KL divergence between two Gaussians to create an even lower-variance estimator of the ELBo gradient. We use a more general formulation, but our system can still successfully train the model.
+For the VAE, Kingma and Welling~\cite{AEVB} exploit the closed-form solution of the KL divergence between two Gaussians to create an even lower-variance estimator of the ELBo gradient. We use a more general formulation, but our system can still successfully train the model.
 For the SBN, Mnih and Gregor~\cite{NVIL} use neural networks to compute the per-variable baselines $b_i$ in Equation~\ref{eq:finalEstimator}, whereas we use a simpler approach (see Appendix~\ref{sec:appendix_proofs}).
 
 \begin{figure}
