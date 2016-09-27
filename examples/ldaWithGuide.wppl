@@ -341,13 +341,14 @@ var lda3 = function(data, vocabSize, numTopics, alpha, eta) {
 // Have a guide net map from topics + counts => params for topicDist.
 // Requires docs as counts.
 
-// NOTE: I ran the experiment for this using Xavier init. from daipp.
+// This (or lda6) might be a good example in which to try taking an
+// inference net optimized on one dataset, and using it to initialize
+// inference in another? lda6 has the advantage that it would be
+// straight-forward to change the number of topics when doing this.
+// (Whether it would do anything sensible...)
 
 var lda4 = function(data, vocabSize, numTopics, alpha, eta) {
   var corpus = data.documentsAsCounts;
-
-  // TODO: This net has a very wide input. Have net that squishes
-  // topics/counts down to a more reasonable size first?
 
   var numHid = 100;
   var net1 = nn.mlp(vocabSize * (numTopics + 1), [
@@ -453,6 +454,11 @@ var lda5 = function(data, vocabSize, numTopics, alpha, eta) {
 
 // A different way (compare lda4) of having a guide net map from
 // topics + counts => params for topicDist.
+
+// I choose to have the document be the last input to the RNN so that
+// after optimization the RNN could be "partially applied" to the
+// topics, resulting in an MLP that can be used to map documents to a
+// topic distributions.
 
 var lda6Nets = cache(function(numHid, vocabSize, numTopics) {
   var init = nn.constantparams([numHid]);
