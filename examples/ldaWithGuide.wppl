@@ -707,7 +707,9 @@ fs.write(path + 'params.txt', JSON.stringify(allParams));
 var optParams = Optimize(model, _.defaults({
   onFinish: function(data) {
     fs.write(path + 'history.json', JSON.stringify(data.history));
-  }
+  },
+  logProgress: true,
+  logProgressFilename: path + 'progress.csv'
 }, params));
 
 var topWords = topWordsInTopics(data, model, optParams);
