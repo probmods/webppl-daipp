@@ -17,7 +17,7 @@ var main = function() {
   var param_space_js = process.argv[2];
   var command = process.argv[3];
   var n = process.argv.length < 5 ? Infinity : parseInt(process.argv[4]);
-  assert.ok(_.isFinite(n), 'Number of runs is not a number.');
+  assert.ok(!_.isNaN(n), 'Number of runs is not a number.');
   var space = require(path.resolve(param_space_js));
 
   console.log('Command:', command);
