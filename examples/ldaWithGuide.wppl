@@ -680,13 +680,17 @@ var model = function() {
 };
 
 var steps = process.env.STEPS ? _top.parseInt(process.env.STEPS) : 10000;
+
 var stepSize = process.env.STEP_SIZE ? _top.parseFloat(process.env.STEP_SIZE) : 0.1;
+var decayRate1 = _.has(process.env, 'DECAY_RATE_1') ? _top.parseFloat(process.env.DECAY_RATE_1) : 0.9;
+var decayRate2 = _.has(process.env, 'DECAY_RATE_2') ? _top.parseFloat(process.env.DECAY_RATE_2) : 0.999;
+
 var optMethod = process.env.OPT_METHOD || 'adam';
 var estimator = process.env.ESTIMATOR || 'ELBO2';
 
 var params = {
   steps: steps,
-  optMethod: _.object([[optMethod, {stepSize: stepSize}]]),
+  optMethod: _.object([[optMethod, {stepSize: stepSize, decayRate1: decayRate1, decayRate2: decayRate2}]]),
   // TODO: More than one sample upsets avg. baselines?
   estimator: _.object([[estimator, {samples: 1, avgBaselines: true}]])
 };
