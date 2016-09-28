@@ -408,24 +408,34 @@ var lda4 = function(data, vocabSize, numTopics, alpha, eta) {
 // Instead of combining the topicDist with the one-of-k representation
 // of the word, we combine it with a learned word embedding.
 
+var lda5Nets = cache(function(embedSize, numHid, vocabSize, numTopics) {
+  var embed = nn.mlp(vocabSize, [
+    {nOut: embedSize, activation: nn.tanh}
+  ], 'lda5embed');
+  embed.setTraining(true);
+
+  var mlp = nn.mlp(embedSize + numTopics, [
+    {nOut: numHid, activation: nn.tanh},
+    {nOut: numTopics}
+  ], 'lda5mlp');
+  mlp.setTraining(true);
+
+  return {
+    embed: embed,
+    mlp: mlp
+  };
+});
+
 var lda5 = function(data, vocabSize, numTopics, alpha, eta) {
   var corpus = data.documents;
 
   var numHid = 50;
   var embedSize = 50;
-
-  var embedNet = nn.mlp(vocabSize, [{nOut: embedSize, activation: nn.tanh}], 'embedNet');
-  embedNet.setTraining(true);
-
-  var net = nn.mlp(embedSize + numTopics, [
-    {nOut: numHid, activation: nn.tanh},
-    {nOut: numTopics}
-  ], 'net');
-  net.setTraining(true);
+  var nets = lda5Nets(embedSize, numHid, vocabSize, numTopics);
 
   var wordAndTopicDistToParams = function(word, topicDist) {
-    var embedding = daipp.nneval(embedNet, oneOfK(word, vocabSize));
-    var out = daipp.nneval(net, T.concat(embedding, T.sub(topicDist, 1)));
+    var embedding = daipp.nneval(nets.embed, oneOfK(word, vocabSize));
+    var out = daipp.nneval(nets.mlp, T.concat(embedding, T.sub(topicDist, 1)));
     return {ps: softplus(tensorToVector(out))};
   };
 
