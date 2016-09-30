@@ -627,6 +627,60 @@ var lda6a = function(data, vocabSize, numTopics, alpha, eta) {
 // *****************************************************************************
 
 
+var lda6aplus100 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documentsAsCounts;
+  var numHid = 20;
+  var nets = lda6aNets(numHid, vocabSize, numTopics);
+
+  var mergeTopics = function(topics) {
+    var initialState = daipp.nneval(nets.init);
+    return reduce(function(x, prevState) {
+      return daipp.nneval(nets.ru, [prevState, x]);
+    }, initialState, topics);
+  };
+
+  var guideParams = function(doc, prevState) {
+    var hidden = daipp.nneval(nets.outputHidden, T.concat(prevState, normalize(Vector(doc))));
+    var mu = tensorToVector(daipp.nneval(nets.outputMu, hidden));
+    var sigma = tensorToVector(softplus(daipp.nneval(nets.outputSigma, hidden)));
+    var params = {mu: mu, sigma: sigma};
+    return params;
+  };
+
+  // Model *********************************************************************
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  var state = mergeTopics(topics);
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}), {
+      guide: LogisticNormal(guideParams(doc, state))
+    });
+
+    forEach(doc, function(count, word) {
+      if (count > 0) {
+        // Sum over topic assignments/z.
+        var prob = sum(mapN(function(z) {
+          var zScore = Discrete({ps: topicDist}).score(z);
+          var wgivenzScore = Discrete({ps: topics[z]}).score(word);
+          return Math.exp(zScore + wgivenzScore);
+        }, numTopics));
+
+        factor(Math.log(prob) * count);
+      }
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
+
 // Version that sums out z, i.e. topic assignments.
 
 var lda100 = function(data, vocabSize, numTopics, alpha, eta) {
@@ -693,6 +747,7 @@ var models = {
   lda5: lda5,
   lda6: lda6,
   lda6a: lda6a,
+  lda6aplus100: lda6aplus100,
   lda100: lda100
 };
 
