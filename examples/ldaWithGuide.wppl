@@ -888,7 +888,6 @@ var estimator = process.env.ESTIMATOR || 'ELBO2';
 var params = {
   steps: steps,
   optMethod: _.object([[optMethod, {stepSize: stepSize, decayRate1: decayRate1, decayRate2: decayRate2}]]),
-  // TODO: More than one sample upsets avg. baselines?
   estimator: _.object([[estimator, {samples: 1, avgBaselines: true}]])
 };
 
