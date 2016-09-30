@@ -1,5 +1,9 @@
 
-var graph = readJSON('techreport/qmrGraph.json');
+var modelid = '';
+// var modelid = '2';
+// var modelid = '3';
+
+var graph = readJSON('techreport/qmrGraph'+modelid+'.json');
 var numSymptoms = graph.symptoms.length;
 var numDiseases = graph.diseases.length;
 
@@ -25,60 +29,82 @@ var targetModel = function() {
 // // Generate some persistent training and test data
 // var trainData = repeat(1000, targetModel);
 // var testData = repeat(100, targetModel);
-// writeJSON('techreport/qmr_trainData.json', trainData);
-// writeJSON('techreport/qmr_testData.json', testData);
+// writeJSON('techreport/qmr_trainData'+modelid+'.json', trainData);
+// writeJSON('techreport/qmr_testData'+modelid+'.json', testData);
 
-var trainingData = readJSON('techreport/qmr_trainData.json');
-var testData = readJSON('techreport/qmr_testData.json');
+var trainingData = readJSON('techreport/qmr_trainData'+modelid+'.json');
+var testData = readJSON('techreport/qmr_testData'+modelid+'.json');
 
 // Hand-written guide: jointly predict all disease probs from all symptom vals
-var guideNet = nn.mlp(numSymptoms, [
-	{nOut: numDiseases, activation: nn.sigmoid}
-], 'guideNet');
+var jointGuideNumLayers = opts.jointGuideNumLayers || 1;
+var layers = repeat(jointGuideNumLayers, function() {
+	return {nOut: numDiseases, activation: nn.sigmoid}
+});
+var guideNet = nn.mlp(numSymptoms, layers, 'guideNet');
 guideNet.setTraining(true);
 var predictDiseaseProbs = function(symptomVals) {
 	return daipp.nneval(guideNet, Vector(symptomVals));
 };
 
 var model = function() {
-	// var W = paramMatrix(numDiseases, numSymptoms, 'W');
-	// var b = paramVector(numDiseases, 'b');
-	// var predictDiseaseProbs = function(symptomVals) {
-	// 	return T.sigmoid(T.add(T.dot(W, Vector(symptomVals)), b));
-	// };
-
 	var batchSize = Math.min(globalStore.data.length, 20);
 	return mapData({data: globalStore.data, batchSize: batchSize}, function(symptomVals) {
 		var predictedProbs = opts.localGuideType === 'Recognition' ?
 			predictDiseaseProbs(symptomVals) : undefined;
-		var diseases = mapIndexed(function(i, disease) {
+		var diseases = mapData({data: graph.diseases},  function(disease, i) {
 			var guideP = opts.localGuideType === 'MeanField' ?
 				bernoulliMeanFieldParam() : T.get(predictedProbs, i);
 			return sample(Bernoulli({p: disease.p}), {
 				guide: Bernoulli({p: guideP})
 			});
-		}, graph.diseases);
+		});
 
+		globalStore.symptomProbs = [];
 		var scores = mapData({data: symptomVals}, function(symptomVal, symptomIndex) {
 			var symptom = graph.symptoms[symptomIndex];
-			// observe(Bernoulli({p: noisyOrProb(symptom, diseases)}), symptomVal);
-			var score = Bernoulli({p: noisyOrProb(symptom, diseases)}).score(symptomVal);
+			var p = noisyOrProb(symptom, diseases);
+			var score = Bernoulli({p: p}).score(symptomVal);
 			factor(score);
+			globalStore.symptomProbs = globalStore.symptomProbs.concat([p]);
 			return score;
 		});
 
-		return sum(scores);
+		var reconstructScore = sum(scores);
+		// var reconstructScore = (function() {
+		// 	var activeScores = map2(function(val, score) {
+		// 		return val ? score : 0;
+		// 	}, symptomVals, scores);
+		// 	var numActive = filter(function(s) { return s !== 0; }, activeScores).length;
+		// 	return sum(activeScores) / numActive;
+		// })();
+
+		return {
+			// predictedDiseaseProbs: ad.value(predictedProbs).toFlatArray(),
+			predictedSymptomProbs: globalStore.symptomProbs,
+			reconstructScore: reconstructScore
+		};
 	});
 };
 
-
-// Model-specific Optimize options
-var optimizeOpts = {
-  steps: 3000,
-  // estimator: {ELBO2: {samples: 1, avgBaselines: true}},
+var boolArrayToBitString = function(arr) {
+	if (arr.length === 0) return '';
+	else return (arr[0] ? '1' : '0') + boolArrayToBitString(arr.slice(1));
 };
 
-// // Model-specific returns
+var boolArrayCountEqual = function(arr1, arr2) {
+	assert(arr1.length === arr2.length, 'arr1 and arr2 have different lengths');
+	if (arr1.length === 0) return 0;
+	else return (arr1[0] === arr2[0]) + boolArrayCountEqual(arr1.slice(1), arr2.slice(1));
+};
+
+// Directed equality: when arr1[i] is true, is arr2[i] also true?
+var boolArrayCountEqualTrues = function(arr1, arr2) {
+	assert(arr1.length === arr2.length, 'arr1 and arr2 have different lengths');
+	if (arr1.length === 0) return 0;
+	else return (arr1[0] ? arr2[0] ? 1 : 0 : 0) + boolArrayCountEqualTrues(arr1.slice(1), arr2.slice(1));
+};
+
+// Model-specific returns
 var computeCustomReturns = function(params, testData, trainData) {
 	// Encode/decode reconstruction results?
 	var nData = 100;
@@ -87,14 +113,32 @@ var computeCustomReturns = function(params, testData, trainData) {
 		globalStore.data = [symptomVals];
 		var ret = sample(ForwardSample(model, {
 			samples: 1,
-			guide: true,
+			guide: (opts.qmrScoreUseGuide === undefined ? true : opts.qmrScoreUseGuide),
 			params: params
 		}));
-		return ret[0];
+		var sampledSymptomVals = map(function(p) {
+			return sample(Bernoulli({p: p}));
+		}, ret[0].predictedSymptomProbs);
+		var numEq = boolArrayCountEqual(symptomVals, sampledSymptomVals);
+		var percentEq = numEq / numSymptoms;
+		var numTrueEq1 = boolArrayCountEqualTrues(symptomVals, sampledSymptomVals);
+		var numTrueEq2 = boolArrayCountEqualTrues(sampledSymptomVals, symptomVals);
+		var percentTrueEq1 = numTrueEq1 / sum(symptomVals);
+		var percentTrueEq2 = numTrueEq2 / sum(sampledSymptomVals);
+		// console.log('True:    ' + boolArrayToBitString(symptomVals));
+		// console.log('Sampled: ' + boolArrayToBitString(sampledSymptomVals))
+		// console.log('Num Equal: ' + numEq + ' (' + (percentEq*100) + '\%)');
+		// console.log('Num 1\'s Equal (True -> Sampled): ' + numTrueEq1 + ' (' + (percentTrueEq1*100) + '\%)');
+		// console.log('Num 1\'s Equal (Sampled -> True): ' + numTrueEq2 + ' (' + (percentTrueEq2*100) + '\%)');
+		// console.log('----------------------------------------------------------------------');
+
+		// return ret[0].reconstructScore;
+		return Math.min(percentTrueEq1, percentTrueEq2);
+		// return Math.max(percentTrueEq1, percentTrueEq2);
 	}, data);
 	var avgScore = sum(scores) / nData;
 	return {
-		qmrReconstructedDataLikelihood_avg: avgScore,
-		qmrReconstructedDataLikelihood_scores: scores
+		qmrScore_avg: avgScore,
+		qmrScores: scores
 	};
 };

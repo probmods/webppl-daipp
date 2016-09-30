@@ -40,7 +40,8 @@ Since the standard deviation \ic{sigma} of the Gaussian guide distribution must 
 Parameters must have unique names so they can be disambiguated by the optimization engine under the hood.
 
 Using variational parameters directly as the guide distribution parameters (as done above) results in a mean field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
-We can also compute the guide parameters via a neural network:~\remark{Should we cut this out and only show the adnn version?}
+We can also compute the guide parameters via a neural network:
+% ~\remark{Should we cut this out and only show the adnn version?}
 %%%
 \begin{lstlisting}
 // Observed value
@@ -290,7 +291,7 @@ var model = function() {
 
 
 Figure~\ref{fig:bn_twoLatent} Top shows a slightly more complex Bayesian network with two latent continuous variables. Note that the guide program in this example predicts the two latent variables independently given the observation $\vecstyle{y}$. In Figure~\ref{fig:bn_twoLatent} Bottom, we make some small changes to the code (lines 3 and 17, highlighted in green) to instead have the guide program predict the second latent variable $\vecstyle{x}_2$ as a function of the first latent variable $\vecstyle{x}_1$. This small change allows the guide to capture a posterior dependency that was ingored by the first version.
-\remark{We'll show later how this gives better results?}
+% \remark{We'll show later how this gives better results?}
 
 
 \begin{figure}

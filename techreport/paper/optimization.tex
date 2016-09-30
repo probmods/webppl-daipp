@@ -184,9 +184,9 @@ Equation~\ref{eq:finalEstimator} is similar to the `surrogate loss function' gra
 
 \remark{(Noah) Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depends on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.}
 
-\subsection{Implementation}
+% \subsection{Implementation}
 
-\remark{(Daniel) I feel like we need to bring this section home by making it concrete, describing (in text and/or pseudocode) how we actually calculate the gradient as the program runs. It's easy to describe a simple version of this process (i.e. AD, accumulating into logr, logq, and logp), but the \emph{real} version (using variance reduction + mapData) is more complex: it requires the `dependency' graph, the mapData node stack, and mapData mini-batch multipliers. So I'm conflicted: I want to give the reader something, but a simple version may be misleadingly simple while the full truth may be too complicated to describe. Thoughts? Maybe this section belongs in the Appendix, if it belongs anywhere?}
+% \remark{(Daniel) I feel like we need to bring this section home by making it concrete, describing (in text and/or pseudocode) how we actually calculate the gradient as the program runs. It's easy to describe a simple version of this process (i.e. AD, accumulating into logr, logq, and logp), but the \emph{real} version (using variance reduction + mapData) is more complex: it requires the `dependency' graph, the mapData node stack, and mapData mini-batch multipliers. So I'm conflicted: I want to give the reader something, but a simple version may be misleadingly simple while the full truth may be too complicated to describe. Thoughts? Maybe this section belongs in the Appendix, if it belongs anywhere?}
 
 \subsection{Optimization Interface}
 

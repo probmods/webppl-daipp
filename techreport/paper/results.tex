@@ -46,20 +46,27 @@ Data for our experiments is sampled from a randomly-generated graph with 200 cau
 
 Figure~\ref{fig:qmrResults} shows the results of our experiments. The left plot shows optimization progress under each condition. Without any of the variance reduction strategies, gradients are extremely noisy and optimization makes almost no progress. Using local, per-variable likelihood ratio weights allows optimization to mke progress, and adding per-variable baselines further boosts performance. Though it uses all variance reduction strategies, the mean field model trains significantly more slowly than the variance-reduced amortized models. This happens because the mean field model has separate parameters for each training observation, rather than a single parameter set shared by a neural network, i.e. it has many more parameters that are each updated by very few gradient steps. Amortization thus both facilitates fast posterior prediction and exhibits faster training due to parameter sharing.
 
-To evaluate the guide program's posterior prediction ability, we use the guide to sample latent causes given an observed set of effects from the test set and then evaluate the negative log-likelihod of those same effects given the sampled latents. This process essentially uses the guide program to `reconstruct' the observations.
-Figure~\ref{fig:qmrResults} Right shows the results of this evaluation. Test set observations have around twice the log-likelihood under predictions from the fully variance-reduced program (\emph{+ baselines}) than the basic amortized guide program.
+We next evaluate the guide program's posterior prediction ability. We use the learned guide to sample latent causes given an observed set of effects from the test set, sample effects given those causes, and then record what percentage of active effects in the test set observation are correctly predicted by the effects `hallucinated' from our model. Specifically, if $\vecstyle{e}$ is a vector of effect variables of length $N$, then the metric we use is:
+%%%
+\begin{align*}
+&\min(F(\vecstyle{e}_{\text{true}}, \vecstyle{e}_{\text{sampled}}), F(\vecstyle{e}_{\text{sampled}}, \vecstyle{e}_{\text{true}}))\\
+&F(\vecstyle{e}_1, \vecstyle{e}_2) = \frac{1}{\sum_i^N \vecstyle{e}_1(i)} \sum_{i, \vecstyle{e}_1(i) = 1} \indicator{\vecstyle{e}_2(i) = 1}
+\end{align*}
+%%%
+where $\vecstyle{e}_{\text{true}}$ are effects from the test set and $\vecstyle{e}_{\text{sampled}}$ are hallucinated from the model.
+Figure~\ref{fig:qmrResults} Right plots the average $F$ score over 100 runs, where we compare our amortized guide program against using the prior program to sample latent causes. The learned guide program correctly predicts more than twice as many active effects.
 
 \begin{figure}[!ht]
 \begin{minipage}{0.6\linewidth}
 \centering
-\includegraphics[width=\linewidth]{figs/results/qmr/elboProgress.pdf}
+\includegraphics[width=\linewidth]{figs/results/qmr/elboProgress.png}
 \end{minipage}
 %
 \begin{minipage}{0.4\linewidth}
 \centering
 \includegraphics[width=\linewidth]{figs/results/qmr/reconstructScores.pdf}
 \end{minipage}
-\caption{Performance of a QMR-DT model. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Negative log-likelihood of test set observations under latent variables sampled from the guide program.}
+\caption{Performance of a QMR-DT model. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Percentage of test set active effects correctly predicted using latent causes sampled from either the prior or the guide program.}
 \label{fig:qmrResults}
 \end{figure}
 

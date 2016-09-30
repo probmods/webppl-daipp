@@ -198,6 +198,11 @@ plotUtils.plot.elboProgress <- function(data, condition = NULL, ...) {
     groupbys = c(condition, 'index'), x = 'iter', y = 'objective',
     xlabel = 'Iteration', ylabel = 'ELBo',
     colorby = condition, ...)
+
+  # plotUtils.plot.linePlot(data,
+  #   groupbys = c(condition, 'index'), x = 'time', y = 'objective',
+  #   xlabel = 'Time', ylabel = 'ELBo',
+  #   colorby = condition, ...)
 }
 
 plotUtils.plot.nll <- function(data, condition = NULL, ...) {

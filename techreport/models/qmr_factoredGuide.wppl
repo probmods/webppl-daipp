@@ -1,0 +1,305 @@
+
+var modelid = '';
+// var modelid = '2';
+// var modelid = '3';
+
+var graph = readJSON('techreport/qmrGraph'+modelid+'.json');
+var numSymptoms = graph.symptoms.length;
+var numDiseases = graph.diseases.length;
+
+var noisyOrProb = function(symptom, diseases) {
+	var cp = product(map(function(parent) {
+		return diseases[parent.index] ? (1 - parent.p) : 1;
+	}, symptom.parents));
+	return 1 - (1-symptom.leakProb)*cp;
+};
+
+var targetModel = function() {
+	var diseases = map(function(disease) {
+		return sample(Bernoulli({p: disease.p}));
+	}, graph.diseases);
+
+	var symptoms = map(function(symptom) {
+		return sample(Bernoulli({p: noisyOrProb(symptom, diseases)}));
+	}, graph.symptoms);
+
+	return symptoms;
+};
+
+// // Generate some persistent training and test data
+// var trainData = repeat(1000, targetModel);
+// var testData = repeat(100, targetModel);
+// writeJSON('techreport/qmr_trainData'+modelid+'.json', trainData);
+// writeJSON('techreport/qmr_testData'+modelid+'.json', testData);
+
+var trainingData = readJSON('techreport/qmr_trainData'+modelid+'.json');
+var testData = readJSON('techreport/qmr_testData'+modelid+'.json');
+
+var guideFuncs = (function() {
+	var rnnGuideType = opts.rnnGuideType || 'InitWithData';
+	var rnnType = opts.rnnType || 'gru';
+	var rnnHiddenDim = opts.rnnHiddenDim || 20;
+
+	// If the guide does not have dependencies on previous choices, then we can use
+	//    mapData over the latents. Otherwise, we use mapIndexed.
+	var latentMapData = function(diseaseNodes, fn) {
+		return mapData({data: diseaseNodes}, fn);
+	};
+	var latentMapIndexed = function(diseaseNodes, fn) {
+		// mapIndexed passes args to fn in opposite order of mapData
+		return mapIndexed(function(i, val) {
+			return fn(val, i);
+		}, diseaseNodes);
+	};
+
+	// Init RNN with data, feed just RNN state to every prob predictor
+	if (rnnGuideType === 'RNNInitWithData') {
+		var initNet = nn.mlp(numSymptoms, [
+			{nOut: rnnHiddenDim, activation: nn.tanh}
+		], 'initNet');
+		var updateNet = daipp.makeRU(rnnType, rnnHiddenDim, 1, 'updateNet');
+		var predictNet = nn.sequence([
+			nn.linear(rnnHiddenDim, 1),
+			nn.sigmoid
+		], 'predictNet');
+		initNet.setTraining(true);
+		updateNet.setTraining(true);
+		predictNet.setTraining(true);
+		return {
+			map: latentMapIndexed,
+			init: function(data) { return daipp.nneval(initNet, data); },
+			update: function(hprev, x) { return daipp.nneval(updateNet, [hprev, x]); },
+			predict: function(h, data, i) { return T.get(daipp.nneval(predictNet, h), 0); }
+		};
+	}
+	// Init RNN with zeros, feed RNN state and all data to every prob predictor
+	else if (rnnGuideType === 'RNNInitWithNothing') {
+		var zeroVec = zeros([rnnHiddenDim]);
+		var updateNet = daipp.makeRU(rnnType, rnnHiddenDim, 1, 'updateNet');
+		var predictNet = nn.sequence([
+			nn.linear(rnnHiddenDim + numSymptoms, 1),
+			nn.sigmoid
+		], 'predictNet');
+		updateNet.setTraining(true);
+		predictNet.setTraining(true);
+		return {
+			map: latentMapIndexed,
+			init: function(data) { return zeroVec; },
+			update: function(hprev, x) { return daipp.nneval(updateNet, [hprev, x]); },
+			predict: function(h, data, i) { return T.get(daipp.nneval(predictNet, T.concat(h, data)), 0); }
+		};
+	}
+	// No recurrence. Just predict a single probability given the data, and use for all latents.
+	else if (rnnGuideType === 'PredictOneProb') {
+		var predictNet = nn.sequence([
+			nn.linear(numSymptoms, 1),
+			nn.sigmoid
+		], 'predictNet');
+		predictNet.setTraining(true);
+		return {
+			map: latentMapData,
+			init: function(data) {
+				globalStore.predictedProb = T.get(daipp.nneval(predictNet, data), 0);
+			},
+			update: function(hprev, x) { },
+			predict: function(h, data, i) { return globalStore.predictedProb; }
+		};
+	}
+	// No recurrence. Use a ternary state vector (0, 1, undecided) to represent the latents predicted
+	//    thus far, and use this + data to predict probs for each latent.
+	// 0 = undecided, -1 = false, 1 = true
+	else if (rnnGuideType === 'NonRecurrentState') {
+		var predictNet = nn.sequence([
+			nn.linear(numDiseases + numSymptoms, 1),
+			nn.sigmoid
+		], 'predictNet');
+		predictNet.setTraining(true);
+		return {
+			map: latentMapIndexed,
+			init: function(data) { return []; },
+			update: function(hprev, x) {
+				var y = T.get(x, 0) === 0 ? -1 : 1;
+				return hprev.concat([y]);
+			},
+			predict: function(h, data, i) {
+				var nNeeded = numDiseases - h.length;
+				var nnInput = T.concat(data, Vector(h), zeros([nNeeded]));
+				return T.get(daipp.nneval(predictNet, nnInput), 0);
+			}
+		};
+	}
+	// No recurrence. Predict each latent given just the data, *but* use a different net
+	//    for each choice.
+	else if (rnnGuideType === 'DifferentNetPerChoice') {
+		var predictNet = cache(function(i) {
+			var net = nn.sequence([
+				nn.linear(numSymptoms, 1),
+				nn.sigmoid
+			], 'predictNet_'+i)
+			net.setTraining(true);
+			return net;
+		});
+		return {
+			map: latentMapData,
+			init: function(data) {},
+			update: function(hprev, x) {},
+			predict: function(h, data, i) {
+				return T.get(daipp.nneval(predictNet(i), data), 0);
+			}
+		};
+	}
+	// Like the above, but also use a recurrent state
+	else if (rnnGuideType === 'DifferentNetPerChoiceRNN') {
+		var zeroVec = zeros([rnnHiddenDim]);
+		var updateNet = daipp.makeRU(rnnType, rnnHiddenDim, 1, 'updateNet');
+		var predictNet = cache(function(i) {
+			var net = nn.sequence([
+				nn.linear(numSymptoms+rnnHiddenDim, 1),
+				nn.sigmoid
+			], 'predictNet_'+i)
+			net.setTraining(true);
+			return net;
+		});
+		return {
+			map: latentMapIndexed,
+			init: function(data) { return zeroVec; },
+			update: function(hprev, x) { return daipp.nneval(updateNet, [hprev, x]); },
+			predict: function(h, data, i) { return T.get(daipp.nneval(predictNet(i), T.concat(h, data)), 0); }
+		};
+	}
+	// Use a recurrent state and a single predict net shared by all variables, but also feed in the address
+	// Address can either be treated as an enum (string) or as an array.
+	else if (rnnGuideType === 'RecurrentWithAddress') {
+		var zeroVec = zeros([rnnHiddenDim]);
+		var updateNet = daipp.makeRU(rnnType, rnnHiddenDim, 1, 'updateNet');
+		var addrEmbedSize = daipp.config.latentSize;
+		var predictNet = nn.sequence([
+			nn.linear(numSymptoms+rnnHiddenDim+addrEmbedSize, 1),
+			nn.sigmoid
+		], 'predictNet');
+		predictNet.setTraining(true);
+		// This part copied from daipp
+		var addressEmbedType = opts.addressEmbedType || 'string';
+		var addr2vec = (addressEmbedType === 'array') ?
+			function(address) { return daipp.val2vec(daipp.util.splitAddress(address)); } :
+			function(address) { return daipp.val2vec(address); };
+		return {
+			map: latentMapIndexed,
+			init: function(data) { return zeroVec; },
+			update: function(hprev, x) { return daipp.nneval(updateNet, [hprev, x]); },
+			predict: function(h, data, i) {
+				var address = getObsFnAddress();
+				var addrVec = addr2vec(address);
+				var input = T.concat(h, data, addrVec);
+				return T.get(daipp.nneval(predictNet, input), 0);
+			}
+		};
+	}
+	else util.fatal("That's not a thing.");
+})();
+var guideMap = guideFuncs.map;
+var guideInit = guideFuncs.init;
+var guideUpdate = guideFuncs.update;
+var guidePredict = guideFuncs.predict;
+
+
+var model = function() {
+	var batchSize = Math.min(globalStore.data.length, 20);
+	return mapData({data: globalStore.data, batchSize: batchSize}, function(symptomVals) {
+		var symptomValsTensor = Vector(symptomVals);
+		globalStore.h = guideInit(symptomValsTensor);
+		globalStore.predictedProbs = [];
+		var diseases = guideMap(graph.diseases, function(disease, i) {
+			var guideP = guidePredict(globalStore.h, symptomValsTensor, i);
+			var x = sample(Bernoulli({p: disease.p}), {
+				guide: Bernoulli({p: guideP})
+			});
+			globalStore.h = guideUpdate(globalStore.h, Vector([x]));
+			globalStore.predictedProbs = globalStore.predictedProbs.concat([ad.value(guideP)]);
+			return x;
+		});
+
+		globalStore.symptomProbs = [];
+		var scores = mapData({data: symptomVals}, function(symptomVal, symptomIndex) {
+			var symptom = graph.symptoms[symptomIndex];
+			var p = noisyOrProb(symptom, diseases);
+			var score = Bernoulli({p: p}).score(symptomVal);
+			factor(score);
+			globalStore.symptomProbs = globalStore.symptomProbs.concat([p]);
+			return score;
+		});
+
+		var reconstructScore = sum(scores);
+		// var reconstructScore = (function() {
+		// 	var activeScores = map2(function(val, score) {
+		// 		return val ? score : 0;
+		// 	}, symptomVals, scores);
+		// 	var numActive = filter(function(s) { return s !== 0; }, activeScores).length;
+		// 	return sum(activeScores) / numActive;
+		// })();
+
+		return {
+			predictedDiseaseProbs: globalStore.predictedProbs,
+			predictedSymptomProbs: globalStore.symptomProbs,
+			reconstructScore: reconstructScore
+		};
+	});
+};
+
+var boolArrayToBitString = function(arr) {
+	if (arr.length === 0) return '';
+	else return (arr[0] ? '1' : '0') + boolArrayToBitString(arr.slice(1));
+};
+
+var boolArrayCountEqual = function(arr1, arr2) {
+	assert(arr1.length === arr2.length, 'arr1 and arr2 have different lengths');
+	if (arr1.length === 0) return 0;
+	else return (arr1[0] === arr2[0]) + boolArrayCountEqual(arr1.slice(1), arr2.slice(1));
+};
+
+// Directed equality: when arr1[i] is true, is arr2[i] also true?
+var boolArrayCountEqualTrues = function(arr1, arr2) {
+	assert(arr1.length === arr2.length, 'arr1 and arr2 have different lengths');
+	if (arr1.length === 0) return 0;
+	else return (arr1[0] ? arr2[0] ? 1 : 0 : 0) + boolArrayCountEqualTrues(arr1.slice(1), arr2.slice(1));
+};
+
+// Model-specific returns
+var computeCustomReturns = function(params, testData, trainData) {
+	// Encode/decode reconstruction results?
+	var nData = 100;
+	var data = _.shuffle(testData).slice(0, nData);
+	var scores = map(function(symptomVals) {
+		globalStore.data = [symptomVals];
+		var ret = sample(ForwardSample(model, {
+			samples: 1,
+			guide: (opts.qmrScoreUseGuide === undefined ? true : opts.qmrScoreUseGuide),
+			params: params
+		}));
+		var sampledSymptomVals = map(function(p) {
+			return sample(Bernoulli({p: p}));
+		}, ret[0].predictedSymptomProbs);
+		var numEq = boolArrayCountEqual(symptomVals, sampledSymptomVals);
+		var percentEq = numEq / numSymptoms;
+		var numTrueEq1 = boolArrayCountEqualTrues(symptomVals, sampledSymptomVals);
+		var numTrueEq2 = boolArrayCountEqualTrues(sampledSymptomVals, symptomVals);
+		var percentTrueEq1 = numTrueEq1 / sum(symptomVals);
+		var percentTrueEq2 = numTrueEq2 / sum(sampledSymptomVals);
+		// console.log('True:    ' + boolArrayToBitString(symptomVals));
+		// console.log('Sampled: ' + boolArrayToBitString(sampledSymptomVals))
+		// console.log('Num Equal: ' + numEq + ' (' + (percentEq*100) + '\%)');
+		// console.log('Num 1\'s Equal (True -> Sampled): ' + numTrueEq1 + ' (' + (percentTrueEq1*100) + '\%)');
+		// console.log('Num 1\'s Equal (Sampled -> True): ' + numTrueEq2 + ' (' + (percentTrueEq2*100) + '\%)');
+		// console.log('----------------------------------------------------------------------');
+
+		// return ret[0].reconstructScore;
+		return Math.min(percentTrueEq1, percentTrueEq2);
+		// return Math.max(percentTrueEq1, percentTrueEq2);
+	}, data);
+	var avgScore = sum(scores) / nData;
+	return {
+		qmrScore_avg: avgScore,
+		qmrScores: scores
+	};
+};
+
