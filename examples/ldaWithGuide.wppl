@@ -542,6 +542,91 @@ var lda6 = function(data, vocabSize, numTopics, alpha, eta) {
 
 // *****************************************************************************
 
+// Similar to lda6, except (a) this version merges the topics into the
+// hidden state once rather than doing so for every topic and (b)
+// instead of merging the document into the hidden state using the
+// RNN, we go:
+// (rnnstate, doc) => hidden => (mu, sigma).
+
+var lda6aNets = cache(function(numHid, vocabSize, numTopics) {
+  var init = nn.constantparams([numHid]);
+  init.setTraining(true);
+
+  var ru = daipp.makeRU('rnn', numHid, vocabSize, 'lda6ru', true);
+
+  var outputHidden = nn.mlp(numHid + vocabSize, [
+    {nOut: numHid, activation: nn.tanh}
+  ], 'lda6outputHidden');
+  outputHidden.setTraining(true);
+
+  var outputMu = nn.mlp(numHid, [
+    {nOut: numTopics - 1}
+  ], 'lda6outputMu');
+  outputMu.setTraining(true);
+
+  var outputSigma = nn.mlp(numHid, [
+    {nOut: numTopics - 1}
+  ], 'lda6outputSigma');
+  outputSigma.setTraining(true);
+
+  return {
+    init: init,
+    ru: ru,
+    outputHidden: outputHidden,
+    outputMu: outputMu,
+    outputSigma: outputSigma
+  };
+});
+
+var lda6a = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documentsAsCounts;
+  var numHid = 20;
+  var nets = lda6aNets(numHid, vocabSize, numTopics);
+
+  var mergeTopics = function(topics) {
+    var initialState = daipp.nneval(nets.init);
+    return reduce(function(x, prevState) {
+      return daipp.nneval(nets.ru, [prevState, x]);
+    }, initialState, topics);
+  };
+
+  var guideParams = function(doc, prevState) {
+    var hidden = daipp.nneval(nets.outputHidden, T.concat(prevState, normalize(Vector(doc))));
+    var mu = tensorToVector(daipp.nneval(nets.outputMu, hidden));
+    var sigma = tensorToVector(softplus(daipp.nneval(nets.outputSigma, hidden)));
+    var params = {mu: mu, sigma: sigma};
+    return params;
+  };
+
+  // Model *********************************************************************
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  var state = mergeTopics(topics);
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}), {
+      guide: LogisticNormal(guideParams(doc, state))
+    });
+
+    mapData({data: countsToIndices(doc)}, function(word) {
+      var z = sample(Discrete({ps: topicDist}));
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+
+// *****************************************************************************
+
+
 // Version that sums out z, i.e. topic assignments.
 
 var lda100 = function(data, vocabSize, numTopics, alpha, eta) {
@@ -607,6 +692,7 @@ var models = {
   lda4: lda4,
   lda5: lda5,
   lda6: lda6,
+  lda6a: lda6a,
   lda100: lda100
 };
 
