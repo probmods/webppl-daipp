@@ -626,6 +626,61 @@ var lda6a = function(data, vocabSize, numTopics, alpha, eta) {
 
 // *****************************************************************************
 
+var lda6aplus5 = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documentsAsCounts;
+
+  var nets5 = lda5Nets(50, 50, vocabSize, numTopics);
+  var nets6 = lda6aNets(20, vocabSize, numTopics);
+
+  var wordAndTopicDistToParams = function(word, topicDist) {
+    var embedding = daipp.nneval(nets5.embed, oneOfK(word, vocabSize));
+    var out = daipp.nneval(nets5.mlp, T.concat(embedding, T.sub(topicDist, 1)));
+    return {ps: softplus(tensorToVector(out))};
+  };
+
+  var mergeTopics = function(topics) {
+    var initialState = daipp.nneval(nets6.init);
+    return reduce(function(x, prevState) {
+      return daipp.nneval(nets6.ru, [prevState, x]);
+    }, initialState, topics);
+  };
+
+  var guideParams = function(doc, prevState) {
+    var hidden = daipp.nneval(nets6.outputHidden, T.concat(prevState, normalize(Vector(doc))));
+    var mu = tensorToVector(daipp.nneval(nets6.outputMu, hidden));
+    var sigma = tensorToVector(softplus(daipp.nneval(nets6.outputSigma, hidden)));
+    var params = {mu: mu, sigma: sigma};
+    return params;
+  };
+
+  // Model *********************************************************************
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  var state = mergeTopics(topics);
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}), {
+      guide: LogisticNormal(guideParams(doc, state))
+    });
+
+    mapData({data: countsToIndices(doc)}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete(wordAndTopicDistToParams(word, topicDist))
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+
+// *****************************************************************************
 
 var lda6aplus100 = function(data, vocabSize, numTopics, alpha, eta) {
   var corpus = data.documentsAsCounts;
@@ -747,6 +802,7 @@ var models = {
   lda5: lda5,
   lda6: lda6,
   lda6a: lda6a,
+  lda6aplus5: lda6aplus5,
   lda6aplus100: lda6aplus100,
   lda100: lda100
 };
