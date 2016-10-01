@@ -9,9 +9,10 @@ This strategy is known as \emph{amortized inference}; it has recently been appli
 %
 This paper proposes a system for amortized inference in PPLs.
 In our system, amortization comes in the form of a parameterized \emph{guide program}.
-Guide programs have similar structure to the original program but can also have neural network components.
+Guide programs have similar structure to the original program, but can have richer data flow, including neural network components.
 These networks can be optimized so that the guide approximately samples from the posterior distribution defined by the original program.
 We present a flexible interface for defining guide programs, a stochastic gradient-based scheme for optimizing guide parameters, and experimental methods for automatically deriving guide programs using recurrent neural networks.
+We explore in detail the particular pattern in which a `local` model is specified by `global` random values and used to generate independent observed data points; this gives rise to amortized local inference supporting global model learning.
 %
 \remark{Brief summary of some experimental evaluation.}
 

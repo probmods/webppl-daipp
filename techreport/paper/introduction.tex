@@ -4,22 +4,31 @@
 
 %% What's our domain?
 
-Probabilistic programs are a powerful tool for probabilistic modeling. A probabilistic programming language (PPL) is a programming language augmented with random sampling and Bayesian conditioning operators. Performing inference on these programs then involves reasoning about the space of executions which satisfy some constraints. A universal PPL is Turing-complete and thus can represent any computable probability distribution, including open-world models, Bayesian non-parameterics, and stochastic recursion~\cite{Church,Venture,Anglican}.
+Probabilistic models provide a framework for describing abstract prior knowledge and using it to reason under uncertainty.
+Probabilistic programs are a powerful tool for probabilistic modeling. A probabilistic programming language (PPL) is a deterministic programming language augmented with random sampling and Bayesian conditioning operators. 
+Performing inference on these programs then involves reasoning about the space of executions which satisfy some constraints, such as observed values. 
+A universal PPL, one built on a Turing-complete language, can represent any computable probability distribution, including open-world models, Bayesian non-parameterics, and stochastic recursion~\cite{Church,Venture,Anglican}.
 
 %% What's the problem?
 
-If we consider a probabilistic program to define a distribution $p(\latentVars, \observedVars)$, where $\latentVars$ are (latent) intermediate variable and $\observedVars$ are (observed) output data, then sampling from this distribution is easy: just run the program forward. However, sampling from the posterior distribution $p(\latentVars | \observedVars)$ is hard, involving an intractable integral. Typically, PPLs provide means to approximately sample from the posterior using Monte Carlo methods (e.g. MCMC, SMC).
+If we consider a probabilistic program to define a distribution $p(\latentVars, \observedVars)$, where $\latentVars$ are (latent) intermediate variable and $\observedVars$ are (observed) output data, then sampling from this distribution is easy: just run the program forward. However, computing the posterior distribution $p(\latentVars | \observedVars)$ is hard, involving an intractable integral. Typically, PPLs provide means to approximate the posterior using Monte Carlo methods (e.g. MCMC, SMC), dynamic programming, or analytic computation.
 
 %% What's the big insight?
 
-These inference methods are so expensive because they (approximately) solve an intractable integral from scratch on every separate invocation.
+These inference methods are expensive because they (approximately) solve an intractable integral from scratch on every separate invocation.
 But many inference problems have shared structure: it is reasonable to expect that computing $p(\latentVars | \observedVars_1)$ should give us some information about how to compute $p(\latentVars | \observedVars_2)$.
 In fact, there is reason to believe that this is how people are able to perform certain inferences, such as visual perception, so quickly---we have perceived the world many times before, and can leverage that accumulated knowledge when presented with a new perception task~\cite{AmortizedInference}.
 This idea of using the results of previous inferences, or precomputation in general, to make later inferences more efficient is called \emph{amortized inference}~\cite{AmortizedInference,StochasticInverses}.
 
+\emph{Learning} a generative model from many data points is a particularly important task that leads to many related inferences.
+One wishes to update global beliefs about the true generative model from individual data points (or batches of data points).
+While many algorithms are possible for this task, they all require some form of  `parsing' for each data point: doing posterior inference in the current generative model to guess values of local latent variable given each observation.
+Because this local parsing inference is needed many many times, it is a good candidate for amortization.
+It is plausible that learning to do local inference via amortization would support faster and better global learning, which gives more useful local inferences, leading to a virtuous cycle.
+
 %% What's our approach?
 
-This paper proposes a system for amortized inference in PPLs. Instead of computing $p(\latentVars | \observedVars)$ from scratch for each $\observedVars$, our system instead constructs a program $\guide(\latentVars | \observedVars)$ which takes $\observedVars$ as input and, when run forward, produces samples distributed approximately according to the true posterior $p(\latentVars | \observedVars)$.
+This paper proposes a system for amortized inference in PPLs, and applies it to model learning. Instead of computing $p(\latentVars | \observedVars)$ from scratch for each $\observedVars$, our system instead constructs a program $\guide(\latentVars | \observedVars)$ which takes $\observedVars$ as input and, when run forward, produces samples distributed approximately according to the true posterior $p(\latentVars | \observedVars)$.
 We call $\guide$ a \emph{guide program}, following terminology introduced in previous work~\cite{GuidePrograms}.
 The system can spend time up-front constructing a good approximation $\guide$ so that at inference time, sampling from $\guide$ is both fast and accurate.
 
@@ -28,6 +37,8 @@ That is, $\guide$ samples the same random choices as $p$ and in the same order, 
 In our system, we represent this computation using neural networks.
 This design choice reduces the search for $\guide$ to the much simpler continuous problem of optimizing the weights for these networks, which can be done using stochastic gradient descent.
 % The gradients are often high-variance, esp. for programs with discrete choices. To combat this, our system implements several general-purpose variance-reduction strategies.
+
+\ndg{something about mapData and the gobal/local variable split, and how that represents model + guide learning.}
 
 Our system's interface for specifying guide programs is flexible enough to subsume several popular recent approaches to variational inference, including those that perform both inference and model learning. The system also provides experimental options for automatically deriving guide programs, using recurrent neural networks to capture posterior dependencies.~\remark{Broad statement about the experiments we do and what the results are.}
 
