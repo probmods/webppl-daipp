@@ -43,6 +43,7 @@ We next consider a more complicated Bayesian network model based on the QMR-DT m
 Our amortized guide program for this model uses a neural network to jointly predict the probabilities of all latent cause variables given a set of observed effects. Since the QMR-DT model contains a large number of discrete random variables, we expect the variance reduction strategies introduced in Section~\ref{sec:optimization:unifiedEstimator} to have significant effect.
 Thus, we consider training this guide program with no variance reduction (\emph{Amortized}), with per-choice likelihood ratio weights, (\emph{+ local weights}), and with both per-choice weights and baselines (\emph{+ baselines}). As a point of reference, we also include a mean field model which uses all variance reduction strategies.
 Data for our experiments is sampled from a randomly-generated graph with 200 causes and 100 effects. We sample 1000 observations for the training set and an additional 100 for a held-out test set.
+\ndg{note that the fully-marginalized approach isn't really tractable anymore due to the size of the latent space?}
 
 Figure~\ref{fig:qmrResults} shows the results of our experiments. The left plot shows optimization progress under each condition. Without any of the variance reduction strategies, gradients are extremely noisy and optimization makes almost no progress. Using local, per-variable likelihood ratio weights allows optimization to mke progress, and adding per-variable baselines further boosts performance. Though it uses all variance reduction strategies, the mean field model trains significantly more slowly than the variance-reduced amortized models. This happens because the mean field model has separate parameters for each training observation, rather than a single parameter set shared by a neural network, i.e. it has many more parameters that are each updated by very few gradient steps. Amortization thus both facilitates fast posterior prediction and exhibits faster training due to parameter sharing.
 
@@ -87,6 +88,7 @@ As suggested by their training behavior, the VAE is able to generate higher-qual
 Our optimization exhibits some differences from the previous work.
 For the VAE, Kingma and Welling~\cite{AEVB} exploit the closed-form solution of the KL divergence between two Gaussians to create an even lower-variance estimator of the ELBo gradient. We use a more general formulation, but our system can still successfully train the model.
 For the SBN, Mnih and Gregor~\cite{NVIL} use neural networks to compute the per-variable baselines $b_i$ in Equation~\ref{eq:finalEstimator}, whereas we use a simpler approach (see Appendix~\ref{sec:appendix_proofs}).
+However, the key point is that each of these models was described in a simple WebPPL program with neural guides and optimized by the default system, without the need for additional implementation efforts.
 
 \begin{figure}
 \begin{minipage}{0.5\linewidth}
@@ -151,17 +153,17 @@ Target & \multicolumn{3}{c}{VAE} & \multicolumn{3}{c}{SBN}
 \subsection{Latent Dirichlet Allocation}
 \label{sec:results_lda}
 
-Introduce the CoCoLab abstracts dataset (is there a citation for this yet?)
+Introduce the CoCoLab abstracts dataset (no citation, but acknowledge robert in footnote)
 
-Just (manually-specified) mean-field guides, for now.
+Do mean-field, marginalized, and one or two neural guides?
 
 Show Top N words for each learned topic?
 
 
-Things to try if we have time:
-\begin{itemize}
-\item{Simple bayesian NN (show how easy it is to do full variational Bayes)}
-\item{HMM-type families: Deep kalman filter? Or other RNN VAE type thing?}
-\item{PCFG (prob won’t work, but useful to understand). Continuous feature-passing version?}
-\end{itemize}
-
+%Things to try if we have time:
+%\begin{itemize}
+%\item{Simple bayesian NN (show how easy it is to do full variational Bayes)}
+%\item{HMM-type families: Deep kalman filter? Or other RNN VAE type thing?}
+%\item{PCFG (prob won’t work, but useful to understand). Continuous feature-passing version?}
+%\end{itemize}
+%

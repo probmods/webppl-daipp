@@ -6,6 +6,8 @@ Thus far, we have shown how we can succesfully create and train guide programs f
 
 In this section, we describe our early experiments with automatically deriving guide programs. We provide both sensible default behavior that makes writing guides less cumbersome, as well as methods based on recurrent neural networks to account for posterior dependencies without the programmer explicitly specifying them.
 
+\ndg{possibly leave out the RNN guides for now, until we understand them better. just do mean-field and joint-prediction guides (the latter using val2vec and such)...}
+
 \subsection{Mean Field by Default}
 
 If a call to \ic{sample} is not provided with an explicit guide distribution, our system automatically inserts a mean field guide. For example, the code \ic{sample(Gaussian(\{mu: 0, sigma: 1\}))} results in:
