@@ -30,7 +30,7 @@ var model = function() {
 Infer({method: 'MCMC'}, model);
 \end{lstlisting}
 This program uses MCMC to compute an approximate posterior distribution over the return value of the function \ic{model}. \ic{model} is a simple generative model with one latent Bernoulli variable (\ic{x}) and one observed Gaussian variable, which in this example is observed to have the value \ic{0.5}. The mean of the observed Gaussian variable (\ic{mu}) is dependent on the value of \ic{x}. Since \ic{model} returns \ic{x}, the result of this program is the posterior marginal distribution over the variable \ic{x}.
-In the rest of this paper, we will build on this language to add guide programs and amortized inference to it.
+In the rest of this paper, we will build on this language, adding guide programs, amortized inference, and model-learning constructs.
 
 \subsection{Inference as Optimization: Variational Inference}
 \label{sec:background:variational}
@@ -60,7 +60,7 @@ This idea has inspired research into developing amortized inference systems for 
 Amortized inference can also be achieved through variational inference.
 Instead of defining a parametric family $\guide_{\observedVars}(\latentVars ; \phi)$ which is specific to a given $\observedVars$, we can instead define a general family $\guidePosterior$ which is conditional on $\observedVars$; that is, it takes $\observedVars$ as input.
 In this setting, the mean field family no longer applies, as the factors of $\guide$ must now be functions of $\observedVars$.
-However, we can extend the mean field family to handle input data by using neural networks:
+However, we can extend the mean field family to handle input data by using neural networks (or other `side computations'):
 %%%
 \begin{equation*}
 \guidePosterior = \prod_i \guide(\latentVar_i ; \text{NN}_i(\observedVars ; \phi))
@@ -70,7 +70,7 @@ Here, the parameters of each local conditional in the guide $\guide$ are compute
 This variational family supports amortized inference: one can invest time up-front optimizing the neural network weights such that $\guidePosterior$ is close to $\truePosterior$. When given a never-before-seen $\observedVars$, the guide program forwards $\observedVars$ through the trained networks for fast inference.
 Several recent approaches to `neural variational inference' use some instantiation of this design pattern~\cite{NVIL,DLGM,AEVB}.
 
-Such neural guide families are easy to express in our system. Our system also allows generalizations of this pattern, such as providing neural nets with previously-made random choices as additional input:
+Such neural guide families are easy to express in our extensions of WebPPL. Our system also allows generalizations of this pattern, such as providing neural nets with previously-made random choices as additional input:
 %%%
 \begin{equation*}
 \guidePosterior = \prod_i \guide(x_i ; \text{NN}_i(\observedVars, \latentVars_{<i} ; \phi))
@@ -83,6 +83,7 @@ Here, $\latentVars_{<i}$ are the random choices made before choice $i$ is sample
 
 The amortized variational inference framework presented above can also be used to learn the parameters of the generative model $p$. If $p$ is also parameterized, i.e. $\truePosteriorTheta$, then its parameters $\theta$ can be optimized along with the parameters $\phi$ of the guide program~\cite{NVIL,DLGM,AEVB}.
 
-Our system also supports learning generative model parameters in addition to guide parameters.
-We will show how it is easy to use (regularized) maximum-likelihood learning, variational Bayes, or even different methods within the same model.
+Our system supports learning generative model parameters in addition to guide parameters.
+In the PPL setting it is natural to think of this as a particular model pattern in which there are global parameters or random choices that affect a local `observation model', which in turn is assumed to generate each data point independently; we call this the mapData model pattern.
+We will show below how it is easy to use this pattern to do (regularized) maximum-likelihood learning, variational Bayes, or even different methods within the same model.
 

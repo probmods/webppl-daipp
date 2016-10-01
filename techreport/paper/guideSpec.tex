@@ -2,7 +2,7 @@
 \section{Specifying Guide Programs}
 \label{sec:guideSpec}
 
-In this section, we describe our language extensions to WebPPL that allow for the specification of guide programs.
+In this section, we describe language extensions to WebPPL that allow for the specification of guide programs.
 We focus for now on manually-specified guide programs. In Section~\ref{sec:autoGuide}, we build on this interface to automatically derive guide programs.
 
 \subsection{Sampling with Guide Distributions}
@@ -23,7 +23,7 @@ var model = function() {
 \end{lstlisting}
 %%%
 In this example, the guide samples from a Bernoulli with a different success probability \ic{p}. This particular value happpens to give the true posterior for this program, since this toy problem is simple enough to solve in closed form.
-We note that the guide distribution not need be of the same family as the prior distribution; we will see later how this property can be useful.
+We note that the guide distribution need not be of the same family as the prior distribution; we will see later how this property can be useful.
 
 \subsection{Declaring Optimizable Parameters}
 
@@ -37,7 +37,7 @@ var x = sample(Gaussian({mu: 0, sigma: 1}), {
 %%%
 Here, \ic{paramScalar(name)} declares an optimizable, real-valued parameter named \ic{name}; there are analogous functions \ic{paramVector}, \ic{paramMatrix}, and \ic{paramTensor} for declaring vector, matrix, and tensor-valued parameters.
 Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value returned by \ic{paramScalar} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
-Parameters must have unique names so they can be disambiguated by the optimization engine under the hood.
+Parameters must have unique names so they can be disambiguated by the optimization engine under the hood. \ndg{they don't have to be unique... this just leads to param sharing. right?}
 
 Using variational parameters directly as the guide distribution parameters (as done above) results in a mean field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
 We can also compute the guide parameters via a neural network:
@@ -96,7 +96,7 @@ var model = function() {
 };
 \end{lstlisting}
 %%%
-In this case, the \ic{guideNet} object has its own parameters, which are registered with the optimization engine when \ic{nnEval} is called.
+In this case, the \ic{nn.mlp} constructor has created a \ic{guideNet} object with its own parameters; these parameters are registered with the optimization engine when \ic{nnEval} is called.
 
 \subsection{Iterating over Observed Data}
 
@@ -177,6 +177,7 @@ var mu_x = sample(
 The code in the left block results in maximum likelihood estimation: the inference engine will optimize for the single best parameter value.
 The middle code block shows how to achieve regularized maximum likelihood. Here, \ic{mu_x} is given a Gaussian prior. However, the guide distribution is a Delta whose center is given by an optimizable parameter. Thus, the inference engine will still predict a point estiamte for \ic{mu_x}, but the Gaussian prior results in L2 regularization.
 Finally, the right block shows a variational Bayesian model: \ic{mu_x} has a Gaussian prior distribution, and the guide samples \ic{mu_x} from an approximate variational Gaussian posterior with optimizable parameters.
+This form learns a distribution over generative models, maintaining an estimate of uncertainty about the true model.
 
 
 \subsection{Examples: Simple Bayesian Networks}

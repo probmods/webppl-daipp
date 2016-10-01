@@ -11,7 +11,7 @@ In Section~\ref{sec:background:variational}, we mentioned that the goal of varia
 \begin{align}
 \begin{split}
 \KLD(\guidePosterior || \truePosterior)
-&= \int_{\latentVars} \guidePosterior \log \frac{\guide(\guidePosterior}{\truePosterior}\\
+&= \int_{\latentVars} \guidePosterior \log \frac{\guidePosterior}{\truePosterior}\\
 &= \int_{\latentVars} \guidePosterior \log \frac{\guidePosterior}{\trueJoint} + \log \dataMarginal\\
 &= \expect_{\guide}[ \log(\guidePosterior -  \trueJoint ) ] + \log \dataMarginal\\
 &= \log \dataMarginal - \elboDef\\
@@ -21,6 +21,7 @@ In Section~\ref{sec:background:variational}, we mentioned that the goal of varia
 \end{align}
 %%%
 where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\elboPhi$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log \dataMarginal$. Accordingly, $\elboPhi$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
+\ndg{mention that technically we are using the free energy, because we allow unnormalized factors?}
 
 When learning a generative model $\trueJointTheta$, the objective is usually to maximize the log marginal likelihood of the training data $\log \dataMarginalTheta$. Rewriting the result from Equation~\ref{eq:elbo}:
 %%%
@@ -29,6 +30,7 @@ When learning a generative model $\trueJointTheta$, the objective is usually to 
 \end{equation*}
 %%%
 we can see that, again, because KL-divergence is non-negative, maximizing the ELBo also corresponds to maximizing the log marginal likelihood of the data. Thus, whether we are doing amortized infernence only or amortized inference plus model learning, we can use the same optimization objective: the ELBo.
+\ndg{maybe instead of justifying elbow for model learning and deriving its gradient estimator below, we should just show here that MLE model learning can be cast as param learning with a delta guide and improper prior, and the do the general derivations for q?}
 
 For an alternative derivation of the ELBo using Jensen's inequality, see Mnih and Gregor~\cite{NVIL} and Jordan et al.~\cite[p. 213]{VariationalInference}.
 
@@ -45,6 +47,7 @@ Maximizing the ELBo requires estimating its gradient with respect to the paramet
 \label{eq:modelParamGrad}
 \end{align}
 %%%
+\ndg{FIXME: $\gradparamsTheta$ should be theta subscript. (where is this defined in source files?)}
 where the expectation with respect to $\guide$ is approximated by samples drawn from $\guide$. This requires that $\trueJointTheta$ be differentiable with respect to $\theta$; many generative models with differentiable likelihoods have this property.
 
 Estimating the gradient with respect to the guide parameters $\phi$ is more complex.
@@ -113,7 +116,7 @@ The distributions $\reparamDist_i$ and functions $\reparamXform_i$ have differen
 %%%
 \begin{itemize}
 \item{Continuous $\reparamVar_i$: $\reparamDist_i$ is a unit normal or uniform distribution, and $\reparamXform_i$ is a parameterized transform. This is a direct application of the reparameterization trick. In this case, each local transformation $\reparamXform_i$ may also depend on the previous noise variables $\reparamVars_{<i}$, as choices occuring later in the program may be compound transformations of earlier choices. Appendix~\ref{sec:appendix_reparam} lists some reparameterizable distributions used by our system.}
-\item{Discrete $\reparamVar_i$: $\reparamDist_i$ = $\guide_i$, and $\reparamXform_i$ is the identity function. This allows discrete choices to be represented in the reparameterization trick framework.}
+\item{Discrete $\reparamVar_i$: $\reparamDist_i$ = $\guide_i$, and $\reparamXform_i$ is the identity function. This allows discrete choices to be represented in the reparameterization trick framework (without actually reparametrizing).}
 \end{itemize}
 %%%
 Given these assumptions, we can derive an estimator for the ELBo gradient:
@@ -130,6 +133,7 @@ Given these assumptions, we can derive an estimator for the ELBo gradient:
 \end{align}
 %%%
 See Appendix~\ref{sec:appendix:estDerivation} for the derivation. 
+\ndg{need to say here what $W$ is.}
 
 This estimator includes the LR and PW estimators as special cases. If all random choices are reparameterized (i.e. they are all continuous), then $\reparamDist(\reparamVars | \observedVars)$ does not depend on $\phi$, thus $\gradparams \log \reparamDist(\reparamVars | \observedVars)$ is zero and the LR term drops out, leaving only the PW term. If no random choices are reparameterized (i.e. they are all discrete), then the $\gradparams \log \guide(\xformedVars | \observedVars)$ term drops out, using the identity $\expect_f[\nabla \log f(x)] = 0$ (see Appendix~\ref{sec:appendix:zeroexp}). If $p$ has no parameters, then the $\gradparams \log p(\xformedVars, \observedVars)$ term is also zero, leaving only the LR term. If $p$ has parameters, then the resulting estimator is the LR estimator plus the model parameter estimator (Equation~\ref{eq:modelParamGrad}).
 
@@ -182,7 +186,7 @@ In the second line, we used the fact (mentioned above) that $\gradparams \log \r
 
 Equation~\ref{eq:finalEstimator} is similar to the `surrogate loss function' gradient estimator of Schulman et al.~\cite{StochasticComputationGraphs}, as an execution of a probabilistic program corresponds to one of their stochastic computation graphs. Their analysis is concerned with general stochastic objectives, however, while we focus particularly on the ELBo.
 
-\remark{(Noah) Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depends on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.}
+ \ndg{I said elsewhere: Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depends on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.}
 
 % \subsection{Implementation}
 

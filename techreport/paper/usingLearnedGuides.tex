@@ -6,7 +6,7 @@ Given a set of learned parameters, our system can predict latent variables, gene
 
 \subsection{Predicting Latent Variables}
 
-A learned guide can be used to make inferences about new, never-before-seen observations. As an example, we'll use the Gaussian mixture model program in Figure~\ref{fig:bn_oneLatent} Bottom and show how to predict cluster assignments for new observations. Note that the observations used by the program are assigned to the \ic{obs} variable, which is then passed to \ic{mapData}. WebPPL is a purely functional language, so it does not support assigning a new dataset to \ic{obs}. However, it does provide a special \ic{globalStore} object whose fields can be re-assigned. With this in mind, we modify the Gaussian mixture model program as follows:
+A learned guide can be used to make inferences about new, never-before-seen observations. As an example, we'll use the Gaussian mixture model program in Figure~\ref{fig:bn_oneLatent} Bottom and show how to predict cluster assignments for new observations. Note that the observations used by the program are assigned to the \ic{obs} variable, which is then passed to \ic{mapData}. WebPPL is a purely functional language, so it does not support assigning a new dataset to \ic{obs}. However, it does provide a special \ic{globalStore} object whose fields can be re-assigned. With this in mind, we modify the Gaussian mixture model program as follows\footnote{An alternative to using \ic{globalStore} for mutation would be to re-create the \ic{model} function, closing over the test data instead of the training data.}:
 %%%
 \begin{lstlisting}
 globalStore.data = loadData('data.json');
@@ -66,4 +66,4 @@ var newParams = Optimize(model, {
 });
 \end{lstlisting}
 %%%
-This can be useful for e.g. fine-tuning existing parameters for a new dataset. Also, \ic{model} does need need to be the same program that was originally used to learn \ic{params}; it just needs to declare some parameters (via \ic{paramScalar} etc.) with the same names as parameters in \ic{params}. This can be useful for e.g. making a modification to an existing model without having to re-train its guide program from scratch.
+This can be useful for e.g. fine-tuning existing parameters for a new dataset. Indeed, \ic{model} does not even need to be the same program that was originally used to learn \ic{params}; it just needs to declare some parameters (via \ic{paramScalar} etc.) with the same names as parameters in \ic{params}. This can be useful for, for example, making a modification to an existing model without having to re-train its guide program from scratch, or for bootstrap training from a simpler model to a more complex one.
