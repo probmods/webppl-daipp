@@ -24,12 +24,13 @@
 &= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars | \observedVars) W(\reparamVars, \observedVars) + \gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars) ]\nonumber
 \end{align}
 Line~\ref{eq:estDerivation_trick} makes use of the identity $\nabla f(x) = f(x) \nabla \log f(x)$.
+\ndg{need to define $W$}
 
 \subsection{Zero Expectation Identities}
 \label{sec:appendix:zeroexp}
 
 In what follows, we will make frequent use of the following:
-%%%
+
 \begin{lemma}
 If $f(x)$ is a probability distribution, then:
 
