@@ -132,7 +132,7 @@ Property (2) is clearly important for efficient, scalable optimization; we will 
 \subsection{Defining Learnable Models}
 
 Thus far we have focused on defining parameterized guides for inference.
-We can also use parameters for the generative part of our models as well, making models learnable.
+Parameterized guides can also be used to make models learnable.
 The following three code blocks show possible replacements for line 7 of the previous example, replacing the hardcoded constant \ic{mu_x = 0} with a learnable version:
 
 \lstdefinestyle{learnableModels}{numbers=none,basicstyle=\fontsize{6.5pt}{6.75pt}\selectfont\ttfamily}
@@ -140,11 +140,17 @@ The following three code blocks show possible replacements for line 7 of the pre
 \begin{minipage}{0.33\linewidth}
 \begin{lstlisting}[style=learnableModels]
 // Maximum likelihood
-var mu_x = paramScalar('mu_x');
+var mu_x = sample(
+   ImproperUniform(),
+   { guide:
+      Delta({v: paramScalar('mu_x')})
+   });
+// For convenience, equivalent to:
+// modelParamScalar('mu_x');
 \end{lstlisting}
 \end{minipage}
 %
-\hspace{-2em}
+\hspace{-1em}
 %
 \begin{minipage}{0.33\linewidth}
 \begin{lstlisting}[style=learnableModels]
@@ -174,12 +180,15 @@ var mu_x = sample(
 \end{lstlisting}
 \end{minipage}
 
-The code in the left block results in maximum likelihood estimation: the inference engine will optimize for the single best parameter value.
-The middle code block shows how to achieve regularized maximum likelihood. Here, \ic{mu_x} is given a Gaussian prior. However, the guide distribution is a Delta whose center is given by an optimizable parameter. Thus, the inference engine will still predict a point estiamte for \ic{mu_x}, but the Gaussian prior results in L2 regularization.
+The code in the left block results in maximum likelihood estimation. By using a Delta distribution as a guide, the inference engine will optimize for the single best parameter value (i.e. the center of the Delta distribution). Maximum likelihood behavior comes from using an improper uniform distribution (i.e. distribution with probability one everywhere) as a prior. This pattern is common enough that our system provides convenient shorthand for it (the \ic{modelParam} functions).
+%%%
+In the middle code of block, we demonstrate L2-regularized maximum likelihood learning by replacing the improper uniform prior with a Gaussian prior. The inference engine will still predict a point estimate for \ic{mu_x}, but the Gaussian prior results in L2 regularization.
+%%%
 Finally, the right block shows a variational Bayesian model: \ic{mu_x} has a Gaussian prior distribution, and the guide samples \ic{mu_x} from an approximate variational Gaussian posterior with optimizable parameters.
 This form learns a distribution over generative models, maintaining an estimate of uncertainty about the true model.
 
-\remark{rewrite this so the maximum likelihood uses a Delta guide with an improper prior. Note how this makes Learning the model just part of learning to guide. Everything is in terms of the guide.}
+Note that we could have alternatively implemented maximum likelihood via a direct parameterization, e.g. \ic{var mu_x = paramScalar('mu_x')}. However, this style results in $p$ being parameterized in addition to $\guide$. This complicates both the implementation and the theoretical analyses that we show later in this paper.
+In contrast, our chosen scheme has only the guide parameterized; Learning the model is just part of learning the guide.
 
 
 \subsection{Examples: Simple Bayesian Networks}
@@ -199,9 +208,9 @@ Figure~\ref{fig:bn_oneLatent} Bottom shows how to modify this code to instead ha
 var obs = loadData('data.json');
 var guideNet = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet');
 var model = function() {
-   var mu_x = paramScalar('mu_x');
-   var sigma_x = softplus(paramScalar('sigma_x'));
-   var sigma_y = softplus(paramScalar('sigma_y'));
+   var mu_x = modelParamScalar('mu_x');
+   var sigma_x = softplus(modelParamScalar('sigma_x'));
+   var sigma_y = softplus(modelParamScalar('sigma_y'));
    var latents = mapData({data: obs}, function(y) {
       var nnInput = Vector([y]);
       var nnOutput = nnEval(guideNet, nnInput);
@@ -246,11 +255,11 @@ var obs = loadData('data.json');
 var nComps = 3;
 var guideNet = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: nComps-1}], 'guideNet');
 var model = function() {
-   var theta_x = simplex(paramVector(nComps-1, 'theta_x'));
+   var theta_x = simplex(modelParamVector(nComps-1, 'theta_x'));
    var params_y = [
-      {mu: paramScalar('mu_y_1'), sigma: softplus(paramScalar('sigma_y_1'))},
-      {mu: paramScalar('mu_y_2'), sigma: softplus(paramScalar('sigma_y_2'))},
-      {mu: paramScalar('mu_y_3'), sigma: softplus(paramScalar('sigma_y_3'))}
+      {mu: modelParamScalar('mu_1'), sigma: softplus(modelParamScalar('s_1'))},
+      {mu: modelParamScalar('mu_2'), sigma: softplus(modelParamScalar('s_2'))},
+      {mu: modelParamScalar('mu_3'), sigma: softplus(modelParamScalar('s_3'))}
    ];
    var latents = mapData({data: obs}, function(y) {
       var nnInput = Vector([y]);
@@ -287,7 +296,7 @@ var model = function() {
 \end{minipage}
 \end{minipage}
 
-\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with one latent variable per observation. \emph{Top:} Continuous latent variable. \emph{Bottom:} Discrete latent variable with 3 discrete values (i.e. a Gaussian mixture model with 3 mixture components).~\remark{use Delta guides with improper priors for model parameters}}
+\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with one latent variable per observation. \emph{Top:} Continuous latent variable. \emph{Bottom:} Discrete latent variable with 3 discrete values (i.e. a Gaussian mixture model with 3 mixture components).}
 \label{fig:bn_oneLatent}
 
 \end{figure}
@@ -307,11 +316,11 @@ var obs = loadData('data.json');
 var guideNet1 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet1');
 var guideNet2 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet2');
 var model = function() {
-   var mu_x1 = paramScalar('mu_x1');
-   var sigma_x1 = softplus(paramScalar('sigma_x1'));
-   var mu_x2 = paramScalar('mu_x2');
-   var sigma_x2 = softplus(paramScalar('sigma_x2'));
-   var sigma_y = softplus(paramScalar('sigma_y'));
+   var mu_x1 = modelParamScalar('mu_x1');
+   var sigma_x1 = softplus(modelParamScalar('sigma_x1'));
+   var mu_x2 = modelParamScalar('mu_x2');
+   var sigma_x2 = softplus(modelParamScalar('sigma_x2'));
+   var sigma_y = softplus(modelParamScalar('sigma_y'));
    var latents = mapData({data: obs}, function(y) {
       var nnInput1 = Vector([y]);
       var nnOutput1 = nnEval(guideNet1, nnInput1);
@@ -370,11 +379,11 @@ var obs = loadData('data.json');
 var guideNet1 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet1');
 var guideNet2 = nn.mlp(<@\hilite{2}@>, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet2');
 var model = function() {
-   var mu_x1 = paramScalar('mu_x1');
-   var sigma_x1 = softplus(paramScalar('sigma_x1'));
-   var mu_x2 = paramScalar('mu_x2');
-   var sigma_x2 = softplus(paramScalar('sigma_x2'));
-   var sigma_y = softplus(paramScalar('sigma_y'));
+   var mu_x1 = modelParamScalar('mu_x1');
+   var sigma_x1 = softplus(modelParamScalar('sigma_x1'));
+   var mu_x2 = modelParamScalar('mu_x2');
+   var sigma_x2 = softplus(modelParamScalar('sigma_x2'));
+   var sigma_y = softplus(modelParamScalar('sigma_y'));
    var latents = mapData({data: obs}, function(y) {
       var nnInput1 = Vector([y]);
       var nnOutput1 = nnEval(guideNet1, nnInput1);
@@ -426,7 +435,7 @@ var model = function() {
 \end{minipage}
 \end{minipage}
 
-\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with two latent variables per observation. \emph{Top:} Guide program predicts the two latents independently. \emph{Bottom:} Changing the guide program to treat the second latent variable as conditional on the first (green highlights show changes to the code).~\remark{use Delta guides with improper priors for model parameters}}
+\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with two latent variables per observation. \emph{Top:} Guide program predicts the two latents independently. \emph{Bottom:} Changing the guide program to treat the second latent variable as conditional on the first (green highlights show changes to the code).}
 \label{fig:bn_twoLatent}
 \end{figure}
 

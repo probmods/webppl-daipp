@@ -37,15 +37,14 @@ We can make predictions either by running the guide program forward, or if the t
 \subsection{Generating Synthetic Data}
 
 Forward sampling from the guide can also be used to generate synthetic data from the learned distribution. If we make a slightly modified version of the Gaussian mixture model (call it \ic{modelGen}) that samples data instead of observing it, we can used forward sampling with the optimized parameters \ic{params} to synthesize new data points:
-\remark{use Delta guides with improper priors for model parameters}.
 %%%
 \begin{lstlisting}
 var modelGen = function() {
-   var theta_x = simplex(paramVector(nComps-1, 'theta_x'));
+   var theta_x = simplex(modelParamVector(nComps-1, 'theta_x'));
    var params_y = [
-      {mu: paramScalar('mu_y_1'), sigma: softplus(paramScalar('sigma_y_1'))},
-      {mu: paramScalar('mu_y_2'), sigma: softplus(paramScalar('sigma_y_2'))},
-      {mu: paramScalar('mu_y_3'), sigma: softplus(paramScalar('sigma_y_3'))}
+      {mu: modelParamScalar('mu_1'), sigma: softplus(modelParamScalar('s_1'))},
+      {mu: modelParamScalar('mu_2'), sigma: softplus(modelParamScalar('s_2'))},
+      {mu: modelParamScalar('mu_3'), sigma: softplus(modelParamScalar('s_3'))}
    ];
    var x = sample(Discrete({ps: theta_x}));
    return sample(Gaussian(params_y[x]));

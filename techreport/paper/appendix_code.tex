@@ -1,20 +1,18 @@
 \section{Appendix: Example Programs}
 \label{sec:appendix_code}
 
-\remark{use Delta guides with improper priors for model parameters}
-
 \subsection{Gaussian mixture model with discrete choices marginalized out}
 \label{sec:appendix_code:gmmSumOut}
 
 \begin{lstlisting}
 var obs = loadData('data.json');
-var nComps = 3;
+var nComps = 3
 var model = function() {
-   var theta_x = simplex(paramVector(nComps-1, 'theta_x'));
+   var theta_x = simplex(modelParamVector(nComps-1, 'theta_x'));
    var params_y = [
-      {mu: paramScalar('mu_y_1'), sigma: softplus(paramScalar('sigma_y_1'))},
-      {mu: paramScalar('mu_y_2'), sigma: softplus(paramScalar('sigma_y_2'))},
-      {mu: paramScalar('mu_y_3'), sigma: softplus(paramScalar('sigma_y_3'))}
+      {mu: modelParamScalar('mu_y_1'), sigma: softplus(modelParamScalar('sigma_y_1'))},
+      {mu: modelParamScalar('mu_y_2'), sigma: softplus(modelParamScalar('sigma_y_2'))},
+      {mu: modelParamScalar('mu_y_3'), sigma: softplus(modelParamScalar('sigma_y_3'))}
    ];
    mapData({data: obs}, function(y) {
       // Explicitly sum out latent mixture component
@@ -69,6 +67,8 @@ var model = function() {
 \subsection{Variational Autoencoder}
 \label{sec:appendix_code:vae}
 
+In this example and the one that follows, \ic{nnevalModel} evaluate a neural network while also placing an improper uniform prior over the network parameters. This allows neural networks to be used as part of learnable models.
+
 \begin{lstlisting}
 // Data
 var data = loadData('mnist.json');
@@ -96,7 +96,7 @@ var decodeNet = nn.mlp(latentDim, [
    {nOut: dataDim, activation: nn.sigmoid}
 ], 'decodeNet');
 var decode = function(latent) {
-   return nneval(decodeNet, latent);
+   return nnevalModel(decodeNet, latent);
 };
 
 // Training model
@@ -136,7 +136,7 @@ var decodeNet = nn.mlp(latentDim, [
    {nOut: dataDim, activation: nn.sigmoid}
 ], 'decodeNet');
 var decode = function(latent) {
-   return nneval(decodeNet, latent);
+   return nnevalModel(decodeNet, latent);
 };
 
 // Training model
