@@ -4,9 +4,7 @@
 
 Thus far, we have shown how we can succesfully create and train guide programs for several types of generative models. However, writing guide programs can sometimes be tedious and repetitive; for example, note the large amount of shared structure between the guides shown in Figures~\ref{fig:bn_oneLatent} and \ref{fig:bn_twoLatent}. Furthermore, it is not always obvious how to write a good guide program. In Figure~\ref{fig:bn_twoLatent}, knowledge of the structure of this very simple generative model led us to add a direct dependency between the two latent variables in the guide. For general programs---especially large, complex ones---it will not always be clear what these dependencies are or how to capture them with a guide.
 
-In this section, we describe our early experiments with automatically deriving guide programs. We provide both sensible default behavior that makes writing guides less cumbersome, as well as methods based on recurrent neural networks to account for posterior dependencies without the programmer explicitly specifying them.
-
-\ndg{possibly leave out the RNN guides for now, until we understand them better. just do mean-field and joint-prediction guides (the latter using val2vec and such)...}
+This section describes our early experience with automatically deriving guide programs. We first describe how our system provides sensible default behavior that can make writing some guides less cumbersome. We then outline how the system might be extended to automatically derive guides for any program using recurrent neural networks.
 
 \subsection{Mean Field by Default}
 
@@ -22,19 +20,23 @@ where parameter bounding transforms such as \ic{softplus} are applied based on b
 
 Since this process declares new optimizable parameters automatically, we must automatically generate names for these parameters. Our system names parameters according to where they are declared in the program execution trace, using the same naming technique as is used for random choices in probabilistic programming MCMC engines~\cite{Lightweight}. Since the names of these parameters are tied to the structure of the program, they cannot be re-used by other programs (as in the `Further Optimization' example of Section~\ref{sec:furtherOptim}).
 
-\subsection{Capturing Posterior Dependencies with Context Nets}
+\subsection{Beyond Mean Field: Automatic Factored Guides with Recurrent Networks}
 
-Context nets, val2vec, and vec2dist.
+Call back to QMR factored guide results. Discuss how this might be generalized. Specifically, note that one can construct a guide like this for any program, because every program factors as a sequence of random choices. Rather than use a separate prediction network for each latent choice, use one prediction network with learnable address emdeddings. Mention that we are continuing experiments along these lines.
 
-When to init context (e.g. incorporating datum in each mapData iteration vs. something more global).
+% \subsection{Capturing Posterior Dependencies with Context Nets}
 
-Architecture choices: LSTM, bilinear resnets, linear predict net, etc.
+% Context nets, val2vec, and vec2dist.
 
-If we have time:
-\begin{itemize}
-\item{Context nets with long distance connections?}
-\item{Automatic mixtures for continuous distributions?}
-\item{Other interesting guides?}
-\end{itemize}
+% When to init context (e.g. incorporating datum in each mapData iteration vs. something more global).
+
+% Architecture choices: LSTM, bilinear resnets, linear predict net, etc.
+
+% If we have time:
+% \begin{itemize}
+% \item{Context nets with long distance connections?}
+% \item{Automatic mixtures for continuous distributions?}
+% \item{Other interesting guides?}
+% \end{itemize}
 
 

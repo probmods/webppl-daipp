@@ -37,6 +37,7 @@ We can make predictions either by running the guide program forward, or if the t
 \subsection{Generating Synthetic Data}
 
 Forward sampling from the guide can also be used to generate synthetic data from the learned distribution. If we make a slightly modified version of the Gaussian mixture model (call it \ic{modelGen}) that samples data instead of observing it, we can used forward sampling with the optimized parameters \ic{params} to synthesize new data points:
+\remark{use Delta guides with improper priors for model parameters}.
 %%%
 \begin{lstlisting}
 var modelGen = function() {

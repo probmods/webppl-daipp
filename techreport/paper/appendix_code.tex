@@ -1,6 +1,8 @@
 \section{Appendix: Example Programs}
 \label{sec:appendix_code}
 
+\remark{use Delta guides with improper priors for model parameters}
+
 \subsection{Gaussian mixture model with discrete choices marginalized out}
 \label{sec:appendix_code:gmmSumOut}
 
@@ -22,6 +24,44 @@ var model = function() {
       }, params_y);
       // Summed-out likelihod
       factor(logsumexp(scores));
+   });
+};
+\end{lstlisting}
+
+\subsection{QMR-DT}
+\label{sec:appendix_code:qmr}
+
+\begin{lstlisting}
+var graph = loadQMRGraph('qmr_graph.json');
+var data = loadData('qmr_data.json');
+
+var noisyOrProb = function(symptomNode, diseases) {
+   var cp = product(map(function(parent) {
+      return diseases[parent.index] ? (1 - parent.prob) : 1;
+   }, symptomNode.parents));
+   return 1 - (1-symptomNode.leakProb)*cp;
+};
+
+var guideNet = nn.mlp(graph.numSymptoms, [
+   {nOut: graph.numDiseases, activation: sigmoid}
+], 'guideNet');
+var predictDiseaseProbs = function(symptoms) {
+   return nneval(guideNet, Vector(symptoms));
+};
+
+var model = function() {
+   mapData({data: data, batchSize: 20}, function(symptoms) {
+      var predictedProbs = predictDiseaseProbs(symptoms);
+      var diseases = mapIndexed(function(i, disease) {
+         return sample(Bernoulli({p: disease.priorProb}), {
+            guide: Bernoulli({p: T.get(predictedProbs, i)})
+         });
+      }, graph.diseaseNodes);
+
+      mapData({data: symptoms}, function(symptom, symptomIndex) {
+         var symptomNode = graph.symptomNodes[symptomIndex];
+         observe(Bernoulli({p: noisyOrProb(symptomNode, diseases)}), symptom);
+      });
    });
 };
 \end{lstlisting}
@@ -113,44 +153,6 @@ var model = function() {
       observe(MultivariateBernoulli({ps: probs}), image);
    });
 }
-\end{lstlisting}
-
-\subsection{QMR-DT}
-\label{sec:appendix_code:qmr}
-
-\begin{lstlisting}
-var graph = loadQMRGraph('qmr_graph.json');
-var data = loadData('qmr_data.json');
-
-var noisyOrProb = function(symptomNode, diseases) {
-   var cp = product(map(function(parent) {
-      return diseases[parent.index] ? (1 - parent.prob) : 1;
-   }, symptomNode.parents));
-   return 1 - (1-symptomNode.leakProb)*cp;
-};
-
-var guideNet = nn.mlp(graph.numSymptoms, [
-   {nOut: graph.numDiseases, activation: sigmoid}
-], 'guideNet');
-var predictDiseaseProbs = function(symptoms) {
-   return nneval(guideNet, Vector(symptoms));
-};
-
-var model = function() {
-   mapData({data: data, batchSize: 20}, function(symptoms) {
-      var predictedProbs = predictDiseaseProbs(symptoms);
-      var diseases = mapIndexed(function(i, disease) {
-         return sample(Bernoulli({p: disease.priorProb}), {
-            guide: Bernoulli({p: T.get(predictedProbs, i)})
-         });
-      }, graph.diseaseNodes);
-
-      mapData({data: symptoms}, function(symptom, symptomIndex) {
-         var symptomNode = graph.symptomNodes[symptomIndex];
-         observe(Bernoulli({p: noisyOrProb(symptomNode, diseases)}), symptom);
-      });
-   });
-};
 \end{lstlisting}
 
 

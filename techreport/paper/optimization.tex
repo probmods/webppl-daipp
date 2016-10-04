@@ -21,7 +21,7 @@ In Section~\ref{sec:background:variational}, we mentioned that the goal of varia
 \end{align}
 %%%
 where the last inequality follows because KL-divergence is non-negative. This in turn implies that $\elboPhi$ is a lower bound on the log marginal likelihood of the data (i.e. evidence) $\log \dataMarginal$. Accordingly, $\elboPhi$ is sometimes referred to as the `Evidence Lower Bound', or ELBo~\cite{BBVI}. Maximizing the ELBo corresponds to minimizing the KL-divergence.
-\ndg{mention that technically we are using the free energy, because we allow unnormalized factors?}
+When $\log \dataMarginal$ can include unnormalized factors (as in our implementation), this is more properly called the variational free energy.
 
 When learning a generative model $\trueJointTheta$, the objective is usually to maximize the log marginal likelihood of the training data $\log \dataMarginalTheta$. Rewriting the result from Equation~\ref{eq:elbo}:
 %%%
@@ -30,7 +30,8 @@ When learning a generative model $\trueJointTheta$, the objective is usually to 
 \end{equation*}
 %%%
 we can see that, again, because KL-divergence is non-negative, maximizing the ELBo also corresponds to maximizing the log marginal likelihood of the data. Thus, whether we are doing amortized infernence only or amortized inference plus model learning, we can use the same optimization objective: the ELBo.
-\ndg{maybe instead of justifying elbow for model learning and deriving its gradient estimator below, we should just show here that MLE model learning can be cast as param learning with a delta guide and improper prior, and the do the general derivations for q?}
+% \ndg{maybe instead of justifying elbow for model learning and deriving its gradient estimator below, we should just show here that MLE model learning can be cast as param learning with a delta guide and improper prior, and the do the general derivations for q?}
+\remark{remove this once the model learning section has been updated with the improper prior stuff.}
 
 For an alternative derivation of the ELBo using Jensen's inequality, see Mnih and Gregor~\cite{NVIL} and Jordan et al.~\cite[p. 213]{VariationalInference}.
 
@@ -47,8 +48,8 @@ Maximizing the ELBo requires estimating its gradient with respect to the paramet
 \label{eq:modelParamGrad}
 \end{align}
 %%%
-\ndg{FIXME: $\gradparamsTheta$ should be theta subscript. (where is this defined in source files?)}
 where the expectation with respect to $\guide$ is approximated by samples drawn from $\guide$. This requires that $\trueJointTheta$ be differentiable with respect to $\theta$; many generative models with differentiable likelihoods have this property.
+\remark{remove this once the model learning section has been updated with the improper prior stuff.}
 
 Estimating the gradient with respect to the guide parameters $\phi$ is more complex.
 There are two well-known approaches to performing this estimation:
@@ -132,10 +133,10 @@ Given these assumptions, we can derive an estimator for the ELBo gradient:
 &= \expect_\reparamDist [ \underbrace{\gradparams \log \reparamDist(\reparamVars | \observedVars) W(\reparamVars, \observedVars)}_{\text{LR term}} + \underbrace{\gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars)}_{\text{PW term}} ]\nonumber
 \end{align}
 %%%
-See Appendix~\ref{sec:appendix:estDerivation} for the derivation. 
-\ndg{need to say here what $W$ is.}
+where $W(\reparamVars, \observedVars) = \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars)$; see Appendix~\ref{sec:appendix:estDerivation} for the derivation. 
 
 This estimator includes the LR and PW estimators as special cases. If all random choices are reparameterized (i.e. they are all continuous), then $\reparamDist(\reparamVars | \observedVars)$ does not depend on $\phi$, thus $\gradparams \log \reparamDist(\reparamVars | \observedVars)$ is zero and the LR term drops out, leaving only the PW term. If no random choices are reparameterized (i.e. they are all discrete), then the $\gradparams \log \guide(\xformedVars | \observedVars)$ term drops out, using the identity $\expect_f[\nabla \log f(x)] = 0$ (see Appendix~\ref{sec:appendix:zeroexp}). If $p$ has no parameters, then the $\gradparams \log p(\xformedVars, \observedVars)$ term is also zero, leaving only the LR term. If $p$ has parameters, then the resulting estimator is the LR estimator plus the model parameter estimator (Equation~\ref{eq:modelParamGrad}).
+\remark{remove this last sentence once the improper prior model learning stuff is done.}
 
 While Equation~\ref{eq:hybridEstimator} is a correct estimator for the ELBo gradient, like the LR estimator, the presence of discrete (i.e. non-reparameterized) random choices can lead to high variance. Thus we modify this estimator through three variance reduction techniques:
 %%%

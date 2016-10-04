@@ -37,7 +37,7 @@ var x = sample(Gaussian({mu: 0, sigma: 1}), {
 %%%
 Here, \ic{paramScalar(name)} declares an optimizable, real-valued parameter named \ic{name}; there are analogous functions \ic{paramVector}, \ic{paramMatrix}, and \ic{paramTensor} for declaring vector, matrix, and tensor-valued parameters.
 Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value returned by \ic{paramScalar} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
-Parameters must have unique names so they can be disambiguated by the optimization engine under the hood. \ndg{they don't have to be unique... this just leads to param sharing. right?}
+Parameters must be named so they can be disambiguated by the optimization engine.
 
 Using variational parameters directly as the guide distribution parameters (as done above) results in a mean field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
 We can also compute the guide parameters via a neural network:
@@ -179,6 +179,8 @@ The middle code block shows how to achieve regularized maximum likelihood. Here,
 Finally, the right block shows a variational Bayesian model: \ic{mu_x} has a Gaussian prior distribution, and the guide samples \ic{mu_x} from an approximate variational Gaussian posterior with optimizable parameters.
 This form learns a distribution over generative models, maintaining an estimate of uncertainty about the true model.
 
+\remark{rewrite this so the maximum likelihood uses a Delta guide with an improper prior. Note how this makes Learning the model just part of learning to guide. Everything is in terms of the guide.}
+
 
 \subsection{Examples: Simple Bayesian Networks}
 
@@ -285,7 +287,7 @@ var model = function() {
 \end{minipage}
 \end{minipage}
 
-\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with one latent variable per observation. \emph{Top:} Continuous latent variable. \emph{Bottom:} Discrete latent variable with 3 discrete values (i.e. a Gaussian mixture model with 3 mixture components).}
+\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with one latent variable per observation. \emph{Top:} Continuous latent variable. \emph{Bottom:} Discrete latent variable with 3 discrete values (i.e. a Gaussian mixture model with 3 mixture components).~\remark{use Delta guides with improper priors for model parameters}}
 \label{fig:bn_oneLatent}
 
 \end{figure}
@@ -424,7 +426,7 @@ var model = function() {
 \end{minipage}
 \end{minipage}
 
-\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with two latent variables per observation. \emph{Top:} Guide program predicts the two latents independently. \emph{Bottom:} Changing the guide program to treat the second latent variable as conditional on the first (green highlights show changes to the code).}
+\caption{WebPPL code and corresponding graphical models for simple Bayesian networks with two latent variables per observation. \emph{Top:} Guide program predicts the two latents independently. \emph{Bottom:} Changing the guide program to treat the second latent variable as conditional on the first (green highlights show changes to the code).~\remark{use Delta guides with improper priors for model parameters}}
 \label{fig:bn_twoLatent}
 \end{figure}
 

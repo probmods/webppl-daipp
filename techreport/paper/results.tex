@@ -43,7 +43,8 @@ We next consider a more complicated Bayesian network model based on the QMR-DT m
 Our amortized guide program for this model uses a neural network to jointly predict the probabilities of all latent cause variables given a set of observed effects. Since the QMR-DT model contains a large number of discrete random variables, we expect the variance reduction strategies introduced in Section~\ref{sec:optimization:unifiedEstimator} to have significant effect.
 Thus, we consider training this guide program with no variance reduction (\emph{Amortized}), with per-choice likelihood ratio weights, (\emph{+ local weights}), and with both per-choice weights and baselines (\emph{+ baselines}). As a point of reference, we also include a mean field model which uses all variance reduction strategies.
 Data for our experiments is sampled from a randomly-generated graph with 200 causes and 100 effects. We sample 1000 observations for the training set and an additional 100 for a held-out test set.
-\ndg{note that the fully-marginalized approach isn't really tractable anymore due to the size of the latent space?}
+% \ndg{note that the fully-marginalized approach isn't really tractable anymore due to the size of the latent space?}
+\remark{mention learning rates}
 
 Figure~\ref{fig:qmrResults} shows the results of our experiments. The left plot shows optimization progress under each condition. Without any of the variance reduction strategies, gradients are extremely noisy and optimization makes almost no progress. Using local, per-variable likelihood ratio weights allows optimization to mke progress, and adding per-variable baselines further boosts performance. Though it uses all variance reduction strategies, the mean field model trains significantly more slowly than the variance-reduced amortized models. This happens because the mean field model has separate parameters for each training observation, rather than a single parameter set shared by a neural network, i.e. it has many more parameters that are each updated by very few gradient steps. Amortization thus both facilitates fast posterior prediction and exhibits faster training due to parameter sharing.
 
@@ -56,6 +57,8 @@ We next evaluate the guide program's posterior prediction ability. We use the le
 %%%
 where $\vecstyle{e}_{\text{true}}$ are effects from the test set and $\vecstyle{e}_{\text{sampled}}$ are hallucinated from the model.
 Figure~\ref{fig:qmrResults} Right plots the average $F$ score over 100 runs, where we compare our amortized guide program against using the prior program to sample latent causes. The learned guide program correctly predicts more than twice as many active effects.
+
+\remark{add results from factored model experiments.}
 
 \begin{figure}[!ht]
 \begin{minipage}{0.6\linewidth}
@@ -161,8 +164,6 @@ Target & \multicolumn{3}{c}{VAE} & \multicolumn{3}{c}{SBN}
 Introduce the CoCoLab abstracts dataset (no citation, but acknowledge robert in footnote)
 
 Do mean-field, marginalized, and one or two neural guides?
-
-Show Top N words for each learned topic?
 
 
 %Things to try if we have time:

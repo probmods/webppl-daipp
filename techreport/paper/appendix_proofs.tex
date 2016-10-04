@@ -19,12 +19,9 @@
 \label{eq:estDerivation_trick}
 &= \int_\reparamVars \reparamDist(\reparamVars | \observedVars) \gradparams \log \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \reparamDist(\reparamVars | \observedVars) \gradparams ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) \\
 %
-&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber\\
-%
-&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars | \observedVars) W(\reparamVars, \observedVars) + \gradparams \log p(\xformedVars, \observedVars) - \gradparams \log \guide(\xformedVars | \observedVars) ]\nonumber
+&= \expect_\reparamDist [ \gradparams \log \reparamDist(\reparamVars | \observedVars) ( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) ) + \gradparams( \log p(\xformedVars, \observedVars) - \log \guide(\xformedVars | \observedVars) )]\nonumber
 \end{align}
 Line~\ref{eq:estDerivation_trick} makes use of the identity $\nabla f(x) = f(x) \nabla \log f(x)$.
-\ndg{need to define $W$}
 
 \subsection{Zero Expectation Identities}
 \label{sec:appendix:zeroexp}
