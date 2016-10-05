@@ -2,19 +2,45 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-Conclude, restate contributions. Discuss what we learned, etc.
+In this paper, we presented a system for amortized inference in probabilistic programs.
+Amortization is achieved through parameterized \emph{guide programs} which mirror the structure of the original program but can be trained to approximately sample from the posterior.
+We introduced an interface for specifying guide programs which is flexible enough to reproduce state-of-the-art variational inference methods.
+We also demonstrated how this interface supports model learning in addition to amortized inference.
+We developed and proved the correctness of an optimization method for training guide programs, and we evaluated its ability to optimize guides for Bayesian networks, topic models, and deep generative models.
 
 \subsection{Future Work}
 \label{sec:conclusion_futureWork}
 
-Yield-so-far, accumulative models (cite NGPM).
+There are many exciting directions of future work to pursue in improving amortized inference for probabilistic programs. The system we have presented in this paper provides a platform from which to explore these and other possibilities:
 
-More constructions like mapData. foldData?
+\paragraph{More modeling paradigms}
+In this paper, we focused on the common machine learning modeling paradigm in which a global generative model generates many IID data points.
+There are many other modeling paradigms to consider.
+For example, time series data is common in machine learning applications. Just as we developed \ic{mapData} to facilitate efficient inference in IID data models, we might develop an analogous data processing function for time series data (i.e. \ic{foldData}). Using neural guides with such a setup would permit amortized inference in models such as Deep Kalman Filters~\cite{DeepKalmanFilters}.
+In computer vision and computer graphics, a common paradigm for generative image models is to factor image generation into multiple steps and condition each step on the partially-generated image thus far~\cite{PixelCNN,NGPM}.
+Such `yield-so-far' models should also be possible to implement in our system.
 
-Even better discrete estimators. MuProp, VIMCO.
+\paragraph{Better gradient estimators}
+While the variance reduction strategies employed by our optimizer make inference with discrete variables tractable, it is still noticeably less efficient then with purely continuous models.
+Fortunately, there are ongoing efforts to develop better, general-purpose discrete estimators for stochastic gradients~\cite{MuProp,VIMCO}.
+It should be possible to adapt these methods for probabilistic programs.
 
-More possibilities for auto-guide architectures: neural Turing machines (external memory might be better for capturing certain long-range dependencies), neural programmer-interpreter (the `stack' of recurrent networks, which communicate via arguments, might be a better representation for soe programs).
+\paragraph{Automatic guides}
+As discussed in Section~\ref{sec:autoGuide}, we believe that automatically deriving guide programs using recurrent neural networks may soon be possible.
+Recent enhancements to recurrent networks may be necessary to make this a reality.
+For example, the external memory of the Neural Turing Machine may be better at capturing certain long-range posterior dependencies~\cite{NTM}.
+We might also draw inspiration from the Neural Programmer-Interpreter~\cite{NPI}, whose stack of recurrent networks which communicate via arguments might better capture the posterior dataflow of arbitrary programs.
 
-Tutorial training and combinations with SMC (also from NGPM), wakey-sleepy(?)
+\paragraph{Other learning objectives}
+In this paper, we focused on optimizing the ELBo.
+If we flip the direction of KL divergence in Equation~\ref{eq:elbo}, the resulting functional is in \emph{upper} bound on the log marginal likelihood of the data---an `Evidence Upper Bound,' or EUBo.
+Computing the EUBo and its gradient requires samples from the true posterior and is thus unusable in many applications, where the entire goal of amortized inference is to find a way to tractably generate such samples.
+However, some applications can benefit from it, if the goal is to speed up an existing tractable inference algorithm (e.g. SMC~\cite{NGPM}), or if posterior execution traces are available through some other means (e.g. input examples from the user).
+There may also be less extreme ways to exploit this idea for learning.
+For example, in a \ic{mapData}-style program, we might interleave normal ELBo updates with steps that hallucinate data from the posterior predictive (using a guide for global model parameters) and train the local guide to correctly parse these `dreamed-up' examples. Such a scheme bears resemblance to the wake-sleep algorithm~\cite{WakeSleep}.
 
-Variable re-ordering (i.e. the truly `backwards' model, cite stochastic inverse paper + Brooks's neural net version of stochastic inverses, NVIL 2-layer SBN). Including extra choices that don't hapen in the main program. Even more general control flow changes?
+\paragraph{Control flow}
+While our system's one-to-one mapping between random choices in the guide and in the target program makes the definition and analysis of guides simple, there are scenarios in which more flexibility is useful.
+In some cases, one may want to insert random choices into the guide which do not occur in the target program (e.g. using a compound distribution, such as a mixture distribution, as a guide).
+And for models in which there is a natural hierarchy between the latent variables and the observed variables, having the guide run `backwards' from the observed variables to the top-most latents has been shown to be useful~\cite{StochasticInverses,NeuralStochasticInverses,NVIL}.
+It is worth exploring how to support these (and possibly even more general) control flow deviations in a general-purpose probabilistic programming inference system.
