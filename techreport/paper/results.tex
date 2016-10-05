@@ -41,10 +41,9 @@ Note that the amortized guide program slightly out-performs the mean field guide
 We next consider a more complicated Bayesian network model based on the QMR-DT medical diagnosis network~\cite{QMR}. QMR-DT is a bipartite graphical model with one layer of nodes corresponding to latent causes (e.g. diseases, in the medical setting) and a second layer of observed effects (e.g. symptoms). All nodes are binary (i.e. Bernoulli), and the cause nodes are connected to the effects via directed noisy-or links. Appendix~\ref{sec:appendix_code:qmr} shows our implementation.
 
 Our amortized guide program for this model uses a neural network to jointly predict the probabilities of all latent cause variables given a set of observed effects. Since the QMR-DT model contains a large number of discrete random variables, we expect the variance reduction strategies introduced in Section~\ref{sec:optimization:unifiedEstimator} to have significant effect.
-Thus, we consider training this guide program with no variance reduction (\emph{Amortized}), with per-choice likelihood ratio weights, (\emph{+ local weights}), and with both per-choice weights and baselines (\emph{+ baselines}). As a point of reference, we also include a mean field model which uses all variance reduction strategies.
+Thus, we consider training this guide program with no variance reduction (\emph{Amortized}, step size $10^{-5}$), with per-choice likelihood ratio weights, (\emph{+ local weights}, step size $10^{-3}$), and with both per-choice weights and baselines (\emph{+ baselines}, step size $10^{-2}$). As a point of reference, we also include a mean field model (step size $10^{-2}$) which uses all variance reduction strategies.
 Data for our experiments is sampled from a randomly-generated graph with 200 causes and 100 effects. We sample 1000 observations for the training set and an additional 100 for a held-out test set.
 % \ndg{note that the fully-marginalized approach isn't really tractable anymore due to the size of the latent space?}
-\remark{mention learning rates}
 
 Figure~\ref{fig:qmrResults} shows the results of our experiments. The left plot shows optimization progress under each condition. Without any of the variance reduction strategies, gradients are extremely noisy and optimization makes almost no progress. Using local, per-variable likelihood ratio weights allows optimization to mke progress, and adding per-variable baselines further boosts performance. Though it uses all variance reduction strategies, the mean field model trains significantly more slowly than the variance-reduced amortized models. This happens because the mean field model has separate parameters for each training observation, rather than a single parameter set shared by a neural network, i.e. it has many more parameters that are each updated by very few gradient steps. Amortization thus both facilitates fast posterior prediction and exhibits faster training due to parameter sharing.
 
@@ -57,8 +56,6 @@ We next evaluate the guide program's posterior prediction ability. We use the le
 %%%
 where $\vecstyle{e}_{\text{true}}$ are effects from the test set and $\vecstyle{e}_{\text{sampled}}$ are hallucinated from the model.
 Figure~\ref{fig:qmrResults} Right plots the average $F$ score over 100 runs, where we compare our amortized guide program against using the prior program to sample latent causes. The learned guide program correctly predicts more than twice as many active effects.
-
-\remark{add results from factored model experiments.}
 
 \begin{figure}[!ht]
 \begin{minipage}{0.6\linewidth}
@@ -74,11 +71,39 @@ Figure~\ref{fig:qmrResults} Right plots the average $F$ score over 100 runs, whe
 \label{fig:qmrResults}
 \end{figure}
 
+In addition to the guide program described above, which predicts all latent causes jointly given the observed effects, we also experimented with `factored' guide programs which predict each latent cause one-by-one given the observed effects. We consider a guide that predicts each latent cause independently (\emph{Factored}), as well as a guide that introduces dependencies between all latent causes via a recurrent neural network (\emph{Factored + GRU}). The recurrent network receives as input the value of each latent cause as it is sampled, maintaining a persistent hidden state  that, in theory, can capture the values of all latent causes sampled thus far. We use the gated recurrent unit (GRU) architecture for its ability to capture a longer-range dependencies~\cite{GRU}, with a hidden state of dimension 20. The code for these programs is shown in Appendix~\ref{sec:appendix_code:qmr}.
+We use stepsize 0.01 for both during optimization.
+
+Figure~\ref{fig:qmrResults_factored} compares these guide programs with the joint guide used earlier in this section.
+While the independent factored guide performs slightly less well than the joint guide, adding the recurrent neural network to capture posterior dependencies improves performance to slightly better than the joint guide.
+One caveat is that the \emph{Factored + GRU} guide takes significantly longer to train in our implementation due to the recurrent network computation.
+Later in the paper, we discuss how this guide structure might point the way toward automatically deriving guide programs.
+
+\begin{figure}[!ht]
+\begin{minipage}{0.5\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figs/results/qmr/elboProgress_factored.png}
+\end{minipage}
+%
+\begin{minipage}{0.5\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figs/results/qmr/reconstructScores_factored.pdf}
+\end{minipage}
+\caption{Experimenting with factored guide programs for QMR-DT. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Percentage of test set active effects correctly predicted using latent causes sampled from either the prior or the guide program.}
+\label{fig:qmrResults_factored}
+\end{figure}
+
 
 %\ndg{TODO: it'd be great to show an example of how daipp can handle missing evidence. currently observe defaults to sample when the val is undefined (i think). so we need to make sure that observe passes its options arg through to this sample. then we can add a guide to the observes. simplest might be an RNN that runs across the observes predicting them, before using the net to predict latents. hmm, we'll want to incorporate observed data in the data-predictor net... so need to have observe to something for defined vals as well.
 %
 %actually, there's no reason to predict the missing observe values (unless we care about them): we can run an rnn over the observations (with address so we know which is which) to build an 'observation vector' then predict the latents from this.}
 
+\subsection{Latent Dirichlet Allocation}
+\label{sec:results_lda}
+
+Introduce the CoCoLab abstracts dataset (no citation, but acknowledge robert in footnote)
+
+Do mean-field, marginalized, and one or two neural guides?
 
 \subsection{Neural Generative Models: Variational Autoencoder \& Sigmoid Belief Network}
 \label{sec:results_vae}
@@ -156,14 +181,6 @@ Target & \multicolumn{3}{c}{VAE} & \multicolumn{3}{c}{SBN}
 \caption{Evaluating the Variational Autoencoder (VAE) and Sigmoid Belief Network (SBN) programs on the MNIST dataset. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Reconstructing the images in the ``Target'' column using both models.}
 \label{fig:vae_sbn_results}
 \end{figure}
-
-
-\subsection{Latent Dirichlet Allocation}
-\label{sec:results_lda}
-
-Introduce the CoCoLab abstracts dataset (no citation, but acknowledge robert in footnote)
-
-Do mean-field, marginalized, and one or two neural guides?
 
 
 %Things to try if we have time:

@@ -9,8 +9,9 @@ plot = plotUtils.plot.elboProgress(data, 'condition', ribbon = FALSE)
 # plot = plot + coord_cartesian(ylim = c(-500, -175)) 		# Set axis limits
 # plot = plotUtils.plot.elboProgress(data, NULL, ribbon = FALSE)
 # plotUtils.plot.save(plot, paste0(dir, '/elboProgress.pdf'))
-plot = plot + theme(legend.position='right')
-plotUtils.plot.save(plot, paste0(dir, '/elboProgress.png'), aspect = 1.8)
+# plot = plot + theme(legend.position='right')
+# plotUtils.plot.save(plot, paste0(dir, '/elboProgress.png'), aspect = 1.8)
+ plotUtils.plot.save(plot, paste0(dir, '/elboProgress.png'), aspect = 1.5)
 
 # -----------------------------------------------------------------------------------------
 
@@ -34,8 +35,9 @@ plot = plotUtils.plot.barPlot(data,
     groupbys = c('condition'), x = 'condition', y = 'score', xlabel = '', ylabel = '% Active Causes Predicted',
     colorby = NULL)
 
-plotUtils.plot.save(plot, paste0(dir, '/qmr_reconstructScores.pdf'), aspect = 1.2)
-# plotUtils.plot.save(plot, paste0(dir, '/qmr_reconstructScores.pdf'), aspect = 3.1)
+# plotUtils.plot.save(plot, paste0(dir, '/qmr_reconstructScores.pdf'), aspect = 1.5)
+# plotUtils.plot.save(plot, paste0(dir, '/qmr_reconstructScores.pdf'), aspect = 1. 2)
+plotUtils.plot.save(plot, paste0(dir, '/qmr_reconstructScores.pdf'), aspect = 4)
 
 # -----------------------------------------------------------------------------------------
 

@@ -29,6 +29,8 @@ var model = function() {
 \subsection{QMR-DT}
 \label{sec:appendix_code:qmr}
 
+Program with joint guide:
+%%%
 \begin{lstlisting}
 var graph = loadQMRGraph('qmr_graph.json');
 var data = loadData('qmr_data.json');
@@ -54,6 +56,94 @@ var model = function() {
          return sample(Bernoulli({p: disease.priorProb}), {
             guide: Bernoulli({p: T.get(predictedProbs, i)})
          });
+      }, graph.diseaseNodes);
+
+      mapData({data: symptoms}, function(symptom, symptomIndex) {
+         var symptomNode = graph.symptomNodes[symptomIndex];
+         observe(Bernoulli({p: noisyOrProb(symptomNode, diseases)}), symptom);
+      });
+   });
+};
+\end{lstlisting}
+
+Program with factored guide. Note that the guide uses a separate neural network (with separate parameters) to predict each latent cause.
+%%%
+\begin{lstlisting}
+var graph = loadQMRGraph('qmr_graph.json');
+var data = loadData('qmr_data.json');
+
+var noisyOrProb = function(symptomNode, diseases) {
+   var cp = product(map(function(parent) {
+      return diseases[parent.index] ? (1 - parent.prob) : 1;
+   }, symptomNode.parents));
+   return 1 - (1-symptomNode.leakProb)*cp;
+};
+
+var predictNet = cache(function(i) {
+   return nn.mlp(graph.numSymptoms, [
+      {nOut: 1, activation: sigmoid}
+   ], 'predictNet_'+i);
+});
+var predictDiseaseProb = function(symptoms, i) {
+   return T.get(nneval(predictNet(i), Vector(symptoms)), 0);
+};
+
+var model = function() {
+   mapData({data: data, batchSize: 20}, function(symptoms) {
+      var diseases = mapIndexed(function(i, disease) {
+         return sample(Bernoulli({p: disease.priorProb}), {
+            guide: Bernoulli({p: predictDiseaseProb(symptoms, i)})
+         });
+      }, graph.diseaseNodes);
+
+      mapData({data: symptoms}, function(symptom, symptomIndex) {
+         var symptomNode = graph.symptomNodes[symptomIndex];
+         observe(Bernoulli({p: noisyOrProb(symptomNode, diseases)}), symptom);
+      });
+   });
+};
+\end{lstlisting}
+
+Program with factored guide with GRU.
+%%%
+\begin{lstlisting}
+var graph = loadQMRGraph('qmr_graph.json');
+var data = loadData('qmr_data.json');
+var gruHiddenDim = 20;
+
+var noisyOrProb = function(symptomNode, diseases) {
+   var cp = product(map(function(parent) {
+      return diseases[parent.index] ? (1 - parent.prob) : 1;
+   }, symptomNode.parents));
+   return 1 - (1-symptomNode.leakProb)*cp;
+};
+
+var predictNet = cache(function(i) {
+   return nn.mlp(graph.numSymptoms + gruHiddenDim, [
+      {nOut: 1, activation: sigmoid}
+   ], 'predictNet_'+i);
+});
+var predictDiseaseProb = function(symptoms, i) {
+   var inputs = T.concat(Vector(symptoms), globalStore.gruHiddenState);
+   return T.get(nneval(predictNet(i), inputs, 0);
+};
+
+// GRU cell: takes input + previous hidden state, produces new hidden state.
+var gru = makeGRU(gruHiddenDim, 1, 'gru');
+var updateGRUState = function(latentChoiceVal) {
+   var inputs = T.concat(Vector([latentChoiceVal]), globalStore.gruHiddenState);
+   globalStore.gruHiddenState = nneval(gru, inputs);
+};
+
+var model = function() {
+   mapData({data: data, batchSize: 20}, function(symptoms) {
+      globalStore.gruHiddenState = zeros([gruHiddenDim]);
+      var diseases = mapIndexed(function(i, disease) {
+         var x = sample(Bernoulli({p: disease.priorProb}), {
+            guide: Bernoulli({p: predictDiseaseProb(symptoms, i)})
+         });
+         updateGRUState(x);
+         return x;
       }, graph.diseaseNodes);
 
       mapData({data: symptoms}, function(symptom, symptomIndex) {
