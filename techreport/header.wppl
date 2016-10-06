@@ -34,7 +34,7 @@ var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma,
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			prm(name) :
+			modelParamScalar(paramMu, paramSigma, name) :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
 				guide: Delta({v: prm(name)})
@@ -50,7 +50,7 @@ var makeSigmaGenerative = function(value, priorShape, priorScale, paramMu, param
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			softplus(prm(name)) :
+			softplus(modelParamScalar(paramMu, paramSigma, name)) :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
 				guide: Delta({v: softplus(prm(name))})
@@ -70,7 +70,7 @@ var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma, name) 
 	return !opts.doModelLearning ?
 		Vector(ws) :
 	opts.modelLearnType === 'ML' ?
-		simplex(prm(name)) :
+		simplex(modelParamVector(n-1, paramMu, paramSigma, name)) :
 	opts.modelLearnType === 'ML_reg' ?
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
 			guide: Delta({v: simplex(prm(name))})
@@ -85,7 +85,7 @@ var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSi
   var prm = function(nm) { return paramVector(n*m, paramMu, paramSigma, nm); };
   var x =
   opts.modelLearnType === 'ML' ?
-    prm(name) :
+    modelParamVector(n*m, paramMu, paramSigma, name) :
   opts.modelLearnType === 'ML_reg' ?
     sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n*m, 1]}), {
       guide: Delta({v: prm(name)})

@@ -112,3 +112,21 @@ var sampleDaipp = function(dist,opt) {
     return val
   }
 }
+
+// Version of nneval appropriate for use as part of a generative model
+var nnevalModel = function(nn, arg) {
+  if (nn.getParameters().length > 0) {
+    var params = daipp.nnparams(nn);
+    // make the parameters part of the guide by sampling from
+    //   and improper prior with a Delta guide.
+    var gparams = map(function(p) {
+      return sample(ImproperUniform(), {
+        guide: Delta({v: p})
+      });
+    }, params);
+    nn.setParameters(gparams);
+  }
+  return nn.eval(arg);
+}
+
+

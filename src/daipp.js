@@ -53,7 +53,8 @@ module.exports = function(env) {
       latentSize: config.latentSize,
       val2vec: val2vec,
       vec2dist: vec2dist,
-      nneval: nneval,
+      nnparams: nneval.nnparams,
+      nneval: nneval.nneval,
       makeRU: rnn.makeRU,
       makeUpdateNet: rnn.makeUpdateNet
     },
