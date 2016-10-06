@@ -9,7 +9,7 @@ module.exports = function(env, config) {
 
   var debug = config.debug;
   var latentSize = config.latentSize;
-  var nneval = require('./nneval')(env, config);
+  var nneval = require('./nneval')(env, config).nneval;
 
   var arrayRNN = rnn.makeRU('rnn', latentSize, latentSize, 'arrayRNN', debug);
 

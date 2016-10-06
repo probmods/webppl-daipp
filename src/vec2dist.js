@@ -7,7 +7,7 @@ var Tensor = T['__Tensor'];
 module.exports = function(env, config) {
 
   var latentSize = config.latentSize;
-  var nneval = require('./nneval')(env, config);
+  var nneval = require('./nneval')(env, config).nneval;
 
   /*
    This goes from a vector (created from context etc) to an importance distribution.
