@@ -26,6 +26,21 @@ var targetModel = function() {
 	return symptoms;
 };
 
+var jointTargetModel = function() {
+	var diseases = map(function(disease) {
+		return sample(Bernoulli({p: disease.p}));
+	}, graph.diseases);
+
+	var symptoms = map(function(symptom) {
+		return sample(Bernoulli({p: noisyOrProb(symptom, diseases)}));
+	}, graph.symptoms);
+
+	return {
+		diseases: diseases,
+		symptoms: symptoms
+	};
+};
+
 // // Generate some persistent training and test data
 // var trainData = repeat(1000, targetModel);
 // var testData = repeat(100, targetModel);
@@ -264,6 +279,45 @@ var boolArrayCountEqualTrues = function(arr1, arr2) {
 	else return (arr1[0] ? arr2[0] ? 1 : 0 : 0) + boolArrayCountEqualTrues(arr1.slice(1), arr2.slice(1));
 };
 
+// // Model-specific returns
+// var computeCustomReturns = function(params, testData, trainData) {
+// 	// Encode/decode reconstruction results?
+// 	var nData = 100;
+// 	var data = _.shuffle(testData).slice(0, nData);
+// 	var scores = map(function(symptomVals) {
+// 		globalStore.data = [symptomVals];
+// 		var ret = sample(ForwardSample(model, {
+// 			samples: 1,
+// 			guide: (opts.qmrScoreUseGuide === undefined ? true : opts.qmrScoreUseGuide),
+// 			params: params
+// 		}));
+// 		var sampledSymptomVals = map(function(p) {
+// 			return sample(Bernoulli({p: p}));
+// 		}, ret[0].predictedSymptomProbs);
+// 		var numEq = boolArrayCountEqual(symptomVals, sampledSymptomVals);
+// 		var percentEq = numEq / numSymptoms;
+// 		var numTrueEq1 = boolArrayCountEqualTrues(symptomVals, sampledSymptomVals);
+// 		var numTrueEq2 = boolArrayCountEqualTrues(sampledSymptomVals, symptomVals);
+// 		var percentTrueEq1 = numTrueEq1 / sum(symptomVals);
+// 		var percentTrueEq2 = numTrueEq2 / sum(sampledSymptomVals);
+// 		// console.log('True:    ' + boolArrayToBitString(symptomVals));
+// 		// console.log('Sampled: ' + boolArrayToBitString(sampledSymptomVals))
+// 		// console.log('Num Equal: ' + numEq + ' (' + (percentEq*100) + '\%)');
+// 		// console.log('Num 1\'s Equal (True -> Sampled): ' + numTrueEq1 + ' (' + (percentTrueEq1*100) + '\%)');
+// 		// console.log('Num 1\'s Equal (Sampled -> True): ' + numTrueEq2 + ' (' + (percentTrueEq2*100) + '\%)');
+// 		// console.log('----------------------------------------------------------------------');
+
+// 		// return ret[0].reconstructScore;
+// 		return Math.min(percentTrueEq1, percentTrueEq2);
+// 		// return Math.max(percentTrueEq1, percentTrueEq2);
+// 	}, data);
+// 	var avgScore = sum(scores) / nData;
+// 	return {
+// 		qmrScore_avg: avgScore,
+// 		qmrScores: scores
+// 	};
+// };
+
 // Model-specific returns
 var computeCustomReturns = function(params, testData, trainData) {
 	// Encode/decode reconstruction results?
@@ -303,3 +357,49 @@ var computeCustomReturns = function(params, testData, trainData) {
 	};
 };
 
+// // Model-specific returns
+// var computeCustomReturns = function(params) {
+// 	// predictive accuracy for active causes.
+// 	var nData = 100;
+// 	var data = repeat(nData, jointTargetModel);
+// 	var scores = map(function(datumPair) {
+// 		globalStore.data = [datumPair.symptoms];
+// 		var ret = sample(ForwardSample(model, {
+// 			samples: 1,
+// 			guide: (opts.qmrScoreUseGuide === undefined ? true : opts.qmrScoreUseGuide),
+// 			params: params
+// 		}));
+
+// 		var sampledDiseaseVals = map(function(p) {
+// 			return sample(Bernoulli({p: p}));
+// 		}, ret[0].predictedDiseaseProbs);
+// 		var numEq = boolArrayCountEqual(datumPair.diseases, sampledDiseaseVals);
+// 		var percentEq = numEq / numDiseases;
+// 		var numTrueEq1 = boolArrayCountEqualTrues(datumPair.diseases, sampledDiseaseVals);
+// 		var numTrueEq2 = boolArrayCountEqualTrues(sampledDiseaseVals, datumPair.diseases);
+// 		var percentTrueEq1 = numTrueEq1 / sum(datumPair.diseases);
+// 		var percentTrueEq2 = numTrueEq2 / sum(sampledDiseaseVals);
+// 		// console.log(ret[0].predictedDiseaseProbs.toString());
+// 		console.log('True:    ' + boolArrayToBitString(datumPair.diseases));
+// 		console.log('Sampled: ' + boolArrayToBitString(sampledDiseaseVals))
+// 		console.log('Num Equal: ' + numEq + ' (' + (percentEq*100) + '\%)');
+// 		console.log('Num 1\'s Equal (True -> Sampled): ' + numTrueEq1 + ' (' + (percentTrueEq1*100) + '\%)');
+// 		console.log('Num 1\'s Equal (Sampled -> True): ' + numTrueEq2 + ' (' + (percentTrueEq2*100) + '\%)');
+// 		console.log('----------------------------------------------------------------------');
+
+// 		return Math.min(percentTrueEq1, percentTrueEq2);
+
+
+// 		// var scores = map2(function(p, val) {
+// 		// 	return Bernoulli({p: p}).score(val);
+// 		// }, ret[0].predictedDiseaseProbs, datumPair.diseases);
+// 		// var nscore = -sum(scores);
+
+// 		// return nscore;
+// 	}, data);
+// 	var avgScore = sum(scores) / nData;
+// 	return {
+// 		qmrScore_avg: avgScore,
+// 		qmrScores: scores
+// 	};
+// };
