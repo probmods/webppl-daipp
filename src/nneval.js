@@ -43,24 +43,24 @@ module.exports = function(env, config) {
     // TODO: If we accidentally use some net in more than one e.g.
     // nn.sequence, will we register its parameters more than once?
     // Does that cause the gradient step to be applied more than once?
-    if (nn.getParameters().length > 0) {
+    var params = nn.getParameters();
+    if (params.length > 0) {
+      // console.log('nnparams - has params');
       assert.ok(nn.name && nn.name.length > 0, 'daipp: Parameterized net cannot be anonymous.');
       assert.ok(nn.isTraining, 'daipp: Net "' + nn.name + '" is not in training mode.');
-      var params; // captures the argument of setParams
       util.registerParams(env, nn.name,
                           config.useXavierInit ? wrapGetParamsWithXavier(nn) : nn.getParameters.bind(nn),
                           function(prms) { params = prms; });
-      return params;
     }
-    return undefined;
+    return params;
   }
 
   // By using this function throughout daipp (rather than calling
   // nn.eval directly) we ensure that inference coroutines are aware
   // of the parameters of all neural network.
   function nneval(nn, arg) {
-    if (nn.getParameters().length > 0) {
-      var params = nnparams(nn);
+    var params = nnparams(nn);
+    if (params.length > 0) {
       nn.setParameters(params);
     }
     return nn.eval(arg);
