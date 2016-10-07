@@ -38,10 +38,10 @@ In our system, we represent this computation using neural networks.
 This design choice reduces the search for $\guide$ to the much simpler continuous problem of optimizing the weights for these networks, which can be done using stochastic gradient descent.
 % The gradients are often high-variance, esp. for programs with discrete choices. To combat this, our system implements several general-purpose variance-reduction strategies.
 
-\ndg{something about mapData and the gobal/local variable split, and how that represents model + guide learning.}
-
-Our system's interface for specifying guide programs is flexible enough to subsume several popular recent approaches to variational inference, including those that perform both inference and model learning.
-The system has limited support for automatically deriving guide programs, and we discuss possible extensions that might extend this support to arbitrary programs.
+Our system's interface for specifying guide programs is flexible enough to subsume several popular recent approaches to variational inference, including those that perform both inference and model learning. To facilitate this common pattern we introduce the \ic{mapData} construct which represents the boundary between global ``model'' variables and variables local to the data points. Our system leverages the independence between data points implied by \ic{mapData} to enable mini-batches of data and variance reduction of gradient estimates.
 We evaluate our proof-of-concept system on a variety of Bayesian networks, topic models, and deep generative models.
 
-Our system is implemented in the WebPPL probabilistic programming language~\cite{WebPPL}. Its source code can be found in the WebPPL repository, with additional extensions at \url{https://github.com/probmods/webppl-daipp}.
+%When guides are not explicitly provided the system defaults to automatically derived mean-field guides. 
+%We discuss possible extensions that might extend this support to more complex guides that lead to amortized inferece.
+
+Our system has been implemented as an extension to the WebPPL probabilistic programming language~\cite{WebPPL}. Its source code can be found in the WebPPL repository, with additional helper code at \url{https://github.com/probmods/webppl-daipp}.
