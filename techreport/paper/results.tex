@@ -93,10 +93,12 @@ Later in the paper, we discuss how this guide structure might point the way towa
 \label{fig:qmrResults_factored}
 \end{figure}
 
+\ndg{TODO: i think we want to consider accuracy at predicting latents (here causes) on a held out set. this is where posterior correlations should really show up.}
 
-%\ndg{TODO: it'd be great to show an example of how daipp can handle missing evidence. currently observe defaults to sample when the val is undefined (i think). so we need to make sure that observe passes its options arg through to this sample. then we can add a guide to the observes. simplest might be an RNN that runs across the observes predicting them, before using the net to predict latents. hmm, we'll want to incorporate observed data in the data-predictor net... so need to have observe to something for defined vals as well.
-%
-%actually, there's no reason to predict the missing observe values (unless we care about them): we can run an rnn over the observations (with address so we know which is which) to build an 'observation vector' then predict the latents from this.}
+\ndg{TODO: evaluate using addresses to tell the update and predict nets where they are in execution. show results.}
+
+\ndg{TODO: it'd be great to show an example of how daipp can handle missing evidence. we can try to run an rnn over the observations (with address so we know which is which) to build an 'observation vector' then predict the latents from this.}
+
 
 \subsection{Latent Dirichlet Allocation}
 \label{sec:results_lda}
