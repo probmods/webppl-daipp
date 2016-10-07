@@ -1,9 +1,10 @@
 \section{Appendix: Example Programs}
 \label{sec:appendix_code}
 
-\subsection{Gaussian mixture model with discrete choices marginalized out}
+\subsection{Gaussian mixture model}
 \label{sec:appendix_code:gmmSumOut}
 
+With discrete choices marginalized out:
 \begin{lstlisting}
 var obs = loadData('data.json');
 var nComps = 3
@@ -154,10 +155,181 @@ var model = function() {
 };
 \end{lstlisting}
 
+\subsection{LDA}
+\label{sec:appendix_code:lda}
+
+To simplify the programs in this section, we use the technique of Section~\ref{sec:autoGuide:meanField} to insert a mean field \ic{LogisticNormal} guide for any \ic{Dirichlet} random choice that does not have an explicit guide declared.
+
+Mean field model:
+\begin{lstlisting}
+var model = function(corpus, vocabSize, numTopics, alpha, eta) {
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}));
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+\end{lstlisting}
+
+Marginalized mean field model:
+\begin{lstlisting}
+var model = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    forEach(doc, function(count, word) {
+
+      if (count > 0) {
+        // Sum over topic assignments/z.
+        var prob = sum(mapN(function(z) {
+          var zScore = Discrete({ps: topicDist}).score(z);
+          var wgivenzScore = Discrete({ps: topics[z]}).score(word);
+          return Math.exp(zScore + wgivenzScore);
+        }, numTopics));
+
+        factor(Math.log(prob) * count);
+      }
+
+    });
+
+  });
+
+  return topics;
+
+};
+\end{lstlisting}
+
+Word-level guide:
+\begin{lstlisting}
+var model = function(corpus, vocabSize, numTopics, alpha, eta) {
+
+  var numHid = 50;
+  var embedSize = 50;
+  var embedNet = nn.mlp(vocabSize, [{nOut: embedSize, activation: nn.tanh}], 'embedNet');
+
+  var net = nn.mlp(embedSize + numTopics, [
+    {nOut: numHid, activation: nn.tanh},
+    {nOut: numTopics}
+  ], 'net');
+
+  var wordAndTopicDistToParams = function(word, topicDist) {
+    var embedding = nneval(embedNet, oneOfK(word, vocabSize));
+    var out = nneval(net, T.concat(embedding, T.sub(topicDist, 1)));
+    return {ps: softplus(tensorToVector(out))};
+  };
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}));
+
+    mapData({data: doc}, function(word) {
+      var z = sample(Discrete({ps: topicDist}), {
+        guide: Discrete(wordAndTopicDistToParams(word, topicDist))
+      });
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+\end{lstlisting}
+
+Document-level guide:
+\begin{lstlisting}
+var nets = cache(function(numHid, vocabSize, numTopics) {
+  var init = nn.constantparams([numHid], 'init');
+
+  var ru = makeRNN(numHid, vocabSize, 'ru');
+
+  var outputHidden = nn.mlp(numHid, [
+    {nOut: numHid, activation: nn.tanh}
+  ], 'outputHidden');
+
+  var outputMu = nn.mlp(numHid, [
+    {nOut: numTopics - 1}
+  ], 'outputMu');
+
+  var outputSigma = nn.mlp(numHid, [
+    {nOut: numTopics - 1}
+  ], 'outputSigma');
+
+  return {
+    init: init,
+    ru: ru,
+    outputHidden: outputHidden,
+    outputMu: outputMu,
+    outputSigma: outputSigma
+  };
+});
+
+var model = function(data, vocabSize, numTopics, alpha, eta) {
+  var corpus = data.documentsAsCounts;
+  var numHid = 20;
+  var nets = nets(numHid, vocabSize, numTopics);
+
+  var guideParams = function(topics, doc) {
+    var initialState = nneval(nets.init);
+    var state = reduce(function(x, prevState) {
+      return nneval(nets.ru, [prevState, x]);
+    }, initialState, topics.concat(normalize(Vector(doc))));
+    var hidden = nneval(nets.outputHidden, state);
+    var mu = tensorToVector(nneval(nets.outputMu, hidden));
+    var sigma = tensorToVector(softplus(nneval(nets.outputSigma, hidden)));
+    var params = {mu: mu, sigma: sigma};
+    return params;
+  };
+
+  var topics = repeat(numTopics, function() {
+    return sample(Dirichlet({alpha: eta}));
+  });
+
+  mapData({data: corpus}, function(doc) {
+
+    var topicDist = sample(Dirichlet({alpha: alpha}), {
+      guide: LogisticNormal(guideParams(topics, doc))
+    });
+
+    mapData({data: countsToIndices(doc)}, function(word) {
+      var z = sample(Discrete({ps: topicDist}));
+      var topic = topics[z];
+      observe(Discrete({ps: topic}), word);
+    });
+
+  });
+
+  return topics;
+};
+\end{lstlisting}
+
+
 \subsection{Variational Autoencoder}
 \label{sec:appendix_code:vae}
 
-In this example and the one that follows, \ic{nnevalModel} evaluate a neural network while also placing an improper uniform prior over the network parameters. This allows neural networks to be used as part of learnable models.
+In this example and the one that follows, \ic{nnevalModel} evaluates a neural network while also placing an improper uniform prior over the network parameters. This allows neural networks to be used as part of learnable models.
 
 \begin{lstlisting}
 // Data
@@ -203,6 +375,7 @@ var model = function() {
    });
 }
 \end{lstlisting}
+
 
 \subsection{Sigmoid Belief Network}
 \label{sec:appendix_code:sbn}

@@ -101,9 +101,48 @@ Later in the paper, we discuss how this guide structure might point the way towa
 \subsection{Latent Dirichlet Allocation}
 \label{sec:results_lda}
 
-Introduce the CoCoLab abstracts dataset (no citation, but acknowledge robert in footnote)
+We also used our system to implement amortized inference in Latent Dirichlet Allocation topic models, over a data set of abstracts taken from the Stanford Computation and Cognition Lab's publication page.\footnote{Thanks to Robert Hawkins for creating this dataset.}
 
-Do mean-field, marginalized, and one or two neural guides?
+We experimented with two different amortized guide programs.
+The first is local to each word in a document (\emph{Word-level guide}): it learns to predict the latent topic for each word, given the word and the latent topic distribution for the document.
+The second is local to each document (\emph{Document-level guide}): it learns to predict the latent topic distribution for the document, given the words in the document and the latent word distributions for each topic.
+These two guides support amortized inference at different granularities and thus have different parameter sharing characteristics, which may lead to different learning behavior.
+For comparison, we also included two non-amortized conditions: a mean field model, and a mean field model with the latent choice of topic per word marginalized out (\emph{Marginalized mean field}).
+Code for all of these programs can be found in Appendix~\ref{sec:appendix_code:lda}.
+We use five topics and learning rate 0.01 in all experiments.
+
+Figure~\ref{sec:results_lda} shows the results of these experiments.
+In the ELBo progress plot on the left, we see that the marginalized mean field model converges fastest: this is consistent with the result from the Gaussian mixture model experiments and further emphasizes the performance benefits of eliminating discrete random choices when possible. Of our two amortized guides, the word-level guide performs better, likely due to increased parameter sharing. The document-level guide performs at least as well as the mean field model while also being able to efficiently predict topic distributions for previously-unseen documents.
+
+Figure~\ref{sec:results_lda} Right shows the top ten highest probability words in each inferred topic for the marginalized mean field model. From left to right, these topics appear to be about experiments, pragmatic language models, knowledge acquisition, probabilistic programming languages, and a grab bag of remaining topics.
+
+\begin{figure}[!ht]
+\begin{minipage}{0.5\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figs/results/lda/elboProgress.png}
+\end{minipage}
+%
+\begin{minipage}{0.5\linewidth}
+\tiny
+\centering
+\begin{tabular}{c c c c c}
+\textbf{Topic 1} & \textbf{Topic 2} & \textbf{Topic 3} & \textbf{Topic 4} & \textbf{Topic 5}\\
+model & model & loop & probabilistic & attempt\\
+causal & language & learning & models & inference\\
+dynamic & pragmatic & abstract & programming & novel\\
+judgments & abstract & extension & church & decisions\\
+evidence & interpretation & bayesian & abstract & required\\
+abstract & inference & knowledge & using & models\\
+actions & knowledge & human & inference & behavior\\
+pedagogical & words & causal & stochastic & bayesian\\
+people & form & theories & language & cognition\\
+participants & using & theory & model & expressive
+\end{tabular}
+\end{minipage}
+%
+\caption{Performance of Latent Dirichlet Allocation models. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Top ten highest probability words in each inferred topic for the best-performing model.}
+\label{fig:ldaResults}
+\end{figure}
 
 \subsection{Neural Generative Models: Variational Autoencoder \& Sigmoid Belief Network}
 \label{sec:results_vae}
