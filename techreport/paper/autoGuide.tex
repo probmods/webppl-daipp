@@ -7,6 +7,7 @@ Thus far, we have shown how we can succesfully create and train guide programs f
 This section describes our early experience with automatically deriving guide programs. We first describe how our system provides sensible default behavior that can make writing some guides less cumbersome. We then outline how the system might be extended to automatically derive guides for any program using recurrent neural networks.
 
 \subsection{Mean Field by Default}
+\label{sec:autoGuide:meanField}
 
 If a call to \ic{sample} is not provided with an explicit guide distribution, our system automatically inserts a mean field guide. For example, the code \ic{sample(Gaussian(\{mu: 0, sigma: 1\}))} results in:
 %%%
