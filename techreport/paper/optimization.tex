@@ -2,7 +2,7 @@
 \section{Optimizing Parameters}
 \label{sec:optimization}
 
-Now that we have seen how to author learnable guide programs, in this section, we will describe how to optimize the parameters of those programs. 
+Now that we have seen how to author learnable guide programs, we will describe how to optimize the parameters of those programs. 
 
 \subsection{ELBo: The Variational Objective}
 
@@ -112,6 +112,7 @@ Second, we assume that all random choices made by the guide program are first dr
 \end{equation*}
 %%%
 As mentioned in Section~\ref{sec:pplbasics}, the length of $\reparamVars$ can vary across executions. However, since the guide program $\guide$ by construction samples the same random choices in the same order as the target program $p$, $\guide$ factors the same way as $p$ (Equation~\ref{eq:probProgDef}) for any given execution. 
+(Also note that the gradient with respect to parameters that affect only variables that are not created on a given execution will be zero, allowing us to simply ignore them.)
 
 The distributions $\reparamDist_i$ and functions $\reparamXform_i$ have different meanings depending on whether the variable $\reparamVar_i$ is continuous or discrete:
 %%%
@@ -186,7 +187,7 @@ In the second line, we used the fact (mentioned above) that $\gradparams \log \r
 
 Equation~\ref{eq:finalEstimator} is similar to the `surrogate loss function' gradient estimator of Schulman et al.~\cite{StochasticComputationGraphs}, as an execution of a probabilistic program corresponds to one of their stochastic computation graphs. Their analysis is concerned with general stochastic objectives, however, while we focus particularly on the ELBo.
 
- \ndg{I said elsewhere: Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depends on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.}
+% \ndg{I said elsewhere: Argue that this deals properly with open worlds (ie can ignore rvs / params that weren’t touched on a given sample from q). Only (lazily) create parameter when you first hit it, only update it when RVs that it depends on are hit. Need lemma: gradient for param is zero if none of the RV’s it flows into are hit during a run. Again, with our AD, you don’t have to do any special cases to deal with this, it just falls out naturally.}
 
 % \subsection{Implementation}
 
