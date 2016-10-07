@@ -12,9 +12,13 @@ Having detailed how to specify and optimize guide programs in our system, in thi
 \subsection{Gaussian Mixture Model}
 \label{sec:results_gmm}
 
-We first consider the simple Gaussian mixture model program from Figure~\ref{fig:bn_oneLatent} Bottom. This program samples discrete random choices, so its gradient estimator will include an LR term. Alternatively, we could re-write the program slightly to explicitly marginalize out the discrete random choices; see Appendix~\ref{sec:appendix_code:gmmSumOut}. The gradient estimator for this program then reduces to the PW estimator, which will have lower variance. Lower variance comes at the cost of amortized inference, however, as this version of the program does not have a guide which can predict the latent cluster assignment given an observed point. We also consider a non-amortized, mean field version of the program for comparison.
+We first consider the simple Gaussian mixture model program from Figure~\ref{fig:bn_oneLatent} Bottom. This program samples discrete random choices, so its gradient estimator will include an LR term. Alternatively, we could re-write the program slightly to explicitly marginalize out the discrete random choices; see Appendix~\ref{sec:appendix_code:gmmSumOut}.
+Marginalizing out of these choices leads to a tighter bound on the marginal log likelihood, so we would expect this version of the program to achieve a higher ELBo.
+As a next your benefit, the gradient estimator for this program then reduces to the PW estimator, which will have lower variance. These benefits come at the cost of amortized inference, however, as this version of the program does not have a guide which can predict the latent cluster assignment given an observed point. We also consider a non-amortized, mean field version of the program for comparison.
 
-Figure~\ref{fig:gmmResults} illustrates the performance of these programs after training for 200 steps on a synthetic datset of 100 points. On the left, we show how the ELBo changes during optimizaton. Even on a simple model such as this one, the ability to use the pure PW estimator leads to faster convergence and a better final objective score.
+Figure~\ref{fig:gmmResults} illustrates the performance of these programs after training for 200 steps on a synthetic datset of 100 points. On the left, we show how the ELBo changes during optimizaton.
+As expected, ELBo progress asymptotes at a higher value for the marginalized model.
+% Even on a simple model such as this one, the ability to use the pure PW estimator leads to faster convergence and a better final objective score.
 On the right, we show the estimated negative log likelihood of a separate synthetic test set under each program after optimization. Here, we also include the true model (i.e. the model used to synthesize the test/training data) for comparsion.
 As suggested by its optimization performance, the model with discrete choices marginalized out performs best.
 Note that the amortized guide program slightly out-performs the mean field guide program, indicating that the generalization provided by amortization has benefits for training generative models, in addition to enabling fast predictions of latent variables for previously-unseen observations.
@@ -29,7 +33,7 @@ Note that the amortized guide program slightly out-performs the mean field guide
 \centering
 \includegraphics[width=\linewidth]{figs/results/gmm/nll.pdf}
 \end{minipage}
-\caption{Performance of simple Gaussian mixture model program. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Negative log-likelihood of a held-out test set.}
+\caption{Performance of simple Gaussian mixture model program. \emph{(Left)} ELBo optimization progress during training. The optimization objective for the marginalized model is a tighter bound on the marginal log likelihood and thus has a higher asymptote. \emph{(Right)} Negative log-likelihood of a held-out test set.}
 \label{fig:gmmResults}
 \end{figure}
 
@@ -114,7 +118,11 @@ Code for all of these programs can be found in Appendix~\ref{sec:appendix_code:l
 We use five topics and learning rate 0.01 in all experiments.
 
 Figure~\ref{sec:results_lda} shows the results of these experiments.
-In the ELBo progress plot on the left, we see that the marginalized mean field model converges fastest: this is consistent with the result from the Gaussian mixture model experiments and further emphasizes the performance benefits of eliminating discrete random choices when possible. Of our two amortized guides, the word-level guide performs better, likely due to increased parameter sharing. The document-level guide performs at least as well as the mean field model while also being able to efficiently predict topic distributions for previously-unseen documents.
+In the optimization progress plot on the left, we see that the marginalized mean field model achieve the highest ELBo.
+This is consistent with the results from the Gaussian mixture model experiments: marginalizing out latent variables when possible leads to a tighter bound on the marginal log likelihood.
+% In the ELBo progress plot on the left, we see that the marginalized mean field model converges fastest: this is consistent with the result from the Gaussian mixture model experiments and further emphasizes the performance benefits of eliminating discrete random choices when possible.
+
+Of our two amortized guides, the word-level guide performs better (and nearly as well as the marginalized model), likely due to increased parameter sharing. The document-level guide performs at least as well as the mean field model while also being able to efficiently predict topic distributions for previously-unseen documents.
 
 Figure~\ref{sec:results_lda} Right shows the top ten highest probability words in each inferred topic for the marginalized mean field model. From left to right, these topics appear to be about experiments, pragmatic language models, knowledge acquisition, probabilistic programming languages, and a grab bag of remaining topics.
 
@@ -142,7 +150,7 @@ participants & using & theory & model & expressive
 \end{tabular}
 \end{minipage}
 %
-\caption{Performance of Latent Dirichlet Allocation models. \emph{(Left)} ELBo optimization progress during training. \emph{(Right)} Top ten highest probability words in each inferred topic for the best-performing model.}
+\caption{Performance of Latent Dirichlet Allocation models. \emph{(Left)} ELBo optimization progress during training. The optimization objective for the marginalized model is a tighter bound on the marginal log likelihood and thus has a higher asymptote. \emph{(Right)} Top ten highest probability words in each inferred topic for the best-performing model.}
 \label{fig:ldaResults}
 \end{figure}
 
