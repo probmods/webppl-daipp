@@ -183,7 +183,17 @@ By definition, $\reparamVars_{<i}$ are all random choices which occur before $\r
 \end{lemma}
 %
 \begin{proof}
-\remark{Noah proves this. Is this pretty much just d-separation?}
+By construction there is no directed path from $\reparamXform_i(\reparamVar_i)$ to $\mathcal{C}_i$, or vice versa.  Further, all nodes that are upstream of both $\reparamXform_i(\reparamVar_i)$ and $\mathcal{C}_i$ are in $\mathcal{U}_i$ (because all nodes that are upstream of $\reparamXform_i(\reparamVar_i)$ are in $\mathcal{U}_i$ by definition). It follows that these sets are conditionally independent:
+\begin{equation*}
+\guide(\reparamXform_i(\reparamVar_i), \mathcal{C}_i | \mathcal{U}_i) = \guide(\reparamXform_i(\reparamVar_i)| \mathcal{U}_i) \guide(\mathcal{C}_i | \mathcal{U}_i).
+\end{equation*}
+Using this, the result is immediate:
+\begin{equation*}
+\guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i \cup \mathcal{C}_i) 
+= \frac{\guide(\reparamXform_i(\reparamVar_i), \mathcal{C}_i | \mathcal{U}_i)}{\guide(\mathcal{C}_i | \mathcal{U}_i)} 
+= \guide(\reparamXform_i(\reparamVar_i)| \mathcal{U}_i).
+\end{equation*}
+%\remark{Noah proves this. Is this pretty much just d-separation?}
 \end{proof}
 %
 A corollary of this lemma is that $\guide(\reparamXform_i(\reparamVar_i) | \reparamXform(\reparamVars_{<i}), \observedVars) = \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i)$, since $\reparamVars_{<i}$ must be a subset of $\mathcal{B}_i$.
