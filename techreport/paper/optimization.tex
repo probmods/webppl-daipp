@@ -69,6 +69,8 @@ In the general case, the gradient of the ELBo with respect to $\phi$ can be esti
 This estimator goes by the names `likelihood ratio estimator'~\cite{LikelihoodRatioEstimator} and `score function estimator'~\cite{ScoreFunctionEstimator}, and it is also equivalent to the REINFORCE policy gradient algorithm in the reinforcement learning literature~\cite{REINFORCE}. The derivations of this estimator most relevant to our setting can be found in Wingate and Weber~\cite{AVIPP} and Mnih and Gregor~\cite{NVIL}.
 Intuitively, each gradient update step using the LR estimator pushes the parameters $\phi$ in the direction $( \log \trueJoint - \log \guidePosterior )$---that is, the direction that will bring the guide closer to the true posterior. The magnitude of this update is controlled by $\gradparams \log \guidePosterior$.
 
+%% \paul{are magnitude and direction reversed in the intuition above?}
+
 The LR estimator is straightforward to compute, requiring only that $\log \guidePosterior$ be differentiable with respect to $\phi$ (the mean field and neural guide families presented in Section~\ref{sec:background} satisfy this property). However, it is known to exhibit high variance. This problem is amenable to several variance reduction techniques, some of which we will employ later in this section.
 
 \paragraph{Pathwise (PW) Estimator:}
@@ -102,6 +104,14 @@ It transforms both the guide and target distributions into distributions over in
 \label{sec:optimization:unifiedEstimator}
 
 A general probabilistic program makes many random choices, some of which are amenable to the reparameterization trick (i.e. continuous choices) and others of which are not (i.e. discrete choices). Thus, to optimize the ELBo for a probabilistic program $p$ and an associated guide program $\guide$, we seek a single, unified gradient estimator that handles both discrete and continuous choices and supports model learning as well as amortized inference.
+
+%% \paul{above we start equating not-reparameterized with discrete and
+%%   reparameterized with continuous, and then (mostly) use
+%%   discrete/continuous throughout. i can see the appeal in doing this
+%%   (particularly in the main body, perhaps less so in the proofs), but
+%%   i wonder if we might call out that these things only roughly line
+%%   up, at least in webppl? i know i've confused at least one person
+%%   before by not making this clear.}
 
 As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters. To simplify notation, we drop the dependency on $\phi$ from all derivations that follow. This is equivalent to making the parameters globally available, which is also true of our system (i.e. \ic{paramScalar} and its ilk can be called anywhere).
 

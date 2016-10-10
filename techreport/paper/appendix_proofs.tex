@@ -175,6 +175,9 @@ In proving this theorem, the following two lemmas will be useful:
 By definition, $\reparamVars_{<i}$ are all random choices which occur before $\reparamVar_i$ in program execution order. Also by definition, for all $d \in \mathcal{D}_i$, there exists a path $\reparamVar_i \to d$. As noted above, by construction, this implies that $d$ was created after $\reparamVar_i$ in program execution order. Thus $d$ cannot be in $\reparamVars_{<i}$.
 \end{proof}
 %%%
+%% \paul{in the following proof, the paths mentioned should be from
+%%   $\epsilon_i$ rather than $g(\epsilon_i)$? also use $\to$ notation as
+%%   above?}
 \begin{lemma}
 \begin{equation*}
 \guide(\reparamXform_i(\reparamVar_i) | \mathcal{B}_i) \equiv \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i \cup \mathcal{C}_i) = \guide(\reparamXform_i(\reparamVar_i) | \mathcal{U}_i)
