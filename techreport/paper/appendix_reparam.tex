@@ -17,7 +17,7 @@ Cauchy($x_0$, $\gamma$) & Uniform($0$, $1$) & $x_0 + \gamma \cdot \tan( \pi \cdo
 \end{tabular}
 \end{center}
 
-Examples of primitive distributions that are not reparameterizable, but can be guided by a reparameterizable approximating distribution:
+Examples of primitive distributions that do not have a location-scale transform but can be guided by a reparameterizable approximating distribution:
 
 \begin{center}
 \renewcommand{\arraystretch}{1.5}
@@ -30,10 +30,3 @@ Gamma & InverseSoftplusNormal \\
 Dirichlet & LogisticNormal
 \end{tabular}
 \end{center}
-
-%% \paul{should we say something like `not reparameterized in webppl'
-%%   rather than `not reparameterizable'?}
-
-%% \paul{should we mention that we use LogitNormal with Uniform because
-%%   we want something that is `shapable', not because it can't be
-%%   reparameterized? or just leave it out?}

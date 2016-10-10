@@ -5,11 +5,9 @@
 Having detailed how to specify and optimize guide programs in our system, in this section, we experimentally evaluate how well programs written in our system can learn generative models and approximate posterior samplers. Unless stated otherwise, we use the following settings for the experiments in this section:
 %%%
 \begin{itemize}
-\item{The Adam optimization method~\cite{Adam} with $\alpha = 0.1$, $\beta_1 = 0.9$, and $\beta_2 = 0.99$.}
+\item{The Adam optimization method~\cite{Adam} with $\alpha = 0.1$, $\beta_1 = 0.9$, and $\beta_2 = 0.999$.}
 \item{One sample from $\guide$ per optimization step to estimate the expectation in Equation~\ref{eq:finalEstimator}.}
 \end{itemize}
-
-%% \paul{the default for $\beta_2$ is 0.999 -- wasn't that used?}
 
 \subsection{Gaussian Mixture Model}
 \label{sec:results_gmm}

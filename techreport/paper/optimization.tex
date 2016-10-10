@@ -67,9 +67,7 @@ In the general case, the gradient of the ELBo with respect to $\phi$ can be esti
 \end{align}
 %%%
 This estimator goes by the names `likelihood ratio estimator'~\cite{LikelihoodRatioEstimator} and `score function estimator'~\cite{ScoreFunctionEstimator}, and it is also equivalent to the REINFORCE policy gradient algorithm in the reinforcement learning literature~\cite{REINFORCE}. The derivations of this estimator most relevant to our setting can be found in Wingate and Weber~\cite{AVIPP} and Mnih and Gregor~\cite{NVIL}.
-Intuitively, each gradient update step using the LR estimator pushes the parameters $\phi$ in the direction $( \log \trueJoint - \log \guidePosterior )$---that is, the direction that will bring the guide closer to the true posterior. The magnitude of this update is controlled by $\gradparams \log \guidePosterior$.
-
-%% \paul{are magnitude and direction reversed in the intuition above?}
+Intuitively, each gradient update step using the LR estimator pushes the parameters $\phi$ in the direction $\gradparams \log \guidePosterior$---that is, the direction that will maximize the probability of $\latentVars$ under the guide. But since the goal of optimization is to learn an approximation to the true posterior, this update is weighted based on how probable $\latentVars$ is under the joint distribution $\trueJoint$ (which is proportional to the true posterior). If $\latentVars$ has high probability under the joint but low probability under the current guide, then the $( \log \trueJoint - \log \guidePosterior )$ term produces a large update (i.e. the guide should assign much higher probability to $\latentVars$ than it currently does). If the joint and the guide assign equal probability to $\latentVars$, then the update will have zero magnitude. If the joint assigns \emph{lower} probability to $\latentVars$ than the guide does, the resulting gradient update will move the parameters $\phi$ in the opposite direction of $\gradparams \log \guidePosterior$.
 
 The LR estimator is straightforward to compute, requiring only that $\log \guidePosterior$ be differentiable with respect to $\phi$ (the mean field and neural guide families presented in Section~\ref{sec:background} satisfy this property). However, it is known to exhibit high variance. This problem is amenable to several variance reduction techniques, some of which we will employ later in this section.
 
@@ -103,17 +101,14 @@ It transforms both the guide and target distributions into distributions over in
 \subsection{Unified Gradient Estimator for Probabilistic Programs}
 \label{sec:optimization:unifiedEstimator}
 
-A general probabilistic program makes many random choices, some of which are amenable to the reparameterization trick (i.e. continuous choices) and others of which are not (i.e. discrete choices). Thus, to optimize the ELBo for a probabilistic program $p$ and an associated guide program $\guide$, we seek a single, unified gradient estimator that handles both discrete and continuous choices and supports model learning as well as amortized inference.
+% A general probabilistic program makes many random choices, some of which are amenable to the reparameterization trick (i.e. continuous choices) and others of which are not (i.e. discrete choices).
+A general probabilistic program makes many random choices, some of which are amenable to the reparameterization trick and others of which are not.
+Discrete random choices are never reparameterizable. Continuous random choices are reparameterizable if they can be expressed as a parameterized, deterministic transformation of a parameter-less random choce. In our implementation, every continuous random choice type either has this property or is well-approximated (and thus can be guided) by a random choice type that does (see Appendix~\ref{sec:appendix_reparam}). Thus, for the rest of the paper, we will equate  continuous with reparameterizable and discrete with non-reparameterizable.
+To optimize the ELBo for a probabilistic program $p$ and an associated guide program $\guide$, we seek a single, unified gradient estimator that handles both discrete and continuous choices.
+% and supports model learning as well as amortized inference.
 
-%% \paul{above we start equating not-reparameterized with discrete and
-%%   reparameterized with continuous, and then (mostly) use
-%%   discrete/continuous throughout. i can see the appeal in doing this
-%%   (particularly in the main body, perhaps less so in the proofs), but
-%%   i wonder if we might call out that these things only roughly line
-%%   up, at least in webppl? i know i've confused at least one person
-%%   before by not making this clear.}
-
-As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters. To simplify notation, we drop the dependency on $\phi$ from all derivations that follow. This is equivalent to making the parameters globally available, which is also true of our system (i.e. \ic{paramScalar} and its ilk can be called anywhere).
+% As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters.
+First, to simplify notation, we drop the dependency on $\phi$ from all derivations that follow. This is equivalent to making the parameters globally available, which is also true of our system (i.e. \ic{paramScalar} and its ilk can be called anywhere).
 
 Second, we assume that all random choices made by the guide program are first drawn from a distribution $\reparamDist$ and then transformed by a deterministic function $\reparamXform$. Under this assumption, the distribution defined by a guide program factors as:
 %%%
@@ -127,7 +122,7 @@ As mentioned in Section~\ref{sec:pplbasics}, the length of $\reparamVars$ can va
 The distributions $\reparamDist_i$ and functions $\reparamXform_i$ have different meanings depending on whether the variable $\reparamVar_i$ is continuous or discrete:
 %%%
 \begin{itemize}
-\item{Continuous $\reparamVar_i$: $\reparamDist_i$ is a unit normal or uniform distribution, and $\reparamXform_i$ is a parameterized transform. This is a direct application of the reparameterization trick. In this case, each local transformation $\reparamXform_i$ may also depend on the previous noise variables $\reparamVars_{<i}$, as choices occuring later in the program may be compound transformations of earlier choices. Appendix~\ref{sec:appendix_reparam} lists some reparameterizable distributions used by our system.}
+\item{Continuous $\reparamVar_i$: $\reparamDist_i$ is a unit normal or uniform distribution, and $\reparamXform_i$ is a parameterized transform. This is a direct application of the reparameterization trick. In this case, each local transformation $\reparamXform_i$ may also depend on the previous noise variables $\reparamVars_{<i}$, as choices occuring later in the program may be compound transformations of earlier choices.}
 \item{Discrete $\reparamVar_i$: $\reparamDist_i$ = $\guide_i$, and $\reparamXform_i$ is the identity function. This allows discrete choices to be represented in the reparameterization trick framework (without actually reparametrizing).}
 \end{itemize}
 %%%
