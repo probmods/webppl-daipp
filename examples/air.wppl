@@ -35,7 +35,7 @@ var x_sigma = T.add(zeros([product(x_dims), 1]), .3);
 var z_where_prior_cov = '??';
 
 var nnparam = function(a, b) {
-  return paramMatrix(a, b, 0, 0.1);
+  return param({dims: [a, b]});
 };
 
 var data = load_multi_mnist(); // scaled to [0,1]

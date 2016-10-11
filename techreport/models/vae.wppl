@@ -44,12 +44,12 @@ var model = function() {
   // Define parameters.
 
   // Variational.
-  var W0 = paramMatrix(hEncodeDim, xDim, 'W0');
-  var W1 = paramMatrix(zDim, hEncodeDim, 'W1');
-  var W2 = paramMatrix(zDim, hEncodeDim, 'W2');
-  var b0 = paramMatrix(hEncodeDim, 1, 'b0');
-  var b1 = paramMatrix(zDim, 1, 'b1');
-  var b2 = paramMatrix(zDim, 1, 'b2');
+  var W0 = param({dims: [hEncodeDim, xDim], name: 'W0'});
+  var W1 = param({dims: [zDim, hEncodeDim], name: 'W1'});
+  var W2 = param({dims: [zDim, hEncodeDim], name: 'W2'});
+  var b0 = param({dims: [hEncodeDim, 1], name: 'b0'});
+  var b1 = param({dims: [zDim, 1], name: 'b1'});
+  var b2 = param({dims: [zDim, 1], name: 'b2'});
 
   // Generative.
   var W3 = makeNNParamGenerativeNamed(hDecodeDim, zDim, 'W3');

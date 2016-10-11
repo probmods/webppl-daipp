@@ -49,17 +49,17 @@ var dataMean = function(data) {
 
 var sbn = function(data, processDatum) {
 
-  var We = paramMatrix(numhid, numviz, 0, 0.001);
-  var be = paramVector(numhid);
+  var We = param({dims: [numhid, numviz], sigma: 0.001});
+  var be = param({dims: [numhid, 1]});
 
-  var Wd = paramMatrix(numviz, numhid, 0, 0.001);
-  var bd = paramVector(numviz);
+  var Wd = param({dims: [numviz, numhid], sigma: 0.001});
+  var bd = param({dims: [numviz, 1]});
 
   // var Wd = sample(TensorGaussian({mu: 0, sigma: 1, dims: [numviz, numhid]}), {
-  //   guide: Delta({v: paramMatrix(numviz, numhid, 0, 0.001)})
+  //   guide: Delta({v: param({dims: [numviz, numhid], sigma: 0.001})})
   // });
   // var bd = sample(TensorGaussian({mu: 0, sigma: 1, dims: [numviz, 1]}), {
-  //   guide: Delta({v: paramVector(numviz, 0, 0.001)})
+  //   guide: Delta({v: param({dims: [numviz, 1], sigma: 0.001})})
   // });
 
   var encode = function(datum) {
@@ -92,6 +92,6 @@ var model = function() { return sbn(images, subtractMeanImage); };
 
 var params = Optimize(model, {
   steps: 10000,
-  estimator: {ELBO2: {samples: 1, avgBaselines: true}},
+  estimator: {ELBO: {samples: 1, avgBaselines: true}},
   optMethod: {adam: {stepSize: .001}}
 });

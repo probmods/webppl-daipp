@@ -21,20 +21,20 @@ var _extend = function(name, suffix) {
 
 var perceptronParams = function(spec, name) {
 	return {
-		W_hidden: paramMatrix(spec.nHidden, spec.nIn, _extend(name, '_Whidden')),
-		b_hidden: paramVector(spec.nHidden, _extend(name, '_bhidden')),
-		W_out: paramMatrix(spec.nOut, spec.nHidden, _extend(name, '_Wout')),
-		b_out: paramVector(spec.nOut, _extend(name, '_bout'))
+		W_hidden: param({dims: [spec.nHidden, spec.nIn], name: _extend(name, '_Whidden')}),
+		b_hidden: param({dims: [spec.nHidden, 1], name: _extend(name, '_bhidden')}),
+		W_out: param({dims: [spec.nOut, spec.nHidden], name: _extend(name, '_Wout')}),
+		b_out: param({dims: [spec.nOut, 1], name: _extend(name, '_bout')})
 	};
 };
 
 // Creating parameters for generative models under different conditions
 var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma, name) {
-	var prm = function(nm) { return paramScalar(paramMu, paramSigma, nm) };
+	var prm = function(nm) { return param({mu: paramMu, sigma: paramSigma, name: nm}) };
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			modelParamScalar(paramMu, paramSigma, name) :
+		        modelParam({mu: paramMu, sigma: paramSigma, name: name}) :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gaussian({mu: priorMu || 0, sigma: priorSigma || 1}), {
 				guide: Delta({v: prm(name)})
@@ -46,11 +46,11 @@ var makeMuGenerative = function(value, priorMu, priorSigma, paramMu, paramSigma,
 		util.fatal('Unrecognized modelLearnType');
 };
 var makeSigmaGenerative = function(value, priorShape, priorScale, paramMu, paramSigma, name) {
-	var prm = function(nm) { return paramScalar(paramMu, paramSigma, nm) };
+	var prm = function(nm) { return param({mu: paramMu, sigma: paramSigma, name: nm}) };
 	return !opts.doModelLearning ?
 			value :
 		opts.modelLearnType === 'ML' ?
-			softplus(modelParamScalar(paramMu, paramSigma, name)) :
+			softplus(modelParam({mu: paramMu, sigma: paramSigma, name: name})) :
 		opts.modelLearnType === 'ML_reg' ?
 			sample(Gamma({shape: priorShape || 1, scale: priorScale || 1}), {
 				guide: Delta({v: softplus(prm(name))})
@@ -64,13 +64,13 @@ var makeSigmaGenerative = function(value, priorShape, priorScale, paramMu, param
 var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma, name) {
 	var n = ws !== undefined ? ws.length : priorAlpha.length; 
 
-	var prm = function(nm) { return paramVector(n-1, paramMu, paramSigma, nm) };
+	var prm = function(nm) { return param({dims: [n-1, 1], mu: paramMu, sigma: paramSigma, name: nm}) };
 	var ones = function() { return Vector(repeat(n, function() { return 1; })); };
 
 	return !opts.doModelLearning ?
 		Vector(ws) :
 	opts.modelLearnType === 'ML' ?
-		simplex(modelParamVector(n-1, paramMu, paramSigma, name)) :
+		simplex(modelParam({dims: [n-1, 1], mu: paramMu, sigma: paramSigma, name: name})) :
 	opts.modelLearnType === 'ML_reg' ?
 		sample(Dirichlet({alpha: priorAlpha || ones()}), {
 			guide: Delta({v: simplex(prm(name))})
@@ -82,10 +82,10 @@ var makeWeightsGenerative = function(ws, priorAlpha, paramMu, paramSigma, name) 
 	util.fatal('Unrecognized modelLearnType "' + opts.modelLearnType + "'");
 };
 var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSigma, name) {
-  var prm = function(nm) { return paramVector(n*m, paramMu, paramSigma, nm); };
+  var prm = function(nm) { return param({dims: [n*m, 1], mu: paramMu, sigma: paramSigma, name: nm}); };
   var x =
   opts.modelLearnType === 'ML' ?
-    modelParamVector(n*m, paramMu, paramSigma, name) :
+    modelParam({dims: [n*m, 1], mu: paramMu, sigma: paramSigma, name: name}) :
   opts.modelLearnType === 'ML_reg' ?
     sample(TensorGaussian({mu: priorMu || 0, sigma: priorSigma || 1, dims: [n*m, 1]}), {
       guide: Delta({v: prm(name)})
@@ -100,14 +100,14 @@ var makeNNParamGenerative = function(n, m, priorMu, priorSigma, paramMu, paramSi
 
 // Local mean field guides
 var gaussianMeanFieldParams = function(paramMu, paramSigma) {
-	var prm = function() { return paramScalar(paramMu, paramSigma) };
+	var prm = function() { return param({mu: paramMu, sigma: paramSigma}) };
 	return {mu: prm(), sigma: softplus(prm())};
 };
 var discreteMeanFieldParams = function(n, paramMu, paramSigma) {
-	return simplex(paramVector(n-1, paramMu, paramSigma));
+	return simplex(param({dims: [n-1, 1], mu: paramMu, sigma: paramSigma}));
 };
 var bernoulliMeanFieldParam = function(paramMu, paramSigma) {
-	return Math.sigmoid(paramScalar(paramMu, paramSigma));
+	return Math.sigmoid(param({mu: paramMu, sigma: paramSigma}));
 };
 
 // --------------------------------------------------------------------------------------

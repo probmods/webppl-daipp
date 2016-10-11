@@ -70,8 +70,8 @@ globalStore.generate = false;
 var model = function() {
 
   // Variational guide params
-  var We = paramMatrix(numhid, numviz, 0, 0.001, 'We');
-  var be = paramMatrix(numhid, 1, 'be');
+  var We = param({dims: [numhid, numviz], sigma: 0.001, name: 'We'});
+  var be = param({dims: [numhid, 1], name: 'be'});
 
   // Generative params
   var Wd = makeNNParamGenerative(numviz, numhid, undefined, undefined, 0, 0.001, 'Wd');
