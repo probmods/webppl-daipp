@@ -21,20 +21,20 @@ var conditions = [
 {
 	name: 'Mean field',
 	opts: {
-		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+		optimize_estimator: { ELBO: { samples: 1, avgBaselines: true } },
 		localGuideType: 'MeanField'
 	}
 },
 {
 	name: 'Amortized',
 	opts: {
-		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+		optimize_estimator: { ELBO: { samples: 1, avgBaselines: true } },
 	}
 },
 {
 	name: 'Marginalized',
 	opts: {
-		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+		optimize_estimator: { ELBO: { samples: 1, avgBaselines: true } },
 		sumOut: true
 	}
 },

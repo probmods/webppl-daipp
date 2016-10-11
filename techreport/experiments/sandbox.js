@@ -32,13 +32,13 @@ var conditions = [
 {
 	name: 'Sample discretes',
 	opts: {
-		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+		optimize_estimator: { ELBO: { samples: 1, avgBaselines: true } },
 	}
 },
 {
 	name: 'Sum out discretes',
 	opts: {
-		optimize_estimator: { ELBO2: { samples: 1, avgBaselines: true } },
+		optimize_estimator: { ELBO: { samples: 1, avgBaselines: true } },
 		sumOut: true
 	}
 }

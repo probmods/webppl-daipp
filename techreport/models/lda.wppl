@@ -63,7 +63,7 @@ var model = function() {
 
 // Model-specific Optimize options
 var optimizeOpts = {
-	estimator: {ELBO2: {samples: 3, avgBaselines: true}},
+	estimator: {ELBO: {samples: 3, avgBaselines: true}},
 };
 
 // Model-specific quantities to compute / return after optimization

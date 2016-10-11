@@ -55,7 +55,7 @@ function compileModel(opts) {
 		batchSize: undefined,
 		optimize_nSteps: 100,
 		optimize_optMethod: { adam: { stepSize: 0.1 } },
-		optimize_estimator: { ELBO2: { samples: 1 } },
+		optimize_estimator: { ELBO: { samples: 1 } },
 		optimize_verbose: false,
 		optimize_logProgress: false,
 		optimize_logProgressThrottle: undefined,

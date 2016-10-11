@@ -107,7 +107,7 @@ var model = function() {
 // Model-specific Optimize options
 var optimizeOpts = {
   steps: 10000,
-  // estimator: {ELBO2: {samples: 1, avgBaselines: true}},  // Moved to sandbox options
+  // estimator: {ELBO: {samples: 1, avgBaselines: true}},  // Moved to sandbox options
   optMethod: {adam: {stepSize: .001}}
 };
 

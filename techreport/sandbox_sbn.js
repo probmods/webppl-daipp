@@ -14,15 +14,15 @@ var fs = require('fs');
 // 	optimize_checkpointParams: true,
 // 	optimize_checkpointParamsThrottle: 30000,
 
-// 	optimize_estimator: {ELBO2: {samples: 1, avgBaselines: true}},
+// 	optimize_estimator: {ELBO: {samples: 1, avgBaselines: true}},
 // 	optimize_logProgressFilename: __dirname + '/output/sbn_elboProgress.csv',
 // 	optimize_checkpointParamsFilename: __dirname + '/output/sbn_params.json'
 
-// 	// optimize_estimator: {ELBO2: {samples: 1, avgBaselines: false}},
+// 	// optimize_estimator: {ELBO: {samples: 1, avgBaselines: false}},
 // 	// optimize_logProgressFilename: __dirname + '/output/sbn_elboProgress_noBaselines.csv',
 // 	// optimize_checkpointParamsFilename: __dirname + '/output/sbn_params_noBaselines.json'
 
-// 	// optimize_estimator: {ELBO2: {samples: 1, avgBaselines: false, naiveLR: true}},
+// 	// optimize_estimator: {ELBO: {samples: 1, avgBaselines: false, naiveLR: true}},
 // 	// optimize_logProgressFilename: __dirname + '/output/sbn_elboProgress_noGraph.csv',
 // 	// optimize_checkpointParamsFilename: __dirname + '/output/sbn_params_noGraph.json'
 // });

@@ -52,7 +52,7 @@ var DataFrame = require('./experiments/dataFrame.js');
 // 		optimize_logProgress: true,
 // 		optimize_checkpointParams: true,
 // 		optimize_checkpointParamsThrottle: 60000,
-// 		optimize_estimator: {ELBO2: {samples: 1, avgBaselines: true}},
+// 		optimize_estimator: {ELBOs: {samples: 1, avgBaselines: true}},
 // 		optimize_optMethod: { adam: { stepSize: 0.01 } },
 
 // 		optimize_logProgressFilename: __dirname + '/output/qmr_elboProgress_' + conditionOpts.conditionName + '.csv',
@@ -76,12 +76,12 @@ var DataFrame = require('./experiments/dataFrame.js');
 // // trainQMR({
 // // 	conditionName: 'handGuide_noBaselines',
 // // 	optimize_optMethod: { adam: { stepSize: 0.001 } },
-// // 	optimize_estimator: {ELBO2: {samples: 1, avgBaselines: false}}
+// // 	optimize_estimator: {ELBO: {samples: 1, avgBaselines: false}}
 // // });
 // // trainQMR({
 // // 	conditionName: 'handGuide_noGraph',
 // // 	optimize_optMethod: { adam: { stepSize: 0.00001 } },
-// // 	optimize_estimator: {ELBO2: {samples: 1, avgBaselines: false, naiveLR: true}}
+// // 	optimize_estimator: {ELBO: {samples: 1, avgBaselines: false, naiveLR: true}}
 // // });
 // // trainQMR({
 // // 	conditionName: 'meanField',
