@@ -33,7 +33,7 @@ We might also draw inspiration from the Neural Programmer-Interpreter~\cite{NPI}
 
 \paragraph{Other learning objectives}
 In this paper, we focused on optimizing the ELBo.
-If we flip the direction of KL divergence in Equation~\ref{eq:elbo}, the resulting functional is in \emph{upper} bound on the log marginal likelihood of the data---an `Evidence Upper Bound,' or EUBo.
+If we flip the direction of KL divergence in Equation~\ref{eq:elbo}, the resulting functional is an \emph{upper} bound on the log marginal likelihood of the data---an `Evidence Upper Bound,' or EUBo.
 Computing the EUBo and its gradient requires samples from the true posterior and is thus unusable in many applications, where the entire goal of amortized inference is to find a way to tractably generate such samples.
 However, some applications can benefit from it, if the goal is to speed up an existing tractable inference algorithm (e.g. SMC~\cite{NGPM}), or if posterior execution traces are available through some other means (e.g. input examples from the user).
 There may also be less extreme ways to exploit this idea for learning.

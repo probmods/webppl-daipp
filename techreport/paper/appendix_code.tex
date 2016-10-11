@@ -9,11 +9,11 @@ With discrete choices marginalized out:
 var obs = loadData('data.json');
 var nComps = 3
 var model = function() {
-   var theta_x = simplex(modelParamVector(nComps-1, 'theta_x'));
+   var theta_x = simplex(modelParam({dims: [nComps-1, 1], name: 'theta_x'}));
    var params_y = [
-      {mu: modelParamScalar('mu_y_1'), sigma: softplus(modelParamScalar('sigma_y_1'))},
-      {mu: modelParamScalar('mu_y_2'), sigma: softplus(modelParamScalar('sigma_y_2'))},
-      {mu: modelParamScalar('mu_y_3'), sigma: softplus(modelParamScalar('sigma_y_3'))}
+      {mu: modelParam({name: 'mu1'}), sigma: softplus(modelParam({name: 's1'}))},
+      {mu: modelParam({name: 'mu2'}), sigma: softplus(modelParam({name: 's2'}))},
+      {mu: modelParam({name: 'mu3'}), sigma: softplus(modelParam({name: 's3'}))}
    ];
    mapData({data: obs}, function(y) {
       // Explicitly sum out latent mixture component

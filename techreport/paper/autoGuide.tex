@@ -13,7 +13,7 @@ If a call to \ic{sample} is not provided with an explicit guide distribution, ou
 %%%
 \begin{lstlisting}
 sample(Gaussian({mu: 0, sigma: 1}), {
-   guide: Gaussian({mu: paramScalar(<@\hilite{<auto_name>}@>), sigma: softplus(paramScalar(<@\hilite{<auto_name>}@>))})
+   guide: Gaussian({mu: param({name: <@\hilite{<auto_name>}@>}), sigma: softplus(param({name: <@\hilite{<auto_name>}@>}))})
 })
 \end{lstlisting}
 %%%

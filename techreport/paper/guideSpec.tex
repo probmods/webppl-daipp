@@ -31,12 +31,12 @@ In real problems, we will not know the optimal guides \emph{a prior} and will in
 %%%
 \begin{lstlisting}
 var x = sample(Gaussian({mu: 0, sigma: 1}), {
-   guide: Gaussian({mu: paramScalar('guideMu'), sigma: softplus(paramScalar('guideSigma'))})
+   guide: Gaussian({mu: param({name: 'guideMu'}), sigma: softplus(param({name: 'guideSigma'}))})
 });
 \end{lstlisting}
 %%%
-Here, \ic{paramScalar(name)} declares an optimizable, real-valued parameter named \ic{name}; there are analogous functions \ic{paramVector}, \ic{paramMatrix}, and \ic{paramTensor} for declaring vector, matrix, and tensor-valued parameters.
-Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value returned by \ic{paramScalar} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
+Here, \ic{param(\{name: nm\})} declares an optimizable, real-valued parameter named \ic{nm}; as we'll see later, this function can also take a \ic{dims} argument specifying the dimensions of a vector, matrix, or tensor-valued parameter.
+Since the standard deviation \ic{sigma} of the Gaussian guide distribution must be positive, we use the \ic{softplus}\footnote{$\text{softplus}(x) = \log(\exp(x) + 1)$} function to map the unbounded value returned by \ic{param} to $\Reals^{+}$; our system includes similar transforms for parameters with other domains (e.g. \ic{sigmoid} for parameters defined over the interval $[0, 1]$).
 Parameters must be named so they can be disambiguated by the optimization engine.
 
 Using variational parameters directly as the guide distribution parameters (as done above) results in a mean field approximation for the variable \ic{x}, as mentioned in Section~\ref{sec:background:variational}.
@@ -54,10 +54,10 @@ var nOut = 2;
 
 var model = function() {
    // Neural net params
-   var W1 = paramMatrix(nHidden, nIn, 'W1');
-   var b1 = paramVector(nHidden, 'b1');
-   var W2 = paramMatrix(nOut, nHidden, 'W2');
-   var b3 = paramVector(nOut, 'b2');
+   var W1 = param({dims: [nHidden, nIn], name: 'W1'});
+   var b1 = param({dims: [nHidden, 1], name: 'b1'});
+   var W2 = param({dims: [nOut, nHidden], name: 'W2'});
+   var b2 = param({dims: [nOut, 1], name: 'b2'});
 
    // Use neural net to compute guide params
    var nnInput = Vector([y]);
@@ -141,12 +141,13 @@ The following three code blocks show possible replacements for line 7 of the pre
 \begin{lstlisting}[style=learnableModels]
 // Maximum likelihood
 var mu_x = sample(
-   ImproperUniform(),
-   { guide:
-      Delta({v: paramScalar('mu_x')})
+   ImproperUniform(), {
+      guide: Delta({
+         v: param({name: 'mu_x'})
+      })
    });
 // For convenience, equivalent to:
-// modelParamScalar('mu_x');
+// modelParam({name: 'mu_x'});
 \end{lstlisting}
 \end{minipage}
 %
@@ -157,9 +158,10 @@ var mu_x = sample(
 // L2-regularized
 // maximum likelihood
 var mu_x = sample(
-   Gaussian({mu: 0, sigma: 1}),
-   { guide:
-      Delta({v: paramScalar('mu_x')})
+   Gaussian({mu: 0, sigma: 1}), {
+      guide: Delta({
+         v: param({name: 'mu_x'})
+      })
    });
 \end{lstlisting}
 \end{minipage}
@@ -170,25 +172,24 @@ var mu_x = sample(
 \begin{lstlisting}[style=learnableModels]
 // Variational Bayes
 var mu_x = sample(
-   Gaussian({mu: 0, sigma: 1}),
-   { guide:
-      Gaussian({
-        mu: paramScalar('mu_x_m'),
-        sigma: softplus(paramScalar('mu_x_s'))
+   Gaussian({mu: 0, sigma: 1}), {
+      guide: Gaussian({
+        mu: param({name: 'mu_x_m'}),
+        sigma: softplus(param({name: 'mu_x_s'}))
       })
    });
 \end{lstlisting}
 \end{minipage}
 
-The code in the left block results in maximum likelihood estimation. By using a Delta distribution as a guide, the inference engine will optimize for the single best parameter value (i.e. the center of the Delta distribution). Maximum likelihood behavior comes from using an improper uniform distribution (i.e. distribution with probability one everywhere) as a prior. This pattern is common enough that our system provides convenient shorthand for it (the \ic{modelParam} functions).
+The code in the left block results in maximum likelihood estimation. By using a Delta distribution as a guide, the inference engine will optimize for the single best parameter value (i.e. the center of the Delta distribution). Maximum likelihood behavior comes from using an improper uniform distribution (i.e. distribution with probability one everywhere) as a prior. This pattern is common enough that our system provides convenient shorthand for it (the \ic{modelParam} function).
 %%%
 In the middle code of block, we demonstrate L2-regularized maximum likelihood learning by replacing the improper uniform prior with a Gaussian prior. The inference engine will still predict a point estimate for \ic{mu_x}, but the Gaussian prior results in L2 regularization.
 %%%
 Finally, the right block shows a variational Bayesian model: \ic{mu_x} has a Gaussian prior distribution, and the guide samples \ic{mu_x} from an approximate variational Gaussian posterior with optimizable parameters.
 This form learns a distribution over generative models, maintaining an estimate of uncertainty about the true model.
 
-Note that we could have alternatively implemented maximum likelihood via a direct parameterization, e.g. \ic{var mu_x = paramScalar('mu_x')}. However, this style results in $p$ being parameterized in addition to $\guide$. This complicates both the implementation and the theoretical analyses that we show later in this paper.
-In contrast, our chosen scheme has only the guide parameterized; Learning the model is just part of learning the guide.
+Note that we could have alternatively implemented maximum likelihood via a direct parameterization, e.g. \ic{var mu_x = param(\{name: 'mu_x'\})}. However, this style results in $p$ being parameterized in addition to $\guide$. This complicates both the implementation and the theoretical analyses that we show later in this paper.
+In contrast, our chosen scheme has only the guide parameterized; learning the model is just part of learning the guide.
 
 
 \subsection{Examples: Simple Bayesian Networks}
@@ -208,9 +209,9 @@ Figure~\ref{fig:bn_oneLatent} Bottom shows how to modify this code to instead ha
 var obs = loadData('data.json');
 var guideNet = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet');
 var model = function() {
-   var mu_x = modelParamScalar('mu_x');
-   var sigma_x = softplus(modelParamScalar('sigma_x'));
-   var sigma_y = softplus(modelParamScalar('sigma_y'));
+   var mu_x = modelParam({name: 'mu_x'});
+   var sigma_x = softplus(modelParam({name: 'sigma_x'}));
+   var sigma_y = softplus(modelParam({name: 'sigma_y'}));
    var latents = mapData({data: obs}, function(y) {
       var nnInput = Vector([y]);
       var nnOutput = nnEval(guideNet, nnInput);
@@ -255,11 +256,11 @@ var obs = loadData('data.json');
 var nComps = 3;
 var guideNet = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: nComps-1}], 'guideNet');
 var model = function() {
-   var theta_x = simplex(modelParamVector(nComps-1, 'theta_x'));
+   var theta_x = simplex(modelParam({dims: [nComps-1, 1], name: 'theta_x'}));
    var params_y = [
-      {mu: modelParamScalar('mu_1'), sigma: softplus(modelParamScalar('s_1'))},
-      {mu: modelParamScalar('mu_2'), sigma: softplus(modelParamScalar('s_2'))},
-      {mu: modelParamScalar('mu_3'), sigma: softplus(modelParamScalar('s_3'))}
+      {mu: modelParam({name: 'mu1'}), sigma: softplus(modelParam({name: 's1'}))},
+      {mu: modelParam({name: 'mu2'}), sigma: softplus(modelParam({name: 's2'}))},
+      {mu: modelParam({name: 'mu3'}), sigma: softplus(modelParam({name: 's3'}))}
    ];
    var latents = mapData({data: obs}, function(y) {
       var nnInput = Vector([y]);
@@ -316,11 +317,11 @@ var obs = loadData('data.json');
 var guideNet1 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet1');
 var guideNet2 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet2');
 var model = function() {
-   var mu_x1 = modelParamScalar('mu_x1');
-   var sigma_x1 = softplus(modelParamScalar('sigma_x1'));
-   var mu_x2 = modelParamScalar('mu_x2');
-   var sigma_x2 = softplus(modelParamScalar('sigma_x2'));
-   var sigma_y = softplus(modelParamScalar('sigma_y'));
+   var mu_x1 = modelParam('mu_x1');
+   var sigma_x1 = softplus(modelParam({name: 'sigma_x1'}));
+   var mu_x2 = modelParam('mu_x2');
+   var sigma_x2 = softplus(modelParam({name: 'sigma_x2'}));
+   var sigma_y = softplus(modelParam({name: 'sigma_y'}));
    var latents = mapData({data: obs}, function(y) {
       var nnInput1 = Vector([y]);
       var nnOutput1 = nnEval(guideNet1, nnInput1);
@@ -379,11 +380,11 @@ var obs = loadData('data.json');
 var guideNet1 = nn.mlp(1, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet1');
 var guideNet2 = nn.mlp(<@\hilite{2}@>, [{nOut: 3, activation: nn.sigmoid}, {nOut: 2}], 'guideNet2');
 var model = function() {
-   var mu_x1 = modelParamScalar('mu_x1');
-   var sigma_x1 = softplus(modelParamScalar('sigma_x1'));
-   var mu_x2 = modelParamScalar('mu_x2');
-   var sigma_x2 = softplus(modelParamScalar('sigma_x2'));
-   var sigma_y = softplus(modelParamScalar('sigma_y'));
+   var mu_x1 = modelParam('mu_x1');
+   var sigma_x1 = softplus(modelParam({name: 'sigma_x1'}));
+   var mu_x2 = modelParam('mu_x2');
+   var sigma_x2 = softplus(modelParam({name: 'sigma_x2'}));
+   var sigma_y = softplus(modelParam({name: 'sigma_y'}));
    var latents = mapData({data: obs}, function(y) {
       var nnInput1 = Vector([y]);
       var nnOutput1 = nnEval(guideNet1, nnInput1);
