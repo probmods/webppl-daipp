@@ -66,4 +66,4 @@ var newParams = Optimize(model, {
 });
 \end{lstlisting}
 %%%
-This can be useful for e.g. fine-tuning existing parameters for a new dataset. Indeed, \ic{model} does not even need to be the same program that was originally used to learn \ic{params}; it just needs to declare some parameters (via \ic{paramScalar} etc.) with the same names as parameters in \ic{params}. This can be useful for, for example, making a modification to an existing model without having to re-train its guide program from scratch, or for bootstrap training from a simpler model to a more complex one.
+This can be useful for e.g. fine-tuning existing parameters for a new dataset. Indeed, \ic{model} does not even need to be the same program that was originally used to learn \ic{params}; it just needs to declare some parameters (via \ic{param}) with the same names as parameters in \ic{params}. This can be useful for, for example, making a modification to an existing model without having to re-train its guide program from scratch, or for bootstrap training from a simpler model to a more complex one.

@@ -108,7 +108,7 @@ To optimize the ELBo for a probabilistic program $p$ and an associated guide pro
 % and supports model learning as well as amortized inference.
 
 % As a first simplifying step, we assume that the generative model and the guide are parameterized by a common set of parameters $\phi$: this reflects the fact that our system internally makes no `generative vs. guide' distinction between parameters.
-First, to simplify notation, we drop the dependency on $\phi$ from all derivations that follow. This is equivalent to making the parameters globally available, which is also true of our system (i.e. \ic{paramScalar} and its ilk can be called anywhere).
+First, to simplify notation, we drop the dependency on $\phi$ from all derivations that follow. This is equivalent to making the parameters globally available, which is also true of our system (i.e. \ic{param} can be called anywhere).
 
 Second, we assume that all random choices made by the guide program are first drawn from a distribution $\reparamDist$ and then transformed by a deterministic function $\reparamXform$. Under this assumption, the distribution defined by a guide program factors as:
 %%%
