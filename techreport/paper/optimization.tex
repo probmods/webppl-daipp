@@ -1,4 +1,5 @@
 %auto-ignore
+
 \section{Optimizing Parameters}
 \label{sec:optimization}
 
@@ -59,9 +60,9 @@ In the general case, the gradient of the ELBo with respect to $\phi$ can be esti
 %%%
 \begin{align}
 \begin{split}
-\gradparams \elboPhiTheta
-&= \gradparams \elboDefGenTheta\\
-&= \expect_\guide[ \gradparams \log \guidePosterior ( \log \trueJointTheta - \log \guidePosterior ) ]
+\gradparams \elboPhi
+&= \gradparams \elboDef\\
+&= \expect_\guide[ \gradparams \log \guidePosterior ( \log \trueJoint - \log \guidePosterior ) ]
 \end{split}
 \label{eq:lr}
 \end{align}
@@ -87,10 +88,10 @@ Using this `reparameterization trick'~\cite{AEVB} allows the ELBo gradient to be
 %%%
 \begin{align}
 \begin{split}
-\gradparams \elboPhiTheta
-&= \gradparams \elboDefGenTheta\\
-&= \gradparams \expect_\reparamDist [ \log p(\xformedVarsPhi, \observedVars ; \theta) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ]\\
-&= \expect_\reparamDist [\gradparams ( \log p(\xformedVarsPhi, \observedVars ; \theta) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ) ]
+\gradparams \elboPhi
+&= \gradparams \elboDef\\
+&= \gradparams \expect_\reparamDist [ \log p(\xformedVarsPhi, \observedVars) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ]\\
+&= \expect_\reparamDist [\gradparams ( \log p(\xformedVarsPhi, \observedVars) - \log \guide(\xformedVarsPhi | \observedVars ; \phi) ) ]
 \end{split}
 \label{eq:pw}
 \end{align}
