@@ -29,7 +29,7 @@ globalStore.data = loadData('data_test.json');	// Load new test data set
 sample(Infer({method: 'forward', guide: true, params: params}, model));
 
 // Use the guide as a Sequential Monte Carlo importance sampler
-sample(Infer({method: 'SMC', particles: 100, params: params}));
+sample(Infer({method: 'SMC', particles: 100, params: params}, model));
 \end{lstlisting}
 %%%
 We can make predictions either by running the guide program forward, or if the true posterior is very complex and the learned guide only partially approximates it, we can use the guide program as an importance sampler within Sequential Monte Carlo.
